@@ -41,21 +41,25 @@ body {
     grid-template-columns: repeat(5, 100px); /* 5 columns */
     grid-template-rows: repeat(4, 100px);    /* 4 rows */
     gap: 5px;
-    background-color: #444;
-    padding: 10px;
-    border: 2px solid #666;
-    border-radius: 5px;
+    background-image: url('assets/gameboard.png');
+    background-size: cover; /* Ensure the image covers the entire grid */
+    background-position: center;
+    width: 510px; /* 5 columns * 100px + 5 gaps * 2px */
+    height: 408px; /* 4 rows * 100px + 4 gaps * 2px */
+    padding: 0;
     margin: 0 auto;
+    position: relative;
 }
 
 .slot {
-    background-color: #555;
-    border: 1px solid #777;
+    background-color: transparent; /* Make slots transparent to show the background */
+    border: 1px solid rgba(255, 255, 255, 0.2); /* Subtle border for visibility */
     border-radius: 3px;
     display: flex;
     justify-content: center;
     align-items: center;
     font-size: 14px;
+    color: #fff;
 }
 
 .action-buttons {
@@ -74,4 +78,49 @@ button {
 
 button:hover {
     background-color: #888;
+}
+
+.board-and-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.hand {
+    display: flex;
+    overflow-x: auto; /* Makes the hand scrollable horizontally */
+    gap: 10px;
+    padding: 10px;
+    white-space: nowrap; /* Prevents cards from wrapping to the next line */
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+    .game-board {
+        grid-template-columns: repeat(5, 60px); /* Smaller slots on mobile */
+        grid-template-rows: repeat(4, 60px);
+        width: 310px; /* 5 * 60px + 5 * 2px gaps */
+        height: 248px; /* 4 * 60px + 4 * 2px gaps */
+    }
+
+    .board-and-actions {
+        flex-direction: column; /* Stack board and buttons on mobile */
+        gap: 10px;
+    }
+
+    .slot {
+        font-size: 10px; /* Smaller text on mobile */
+    }
+
+    .hand, .crystal-zone {
+        min-height: 80px; /* Smaller height on mobile */
+    }
 }
