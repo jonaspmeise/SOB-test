@@ -7,7 +7,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh; /* Fixed height to match viewport */
+    height: 100vh;
 }
 
 .game-container {
@@ -16,41 +16,42 @@ body {
     background-size: contain;
     background-position: center;
     background-repeat: no-repeat;
-    width: 800px; /* Fixed width to fit the background image */
-    height: 600px; /* Fixed height to fit within viewport */
+    width: 800px;
+    height: 600px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center; /* Center content vertically */
+    justify-content: center;
+    position: relative; /* Make the container a positioning context for the button */
 }
 
 .turn-indicator {
-    font-size: 20px; /* Smaller font size */
-    margin-bottom: 5px; /* Reduced margin */
+    font-size: 20px;
+    margin-bottom: 5px;
 }
 
 .player-1-area, .player-2-area {
     margin: 5px 0;
-    width: 410px; /* Match the game board width */
+    width: 410px;
 }
 
 .hand, .crystal-zone {
     border: 2px solid #666;
     border-radius: 5px;
-    padding: 5px; /* Reduced padding */
+    padding: 5px;
     margin: 5px 0;
-    min-height: 50px; /* Reduced height */
+    min-height: 50px;
 }
 
 .hand h3 {
     margin: 0 0 5px 0;
-    font-size: 14px; /* Smaller font size */
+    font-size: 14px;
 }
 
 .hand {
     display: flex;
     overflow-x: auto;
-    gap: 5px; /* Reduced gap */
+    gap: 5px;
     padding: 5px;
     white-space: nowrap;
     background-color: #333;
@@ -59,7 +60,7 @@ body {
 .crystal-zone {
     background-size: cover;
     background-position: center;
-    height: 60px; /* Reduced height */
+    height: 60px;
     width: 410px;
     margin: 0 auto;
 }
@@ -74,14 +75,14 @@ body {
 
 .game-board {
     display: grid;
-    grid-template-columns: repeat(5, 80px); /* 5 columns, 80px each */
-    grid-template-rows: repeat(4, 112px);   /* 4 rows, 112px each */
+    grid-template-columns: repeat(5, 80px);
+    grid-template-rows: repeat(4, 112px);
     gap: 2px;
     background-image: url('assets/gameboard-grid.png');
     background-size: cover;
     background-position: center;
-    width: 410px; /* 5 * 80px + 5 * 2px gaps */
-    height: 456px; /* 4 * 112px + 4 * 2px gaps */
+    width: 410px;
+    height: 456px;
     padding: 0;
     margin: 5px auto;
 }
@@ -93,20 +94,20 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 10px; /* Smaller font size */
+    font-size: 10px;
     color: #fff;
 }
 
 .action-buttons {
     position: absolute;
-    right: 20px;
+    right: 100px; /* Adjusted to place the button on the game board background */
     top: 50%;
     transform: translateY(-50%);
 }
 
 button {
-    padding: 8px 16px; /* Smaller button */
-    font-size: 14px; /* Smaller font size */
+    padding: 8px 16px;
+    font-size: 14px;
     background-color: #666;
     color: #fff;
     border: none;
