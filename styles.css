@@ -58,6 +58,10 @@ body {
     height: 60px;
     width: 410px;
     margin: 0 auto;
+    display: flex; /* Add flexbox to lay out cards horizontally */
+    overflow-x: auto; /* Make it scrollable if there are too many cards */
+    gap: 5px; /* Space between cards */
+    white-space: nowrap; /* Prevent cards from wrapping */
 }
 
 #player1-crystal-zone {
@@ -95,18 +99,18 @@ body {
 
 .action-buttons {
     position: absolute;
-    right: 100px; /* Updated to your value */
+    right: 100px;
     top: 50%;
     transform: translateY(-50%);
     display: flex;
-    flex-direction: column; /* Stack the turn indicator and button vertically */
+    flex-direction: column;
     align-items: center;
-    gap: 10px; /* Space between the turn indicator and button */
+    gap: 10px;
 }
 
 .turn-indicator {
-    width: 40px; /* Adjust to your icon’s size */
-    height: 40px;
+    width: 24px;
+    height: 24px;
     background-size: cover;
 }
 
@@ -125,8 +129,8 @@ button:hover {
 }
 
 .card {
-    width: 80px; /* Scaled down to fit in the hand */
-    height: 112px; /* Maintain 2.5:3.5 ratio */
+    width: 80px;
+    height: 112px;
     background-size: cover;
     background-position: center;
     border: 1px solid #666;
@@ -135,6 +139,44 @@ button:hover {
 }
 
 .card:hover {
-    border: 2px solid #ffd700; /* Gold border on hover */
-    transform: scale(1.05); /* Slight zoom effect on hover */
+    border: 2px solid #ffd700;
+    transform: scale(1.05);
+}
+
+.crystal-zone .card {
+    width: 80px;
+    height: 112px;
+    margin-right: 5px;
+}
+
+.slot .card {
+    width: 80px;
+    height: 112px;
+    margin: 0;
+}
+
+.action-menu {
+    position: absolute;
+    background-color: #333;
+    border: 1px solid #666;
+    border-radius: 5px;
+    padding: 5px;
+    display: none;
+    z-index: 10;
+}
+
+.action-menu button {
+    display: block;
+    width: 100%;
+    padding: 5px;
+    margin: 2px 0;
+    background-color: #666;
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.action-menu button:hover {
+    background-color: #888;
 }
