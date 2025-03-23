@@ -22,12 +22,7 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    position: relative; /* Make the container a positioning context for the button */
-}
-
-.turn-indicator {
-    font-size: 20px;
-    margin-bottom: 5px;
+    position: relative;
 }
 
 .player-1-area, .player-2-area {
@@ -100,9 +95,19 @@ body {
 
 .action-buttons {
     position: absolute;
-    right: 100px; /* Adjusted to place the button on the game board background */
+    right: 100px; /* Updated to your value */
     top: 50%;
     transform: translateY(-50%);
+    display: flex;
+    flex-direction: column; /* Stack the turn indicator and button vertically */
+    align-items: center;
+    gap: 10px; /* Space between the turn indicator and button */
+}
+
+.turn-indicator {
+    width: 40px; /* Adjust to your icon’s size */
+    height: 40px;
+    background-size: cover;
 }
 
 button {

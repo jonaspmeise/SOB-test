@@ -1,7 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
     const gameBoard = document.getElementById("game-board");
-    const player1TurnIcon = document.getElementById("player1-turn-icon");
-    const player2TurnIcon = document.getElementById("player2-turn-icon");
+    const turnIndicator = document.getElementById("turn-indicator");
     const endTurnBtn = document.getElementById("end-turn-btn");
 
     // Generate the game board (4x5 grid)
@@ -18,26 +17,22 @@ document.addEventListener("DOMContentLoaded", () => {
     // Game state to track the current player
     let currentPlayer = 1;
 
-    // Function to update the turn icon
-    function updateTurnIcon() {
+    // Function to update the turn indicator
+    function updateTurnIndicator() {
         if (currentPlayer === 1) {
-            player1TurnIcon.style.display = "inline";
-            player1TurnIcon.textContent = "⭐"; // Placeholder emoji
-            player2TurnIcon.style.display = "none";
+            turnIndicator.style.backgroundImage = "url('assets/player1-icon.png')";
         } else {
-            player2TurnIcon.style.display = "inline";
-            player2TurnIcon.textContent = "⭐"; // Placeholder emoji
-            player1TurnIcon.style.display = "none";
+            turnIndicator.style.backgroundImage = "url('assets/player2-icon.png')";
         }
     }
 
     // Initial turn setup
-    updateTurnIcon();
+    updateTurnIndicator();
 
     // End Turn button functionality
     endTurnBtn.addEventListener("click", () => {
         currentPlayer = currentPlayer === 1 ? 2 : 1; // Toggle between Player 1 and Player 2
-        updateTurnIcon();
+        updateTurnIndicator();
         alert(`Player ${currentPlayer}'s turn! (This is a placeholder)`);
     });
 });
