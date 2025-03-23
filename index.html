@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shards of Beyond</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <!-- Turn Indicator -->
+        <div class="turn-indicator">Player 1's Turn</div>
+
+        <!-- Player 2's Crystal Zone and Hand -->
+        <div class="player-2-area">
+            <div class="crystal-zone" id="player2-crystal-zone">
+                <h3>Player 2 Crystal Zone</h3>
+                <!-- Cards will be added here dynamically -->
+            </div>
+            <div class="hand" id="player2-hand">
+                <h3>Player 2 Hand</h3>
+                <!-- Cards will be added here dynamically -->
+            </div>
+        </div>
+
+        <!-- Game Board (4x5 grid) -->
+        <div class="game-board" id="game-board">
+            <!-- Slots will be generated dynamically -->
+        </div>
+
+        <!-- Player 1's Crystal Zone and Hand -->
+        <div class="player-1-area">
+            <div class="hand" id="player1-hand">
+                <h3>Player 1 Hand</h3>
+                <!-- Cards will be added here dynamically -->
+            </div>
+            <div class="crystal-zone" id="player1-crystal-zone">
+                <h3>Player 1 Crystal Zone</h3>
+                <!-- Cards will be added here dynamically -->
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <button id="end-turn-btn">End Turn</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
