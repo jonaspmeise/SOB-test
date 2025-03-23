@@ -7,11 +7,15 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
+    min-height: 100vh; /* Allow the body to grow beyond the viewport if needed */
 }
 
 .game-container {
     text-align: center;
+    max-width: 100%; /* Prevent horizontal overflow */
+    overflow-y: auto; /* Allow vertical scrolling if needed */
+    padding: 10px;
+    box-sizing: border-box;
 }
 
 .turn-indicator {
@@ -20,50 +24,85 @@ body {
 }
 
 .player-1-area, .player-2-area {
-    margin: 20px 0;
+    margin: 10px 0; /* Reduced margin to save space */
 }
 
 .hand, .crystal-zone {
-    background-color: #333;
     border: 2px solid #666;
     border-radius: 5px;
     padding: 10px;
     margin: 10px 0;
-    min-height: 100px;
+    min-height: 60px; /* Reduced height to save space */
 }
 
-.hand h3, .crystal-zone h3 {
+.hand h3 {
     margin: 0 0 10px 0;
+    font-size: 16px; /* Smaller font size */
+}
+
+.hand {
+    display: flex;
+    overflow-x: auto;
+    gap: 10px;
+    padding: 10px;
+    white-space: nowrap;
+    background-color: #333;
+}
+
+.crystal-zone {
+    background-size: cover;
+    background-position: center;
+    height: 80px; /* Set a fixed height for Crystal Zones */
+    width: 510px; /* Match the game board width */
+    margin: 0 auto; /* Center the Crystal Zones */
+}
+
+#player1-crystal-zone {
+    background-image: url('assets/crystal-zone-bottom.png');
+}
+
+#player2-crystal-zone {
+    background-image: url('assets/crystal-zone-top.png');
 }
 
 .game-board {
     display: grid;
-    grid-template-columns: repeat(5, 100px); /* 5 columns */
-    grid-template-rows: repeat(4, 100px);    /* 4 rows */
-    gap: 5px;
-    background-image: url('assets/gameboard.png');
-    background-size: cover; /* Ensure the image covers the entire grid */
+    grid-template-columns: repeat(5, 100px); /* 5 columns, 100px each */
+    grid-template-rows: repeat(4, 140px);    /* 4 rows, 140px each */
+    gap: 2px; /* Reduced gap to save space */
+    background-image: url('assets/gameboard-grid.png');
+    background-size: cover;
     background-position: center;
-    width: 510px; /* 5 columns * 100px + 5 gaps * 2px */
-    height: 408px; /* 4 rows * 100px + 4 gaps * 2px */
+    width: 510px; /* 5 * 100px + 5 * 2px gaps */
+    height: 568px; /* 4 * 140px + 4 * 2px gaps */
     padding: 0;
     margin: 0 auto;
     position: relative;
 }
 
 .slot {
-    background-color: transparent; /* Make slots transparent to show the background */
-    border: 1px solid rgba(255, 255, 255, 0.2); /* Subtle border for visibility */
+    background-color: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 3px;
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 14px;
+    font-size: 12px; /* Smaller font size */
     color: #fff;
 }
 
+.board-and-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    margin: 10px 0; /* Reduced margin */
+}
+
 .action-buttons {
-    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 button {
@@ -80,47 +119,40 @@ button:hover {
     background-color: #888;
 }
 
-.board-and-actions {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 20px;
-    margin: 20px 0;
-}
-
-.action-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.hand {
-    display: flex;
-    overflow-x: auto; /* Makes the hand scrollable horizontally */
-    gap: 10px;
-    padding: 10px;
-    white-space: nowrap; /* Prevents cards from wrapping to the next line */
-}
-
 /* Mobile adjustments */
 @media (max-width: 768px) {
     .game-board {
         grid-template-columns: repeat(5, 60px); /* Smaller slots on mobile */
-        grid-template-rows: repeat(4, 60px);
+        grid-template-rows: repeat(4, 84px);
         width: 310px; /* 5 * 60px + 5 * 2px gaps */
-        height: 248px; /* 4 * 60px + 4 * 2px gaps */
+        height: 344px; /* 4 * 84px + 4 * 2px gaps */
+    }
+
+    .crystal-zone {
+        width: 310px; /* Match the game board width on mobile */
+        height: 50px; /* Smaller height on mobile */
+        background-size: contain;
+        background-repeat: no-repeat;
     }
 
     .board-and-actions {
-        flex-direction: column; /* Stack board and buttons on mobile */
+        flex-direction: column;
         gap: 10px;
     }
 
     .slot {
-        font-size: 10px; /* Smaller text on mobile */
+        font-size: 8px; /* Even smaller font on mobile */
     }
 
     .hand, .crystal-zone {
-        min-height: 80px; /* Smaller height on mobile */
+        min-height: 50px; /* Smaller height on mobile */
+    }
+
+    .turn-indicator {
+        font-size: 18px; /* Smaller font on mobile */
+    }
+
+    .hand h3 {
+        font-size: 14px;
     }
 }
