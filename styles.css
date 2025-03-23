@@ -123,3 +123,18 @@ button {
 button:hover {
     background-color: #888;
 }
+
+.card {
+    width: 80px; /* Scaled down to fit in the hand */
+    height: 112px; /* Maintain 2.5:3.5 ratio */
+    background-size: cover;
+    background-position: center;
+    border: 1px solid #666;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.card:hover {
+    border: 2px solid #ffd700; /* Gold border on hover */
+    transform: scale(1.05); /* Slight zoom effect on hover */
+}
