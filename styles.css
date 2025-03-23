@@ -7,44 +7,51 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh; /* Allow the body to grow beyond the viewport if needed */
+    height: 100vh; /* Fixed height to match viewport */
 }
 
 .game-container {
     text-align: center;
-    max-width: 100%; /* Prevent horizontal overflow */
-    overflow-y: auto; /* Allow vertical scrolling if needed */
-    padding: 10px;
-    box-sizing: border-box;
+    background-image: url('assets/gameboard.png');
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    width: 800px; /* Fixed width to fit the background image */
+    height: 600px; /* Fixed height to fit within viewport */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center; /* Center content vertically */
 }
 
 .turn-indicator {
-    font-size: 24px;
-    margin-bottom: 20px;
+    font-size: 20px; /* Smaller font size */
+    margin-bottom: 5px; /* Reduced margin */
 }
 
 .player-1-area, .player-2-area {
-    margin: 10px 0; /* Reduced margin to save space */
+    margin: 5px 0;
+    width: 410px; /* Match the game board width */
 }
 
 .hand, .crystal-zone {
     border: 2px solid #666;
     border-radius: 5px;
-    padding: 10px;
-    margin: 10px 0;
-    min-height: 60px; /* Reduced height to save space */
+    padding: 5px; /* Reduced padding */
+    margin: 5px 0;
+    min-height: 50px; /* Reduced height */
 }
 
 .hand h3 {
-    margin: 0 0 10px 0;
-    font-size: 16px; /* Smaller font size */
+    margin: 0 0 5px 0;
+    font-size: 14px; /* Smaller font size */
 }
 
 .hand {
     display: flex;
     overflow-x: auto;
-    gap: 10px;
-    padding: 10px;
+    gap: 5px; /* Reduced gap */
+    padding: 5px;
     white-space: nowrap;
     background-color: #333;
 }
@@ -52,9 +59,9 @@ body {
 .crystal-zone {
     background-size: cover;
     background-position: center;
-    height: 80px; /* Set a fixed height for Crystal Zones */
-    width: 510px; /* Match the game board width */
-    margin: 0 auto; /* Center the Crystal Zones */
+    height: 60px; /* Reduced height */
+    width: 410px;
+    margin: 0 auto;
 }
 
 #player1-crystal-zone {
@@ -67,17 +74,16 @@ body {
 
 .game-board {
     display: grid;
-    grid-template-columns: repeat(5, 100px); /* 5 columns, 100px each */
-    grid-template-rows: repeat(4, 140px);    /* 4 rows, 140px each */
-    gap: 2px; /* Reduced gap to save space */
+    grid-template-columns: repeat(5, 80px); /* 5 columns, 80px each */
+    grid-template-rows: repeat(4, 112px);   /* 4 rows, 112px each */
+    gap: 2px;
     background-image: url('assets/gameboard-grid.png');
     background-size: cover;
     background-position: center;
-    width: 510px; /* 5 * 100px + 5 * 2px gaps */
-    height: 568px; /* 4 * 140px + 4 * 2px gaps */
+    width: 410px; /* 5 * 80px + 5 * 2px gaps */
+    height: 456px; /* 4 * 112px + 4 * 2px gaps */
     padding: 0;
-    margin: 0 auto;
-    position: relative;
+    margin: 5px auto;
 }
 
 .slot {
@@ -87,27 +93,20 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 12px; /* Smaller font size */
+    font-size: 10px; /* Smaller font size */
     color: #fff;
 }
 
-.board-and-actions {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 20px;
-    margin: 10px 0; /* Reduced margin */
-}
-
 .action-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
 }
 
 button {
-    padding: 10px 20px;
-    font-size: 16px;
+    padding: 8px 16px; /* Smaller button */
+    font-size: 14px; /* Smaller font size */
     background-color: #666;
     color: #fff;
     border: none;
@@ -117,42 +116,4 @@ button {
 
 button:hover {
     background-color: #888;
-}
-
-/* Mobile adjustments */
-@media (max-width: 768px) {
-    .game-board {
-        grid-template-columns: repeat(5, 60px); /* Smaller slots on mobile */
-        grid-template-rows: repeat(4, 84px);
-        width: 310px; /* 5 * 60px + 5 * 2px gaps */
-        height: 344px; /* 4 * 84px + 4 * 2px gaps */
-    }
-
-    .crystal-zone {
-        width: 310px; /* Match the game board width on mobile */
-        height: 50px; /* Smaller height on mobile */
-        background-size: contain;
-        background-repeat: no-repeat;
-    }
-
-    .board-and-actions {
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .slot {
-        font-size: 8px; /* Even smaller font on mobile */
-    }
-
-    .hand, .crystal-zone {
-        min-height: 50px; /* Smaller height on mobile */
-    }
-
-    .turn-indicator {
-        font-size: 18px; /* Smaller font on mobile */
-    }
-
-    .hand h3 {
-        font-size: 14px;
-    }
 }
