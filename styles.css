@@ -109,8 +109,8 @@ body {
 }
 
 .turn-indicator {
-    width: 24px;
-    height: 24px;
+    width: 50px;
+    height: 50px;
     background-size: cover;
 }
 
@@ -129,8 +129,8 @@ button:hover {
 }
 
 .card {
-    width: 80px;
-    height: 112px;
+    width: 100px;
+    height: 140px;
     background-size: cover;
     background-position: center;
     border: 1px solid #666;
@@ -143,9 +143,14 @@ button:hover {
     transform: scale(1.05);
 }
 
+.hand .card{
+    width: 100px;
+    height: 140px;
+}
+
 .crystal-zone .card {
-    width: 80px;
-    height: 112px;
+    width: 100px;
+    height: 140px;
     margin-right: 5px;
 }
 

@@ -13,7 +13,6 @@ document.addEventListener("DOMContentLoaded", () => {
             const slot = document.createElement("div");
             slot.classList.add("slot");
             slot.id = `slot-${row}-${col}`;
-            slot.textContent = `Slot ${row},${col}`;
             gameBoard.appendChild(slot);
         }
     }
@@ -48,8 +47,8 @@ document.addEventListener("DOMContentLoaded", () => {
         crystalZones: { 1: [], 2: [] },
         realmCounts: { 1: { Divine: 0, Elemental: 0, Mortal: 0, Nature: 0, Void: 0 }, 2: { Divine: 0, Elemental: 0, Mortal: 0, Nature: 0, Void: 0 } },
         decks: { 1: [], 2: [] },
-        hasCrystallized: { 1: false, 2: false }, // Track if the player has crystallized this turn
-        hasSummoned: { 1: false, 2: false } // Track if the player has summoned this turn
+        hasCrystallized: { 1: false, 2: false },
+        hasSummoned: { 1: false, 2: false }
     };
 
     // Function to shuffle an array (Fisher-Yates shuffle)
@@ -82,7 +81,18 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Render a player’s hand
+    // Check if a card can be summoned
+    function canSummonCard(player, card) {
+        const requirements = card.crystalRequirements;
+        for (const [realm, required] of Object.entries(requirements)) {
+            if (gameState.realmCounts[player][realm] < required) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Render a player’s hand and highlight summonable cards
     function renderHand(player) {
         const handElement = player === 1 ? player1Hand : player2Hand;
         handElement.querySelectorAll(".card").forEach(card => card.remove());
@@ -90,7 +100,11 @@ document.addEventListener("DOMContentLoaded", () => {
             const cardElement = document.createElement("div");
             cardElement.classList.add("card");
             cardElement.style.backgroundImage = `url('${card.image}')`;
-            cardElement.dataset.cardIndex = index; // Store the card’s index in the hand
+            cardElement.dataset.cardIndex = index;
+            // Highlight if the card can be summoned and the player hasn’t summoned yet
+            if (canSummonCard(player, card) && !gameState.hasSummoned[player]) {
+                cardElement.classList.add("can-summon");
+            }
             cardElement.addEventListener("click", () => showActionMenu(player, index, cardElement));
             handElement.appendChild(cardElement);
         });
@@ -113,15 +127,13 @@ document.addEventListener("DOMContentLoaded", () => {
         for (let row = 0; row < 4; row++) {
             for (let col = 0; col < 5; col++) {
                 const slot = document.getElementById(`slot-${row}-${col}`);
-                slot.innerHTML = ""; // Clear the slot
+                slot.innerHTML = "";
                 const card = gameState.board[row][col];
                 if (card) {
                     const cardElement = document.createElement("div");
                     cardElement.classList.add("card");
                     cardElement.style.backgroundImage = `url('${card.image}')`;
                     slot.appendChild(cardElement);
-                } else {
-                    slot.textContent = `Slot ${row},${col}`; // Restore placeholder text
                 }
             }
         }
@@ -129,31 +141,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Show the action menu (Crystallize/Summon)
     function showActionMenu(player, cardIndex, cardElement) {
-        // Only allow actions for the current player
         if (player !== gameState.currentPlayer) {
-            alert(`It's not Player ${player}'s turn!`);
-            return;
+            return; // Silently ignore if it’s not the player’s turn
         }
 
-        // Check if the player has already performed both actions
         if (gameState.hasCrystallized[player] && gameState.hasSummoned[player]) {
-            alert(`Player ${player} has already crystallized and summoned this turn!`);
-            return;
+            return; // Silently ignore if both actions are used
         }
 
-        // Remove any existing action menus
         document.querySelectorAll(".action-menu").forEach(menu => menu.remove());
 
-        // Create the action menu
         const menu = document.createElement("div");
         menu.classList.add("action-menu");
 
-        // Position the menu near the card
         const rect = cardElement.getBoundingClientRect();
         menu.style.left = `${rect.right + 5}px`;
         menu.style.top = `${rect.top}px`;
 
-        // Add Crystallize button (if not already crystallized)
         if (!gameState.hasCrystallized[player]) {
             const crystallizeBtn = document.createElement("button");
             crystallizeBtn.textContent = "Crystallize";
@@ -164,7 +168,6 @@ document.addEventListener("DOMContentLoaded", () => {
             menu.appendChild(crystallizeBtn);
         }
 
-        // Add Summon button (if not already summoned)
         if (!gameState.hasSummoned[player]) {
             const summonBtn = document.createElement("button");
             summonBtn.textContent = "Summon";
@@ -175,11 +178,9 @@ document.addEventListener("DOMContentLoaded", () => {
             menu.appendChild(summonBtn);
         }
 
-        // Add the menu to the document
         document.body.appendChild(menu);
         menu.style.display = "block";
 
-        // Close the menu if clicked outside
         document.addEventListener("click", function closeMenu(event) {
             if (!menu.contains(event.target) && event.target !== cardElement) {
                 menu.remove();
@@ -193,9 +194,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const hand = gameState.hands[player];
         const card = hand[cardIndex];
         gameState.crystalZones[player].push(card);
-        hand.splice(cardIndex, 1); // Remove the card from the hand
+        hand.splice(cardIndex, 1);
 
-        // Update realm counts
         card.realms.forEach(realm => {
             gameState.realmCounts[player][realm]++;
         });
@@ -209,38 +209,25 @@ document.addEventListener("DOMContentLoaded", () => {
     // Start the summon process
     function startSummon(player, cardIndex) {
         const card = gameState.hands[player][cardIndex];
-        const requirements = card.crystalRequirements;
-        let canSummon = true;
-
-        // Check if the player has enough crystals
-        for (const [realm, required] of Object.entries(requirements)) {
-            if (gameState.realmCounts[player][realm] < required) {
-                canSummon = false;
-                break;
-            }
+        if (!canSummonCard(player, card)) {
+            return; // Silently ignore if the card can’t be summoned
         }
 
-        if (!canSummon) {
-            alert(`Not enough crystals to summon ${card.name}! Requires: ${JSON.stringify(requirements)}`);
-            return;
-        }
-
-        // Highlight empty slots for summoning
         highlightEmptySlots(player, cardIndex);
     }
 
     // Highlight empty slots on the board
     function highlightEmptySlots(player, cardIndex) {
+        const highlightColor = player === 1 ? "rgba(255, 0, 0, 0.3)" : "rgba(0, 0, 255, 0.3)";
         for (let row = 0; row < 4; row++) {
             for (let col = 0; col < 5; col++) {
-                if (!gameState.board[row][col]) { // Empty slot
+                if (!gameState.board[row][col]) {
                     const slot = document.getElementById(`slot-${row}-${col}`);
-                    slot.style.backgroundColor = "rgba(255, 215, 0, 0.3)"; // Gold highlight
+                    slot.style.backgroundColor = highlightColor;
                     slot.style.cursor = "pointer";
                     slot.addEventListener("click", function summonHandler() {
                         summonCard(player, cardIndex, row, col);
                         clearHighlights();
-                        // Remove the event listener to prevent multiple summons
                         slot.removeEventListener("click", summonHandler);
                     });
                 }
@@ -264,7 +251,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const hand = gameState.hands[player];
         const card = hand[cardIndex];
         gameState.board[row][col] = card;
-        hand.splice(cardIndex, 1); // Remove the card from the hand
+        hand.splice(cardIndex, 1);
         gameState.hasSummoned[player] = true;
         renderHand(player);
         renderBoard();
@@ -303,7 +290,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // End Turn button functionality
     endTurnBtn.addEventListener("click", () => {
         const nextPlayer = gameState.currentPlayer === 1 ? 2 : 1;
-        // Draw a card for the next player (unless it's the starting player's first turn)
         if (!(gameState.currentPlayer === 1 && gameState.hasCrystallized[1] === false && gameState.hasSummoned[1] === false)) {
             drawCards(nextPlayer, 1);
             renderHand(nextPlayer);
