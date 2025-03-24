@@ -45,11 +45,12 @@ body {
 
 .hand {
     display: flex;
-    overflow-x: auto;
     gap: 5px;
     padding: 5px;
     white-space: nowrap;
     background-color: #333;
+    width: 410px;
+    box-sizing: border-box;
 }
 
 .crystal-zone {
@@ -58,10 +59,9 @@ body {
     height: 60px;
     width: 410px;
     margin: 0 auto;
-    display: flex; /* Add flexbox to lay out cards horizontally */
-    overflow-x: auto; /* Make it scrollable if there are too many cards */
-    gap: 5px; /* Space between cards */
-    white-space: nowrap; /* Prevent cards from wrapping */
+    display: flex;
+    gap: 5px;
+    white-space: nowrap;
 }
 
 #player1-crystal-zone {
@@ -184,4 +184,65 @@ button:hover {
 
 .action-menu button:hover {
     background-color: #888;
+}
+
+.turn-indicator {
+    width: 50px;
+    height: 50px;
+    background-size: cover;
+    box-shadow: 0 0 10px #ffd700; /* Gold glow effect */
+}
+
+.turn-status {
+    font-size: 14px;
+    color: #ffd700; /* Gold color to match the theme */
+    margin-bottom: 5px;
+}
+
+.deck-area {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.deck-player1 {
+    right: 20px; /* Position on the right side (Player 1's deck) */
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.deck-player2 {
+    left: 20px; /* Position on the left side (Player 2's deck) */
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.deck {
+    width: 50px;
+    height: 70px; /* Smaller than a card to represent a deck */
+    background-color: #555;
+    border: 2px solid #666;
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    color: #fff;
+    font-size: 12px;
+}
+
+.deck:hover {
+    border: 2px solid #ffd700;
+}
+
+.deck-count {
+    margin-top: 5px;
+    font-size: 12px;
+    color: #fff;
+}
+
+.card.can-summon {
+    border: 2px solid #00ff00;
+    box-shadow: 0 0 10px #00ff00; /* Increased glow effect */
 }

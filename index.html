@@ -19,9 +19,21 @@
             </div>
         </div>
 
+        <!-- Deck and Count for Player 2 (left side) -->
+        <div class="deck-area deck-player2">
+            <div class="deck" id="deck-player2"></div>
+            <div class="deck-count" id="deck-count-player2">30</div>
+        </div>
+
         <!-- Game Board (4x5 grid) -->
         <div class="game-board" id="game-board">
             <!-- Slots will be generated dynamically -->
+        </div>
+
+        <!-- Deck and Count for Player 1 (right side) -->
+        <div class="deck-area deck-player1">
+            <div class="deck" id="deck-player1"></div>
+            <div class="deck-count" id="deck-count-player1">30</div>
         </div>
 
         <!-- Player 1's Crystal Zone and Hand -->
@@ -37,11 +49,15 @@
 
         <!-- Turn Indicator and Action Buttons -->
         <div class="action-buttons">
-            <div class="turn-indicator" id="turn-indicator"></div> <!-- Turn indicator above the button -->
+            <div class="turn-status" id="turn-status">Player 1's Turn</div> <!-- Add turn status text -->
+            <div class="turn-indicator" id="turn-indicator"></div>
             <button id="end-turn-btn">End Turn</button>
         </div>
-    </div>
 
     <script src="script.js"></script>
 </body>
 </html>
+
+        <!--https://cdn.shardsofbeyond.com/rashid-test/FILENAME.png -->
+        <!-- Falls Karte nicht existiert: Http Response Status 403; Response Status 200 falls Bild existiert -->
+    

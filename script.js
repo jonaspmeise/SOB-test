@@ -6,6 +6,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const player2Hand = document.getElementById("player2-hand");
     const player1CrystalZone = document.getElementById("player1-crystal-zone");
     const player2CrystalZone = document.getElementById("player2-crystal-zone");
+    const deckPlayer1 = document.getElementById("deck-player1");
+    const deckPlayer2 = document.getElementById("deck-player2");
+    const deckCountPlayer1 = document.getElementById("deck-count-player1");
+    const deckCountPlayer2 = document.getElementById("deck-count-player2");
+
 
     // Generate the game board (4x5 grid)
     for (let row = 0; row < 4; row++) {
@@ -16,6 +21,8 @@ document.addEventListener("DOMContentLoaded", () => {
             gameBoard.appendChild(slot);
         }
     }
+
+    //cardElement.style.backgroundImage = "url('https://cdn....'/)";
 
     // Define the card database (sample cards)
     const cardDatabase = [
@@ -92,16 +99,24 @@ document.addEventListener("DOMContentLoaded", () => {
         return true;
     }
 
-    // Render a player’s hand and highlight summonable cards
     function renderHand(player) {
         const handElement = player === 1 ? player1Hand : player2Hand;
         handElement.querySelectorAll(".card").forEach(card => card.remove());
-        gameState.hands[player].forEach((card, index) => {
+        const cards = gameState.hands[player];
+        const zoneWidth = 410; // Width of the hand zone
+        const maxCardWidth = 100; // Maximum card width
+        const minCardWidth = 50; // Minimum card width to prevent them from getting too small
+        const totalCards = cards.length;
+        const cardWidth = totalCards > 0 ? Math.min(maxCardWidth, Math.max(minCardWidth, (zoneWidth - (totalCards - 1) * 5) / totalCards)) : maxCardWidth;
+        const cardHeight = cardWidth * (3.5 / 2.5); // Maintain 2.5:3.5 ratio
+    
+        cards.forEach((card, index) => {
             const cardElement = document.createElement("div");
             cardElement.classList.add("card");
             cardElement.style.backgroundImage = `url('${card.image}')`;
+            cardElement.style.width = `${cardWidth}px`;
+            cardElement.style.height = `${cardHeight}px`;
             cardElement.dataset.cardIndex = index;
-            // Highlight if the card can be summoned and the player hasn’t summoned yet
             if (canSummonCard(player, card) && !gameState.hasSummoned[player]) {
                 cardElement.classList.add("can-summon");
             }
@@ -109,15 +124,25 @@ document.addEventListener("DOMContentLoaded", () => {
             handElement.appendChild(cardElement);
         });
     }
-
-    // Render a player’s Crystal Zone
+    
+    // Render a player’s Crystal Zone and dynamically resize cards
     function renderCrystalZone(player) {
         const crystalZoneElement = player === 1 ? player1CrystalZone : player2CrystalZone;
         crystalZoneElement.querySelectorAll(".card").forEach(card => card.remove());
-        gameState.crystalZones[player].forEach(card => {
+        const cards = gameState.crystalZones[player];
+        const zoneWidth = 410; // Width of the Crystal Zone
+        const maxCardWidth = 100; // Maximum card width
+        const minCardWidth = 50; // Minimum card width
+        const totalCards = cards.length;
+        const cardWidth = totalCards > 0 ? Math.min(maxCardWidth, Math.max(minCardWidth, (zoneWidth - (totalCards - 1) * 5) / totalCards)) : maxCardWidth;
+        const cardHeight = cardWidth * (3.5 / 2.5); // Maintain 2.5:3.5 ratio
+    
+        cards.forEach(card => {
             const cardElement = document.createElement("div");
             cardElement.classList.add("card");
             cardElement.style.backgroundImage = `url('${card.image}')`;
+            cardElement.style.width = `${cardWidth}px`;
+            cardElement.style.height = `${cardHeight}px`;
             crystalZoneElement.appendChild(cardElement);
         });
     }
@@ -225,11 +250,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     const slot = document.getElementById(`slot-${row}-${col}`);
                     slot.style.backgroundColor = highlightColor;
                     slot.style.cursor = "pointer";
-                    slot.addEventListener("click", function summonHandler() {
+                    // Remove any existing click listeners to prevent stacking
+                    slot.removeEventListener("click", slot._summonHandler);
+                    slot._summonHandler = function summonHandler() {
                         summonCard(player, cardIndex, row, col);
                         clearHighlights();
-                        slot.removeEventListener("click", summonHandler);
-                    });
+                    };
+                    slot.addEventListener("click", slot._summonHandler);
                 }
             }
         }
@@ -242,6 +269,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const slot = document.getElementById(`slot-${row}-${col}`);
                 slot.style.backgroundColor = "transparent";
                 slot.style.cursor = "default";
+                slot.removeEventListener("click", slot._summonHandler);
             }
         }
     }
@@ -264,16 +292,42 @@ document.addEventListener("DOMContentLoaded", () => {
         drawCards(2, 6);
         renderHand(1);
         renderHand(2);
+        updateDeckCounts(); // Initialize deck counts
         console.log("Player 1 Hand:", gameState.hands[1]);
         console.log("Player 2 Hand:", gameState.hands[2]);
     }
 
+    // Update deck counts
+    function updateDeckCounts() {
+        deckCountPlayer1.textContent = gameState.decks[1].length;
+        deckCountPlayer2.textContent = gameState.decks[2].length;
+    }
+
+    // Add click events for the decks
+    deckPlayer1.addEventListener("click", () => {
+        if (gameState.currentPlayer !== 1) return; // Only allow the current player to draw
+        drawCards(1, 1);
+        renderHand(1);
+        updateDeckCounts();
+    });
+
+    deckPlayer2.addEventListener("click", () => {
+        if (gameState.currentPlayer !== 2) return; // Only allow the current player to draw
+        drawCards(2, 1);
+        renderHand(2);
+        updateDeckCounts();
+    });
+
+
     // Function to update the turn indicator
     function updateTurnIndicator() {
+        const turnStatus = document.getElementById("turn-status");
         if (gameState.currentPlayer === 1) {
             turnIndicator.style.backgroundImage = "url('assets/player1-icon.png')";
+            turnStatus.textContent = "Player 1's Turn";
         } else {
             turnIndicator.style.backgroundImage = "url('assets/player2-icon.png')";
+            turnStatus.textContent = "Player 2's Turn";
         }
     }
 
@@ -298,6 +352,7 @@ document.addEventListener("DOMContentLoaded", () => {
         resetActions(gameState.currentPlayer);
         updateTurnIndicator();
         clearHighlights();
+        updateDeckCounts();
         document.querySelectorAll(".action-menu").forEach(menu => menu.remove());
     });
 });
