@@ -208,14 +208,14 @@ button:hover {
 
 .deck-player1 {
     right: 20px; /* Position on the right side (Player 1's deck) */
-    top: 50%;
-    transform: translateY(-50%);
+    bottom: 20px;
+    transform: none;
 }
 
 .deck-player2 {
     left: 20px; /* Position on the left side (Player 2's deck) */
-    top: 50%;
-    transform: translateY(-50%);
+    top: 20px;
+    transform: none;
 }
 
 .deck {
@@ -245,4 +245,19 @@ button:hover {
 .card.can-summon {
     border: 2px solid #00ff00;
     box-shadow: 0 0 10px #00ff00; /* Increased glow effect */
+}
+
+.card-preview {
+    position: absolute;
+    left: 20px; /* Position to the left of the board */
+    top: 50%;
+    transform: translateY(-50%);
+    width: 200px; /* Larger preview size */
+    height: 280px; /* Maintain 2.5:3.5 ratio */
+    background-size: cover;
+    background-position: center;
+    border: 2px solid #ffd700;
+    border-radius: 5px;
+    display: none; /* Hidden by default */
+    z-index: 10; /* Ensure it appears above other elements */
 }
