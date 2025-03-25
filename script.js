@@ -12,18 +12,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const deckCountPlayer2 = document.getElementById("deck-count-player2");
     const cardPreview = document.getElementById("card-preview");
 
-
     // Generate the game board (4x5 grid)
     for (let row = 0; row < 4; row++) {
         for (let col = 0; col < 5; col++) {
             const slot = document.createElement("div");
             slot.classList.add("slot");
             slot.id = `slot-${row}-${col}`;
+            slot.dataset.row = row;
+            slot.dataset.col = col;
             gameBoard.appendChild(slot);
         }
     }
-
-    //cardElement.style.backgroundImage = "url('https://cdn....'/)";
 
     // Define the card database (sample cards)
     const cardDatabase = [
@@ -110,7 +109,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const totalCards = cards.length;
         const cardWidth = totalCards > 0 ? Math.min(maxCardWidth, Math.max(minCardWidth, (zoneWidth - (totalCards - 1) * 5) / totalCards)) : maxCardWidth;
         const cardHeight = cardWidth * (3.5 / 2.5);
-    
+
         cards.forEach((card, index) => {
             const cardElement = document.createElement("div");
             cardElement.classList.add("card");
@@ -127,6 +126,7 @@ document.addEventListener("DOMContentLoaded", () => {
             handElement.appendChild(cardElement);
         });
     }
+
     // Update renderCrystalZone to add hover events
     function renderCrystalZone(player) {
         const crystalZoneElement = player === 1 ? player1CrystalZone : player2CrystalZone;
@@ -149,26 +149,31 @@ document.addEventListener("DOMContentLoaded", () => {
             cardElement.addEventListener("mouseout", hideCardPreview);
             crystalZoneElement.appendChild(cardElement);
         });
-}
+    }
+
     // Render the game board
     function renderBoard() {
         for (let row = 0; row < 4; row++) {
             for (let col = 0; col < 5; col++) {
                 const slot = document.getElementById(`slot-${row}-${col}`);
-                slot.innerHTML = "";
-                const card = gameState.board[row][col];
-                if (card) {
-                    const cardElement = document.createElement("div");
-                    cardElement.classList.add("card");
-                    cardElement.style.backgroundImage = `url('${card.image}')`;
-                    cardElement.addEventListener("mouseover", () => showCardPreview(card));
-                    cardElement.addEventListener("mouseout", hideCardPreview);
-                    slot.appendChild(cardElement);
+                if (slot) { // Ensure the slot exists
+                    slot.innerHTML = "";
+                    const card = gameState.board[row][col];
+                    if (card) {
+                        const cardElement = document.createElement("div");
+                        cardElement.classList.add("card");
+                        cardElement.style.backgroundImage = `url('${card.image}')`;
+                        cardElement.style.width = "80px"; // Ensure size matches slot
+                        cardElement.style.height = "112px";
+                        cardElement.addEventListener("mouseover", () => showCardPreview(card));
+                        cardElement.addEventListener("mouseout", hideCardPreview);
+                        slot.appendChild(cardElement);
+                    }
                 }
             }
         }
     }
-    
+
     // Show the action menu (Crystallize/Summon)
     function showActionMenu(player, cardIndex, cardElement) {
         if (player !== gameState.currentPlayer) {
@@ -323,7 +328,6 @@ document.addEventListener("DOMContentLoaded", () => {
         updateDeckCounts();
     });
 
-
     // Function to update the turn indicator
     function updateTurnIndicator() {
         const turnStatus = document.getElementById("turn-status");
@@ -359,18 +363,115 @@ document.addEventListener("DOMContentLoaded", () => {
         clearHighlights();
         updateDeckCounts();
         renderHand(nextPlayer);
-        renderHand(gameState.currentPlayer === 1 ? 2: 1);
+        renderHand(gameState.currentPlayer === 1 ? 2 : 1);
         document.querySelectorAll(".action-menu").forEach(menu => menu.remove());
+
+        // Calculate lane control and check win condition
+        if (checkWinCondition()) {
+            // Disable further actions if someone wins
+            endTurnBtn.disabled = true;
+            document.querySelectorAll(".deck").forEach(deck => deck.style.pointerEvents = "none");
+        }
     });
-});
 
-        // Function to show the card preview
-        function showCardPreview(card) {
-            cardPreview.style.backgroundImage = `url('${card.image}')`;
-            cardPreview.style.display = "block";
-        }
+    // Function to show the card preview
+    function showCardPreview(card) {
+        cardPreview.style.backgroundImage = `url('${card.image}')`;
+        cardPreview.style.display = "block";
+    }
 
-        // Function to hide the card preview
-        function hideCardPreview() {
-            cardPreview.style.display = "none";
+    // Function to hide the card preview
+    function hideCardPreview() {
+        cardPreview.style.display = "none";
+    }
+}); // Close the DOMContentLoaded event listener
+
+// Moved outside the DOMContentLoaded event listener
+function calculateLaneControl() {
+    let player1Lanes = 0;
+    let player2Lanes = 0;
+
+    // Clear previous lane control indicators
+    document.querySelectorAll(".lane").forEach(lane => {
+        lane.classList.remove("lane-controlled-player1", "lane-controlled-player2");
+    });
+
+    // Track which player owns each card
+    const cardOwnership = new Map(); // Map card to player
+    gameState.hands[1].forEach(card => cardOwnership.set(card, 1));
+    gameState.hands[2].forEach(card => cardOwnership.set(card, 2));
+    gameState.crystalZones[1].forEach(card => cardOwnership.set(card, 1));
+    gameState.crystalZones[2].forEach(card => cardOwnership.set(card, 2));
+
+    // Check horizontal lanes (rows)
+    for (let row = 0; row < 4; row++) {
+        const slots = Array.from(document.querySelectorAll(`.slot[data-row="${row}"]`));
+        const isFull = slots.every(slot => gameState.board[row][slot.dataset.col]);
+        if (isFull) {
+            let player1Power = 0;
+            let player2Power = 0;
+            slots.forEach(slot => {
+                const card = gameState.board[row][slot.dataset.col];
+                if (card) {
+                    const player = cardOwnership.get(card) || (gameState.board[row][slot.dataset.col] === card ? (gameState.currentPlayer === 1 ? 2 : 1) : 0);
+                    if (player === 1) {
+                        player1Power += card.power;
+                    } else if (player === 2) {
+                        player2Power += card.power;
+                    }
+                }
+            });
+            const laneElement = document.getElementById(`lane-row-${row}`);
+            if (player1Power > player2Power) {
+                player1Lanes++;
+                laneElement.classList.add("lane-controlled-player1");
+            } else if (player2Power > player1Power) {
+                player2Lanes++;
+                laneElement.classList.add("lane-controlled-player2");
+            }
         }
+    }
+
+    // Check vertical lanes (columns)
+    for (let col = 0; col < 5; col++) {
+        const slots = Array.from(document.querySelectorAll(`.slot[data-col="${col}"]`));
+        const isFull = slots.every(slot => gameState.board[slot.dataset.row][col]);
+        if (isFull) {
+            let player1Power = 0;
+            let player2Power = 0;
+            slots.forEach(slot => {
+                const card = gameState.board[slot.dataset.row][col];
+                if (card) {
+                    const player = cardOwnership.get(card) || (gameState.board[slot.dataset.row][col] === card ? (gameState.currentPlayer === 1 ? 2 : 1) : 0);
+                    if (player === 1) {
+                        player1Power += card.power;
+                    } else if (player === 2) {
+                        player2Power += card.power;
+                    }
+                }
+            });
+            const laneElement = document.getElementById(`lane-col-${col}`);
+            if (player1Power > player2Power) {
+                player1Lanes++;
+                laneElement.classList.add("lane-controlled-player1");
+            } else if (player2Power > player1Power) {
+                player2Lanes++;
+                laneElement.classList.add("lane-controlled-player2");
+            }
+        }
+    }
+
+    return { player1Lanes, player2Lanes };
+}
+
+function checkWinCondition() {
+    const { player1Lanes, player2Lanes } = calculateLaneControl();
+    if (player1Lanes >= 4) {
+        alert("Player 1 Wins!");
+        return true;
+    } else if (player2Lanes >= 4) {
+        alert("Player 2 Wins!");
+        return true;
+    }
+    return false;
+}
