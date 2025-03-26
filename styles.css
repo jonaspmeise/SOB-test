@@ -25,18 +25,19 @@ body {
 }
 
 .player-1-area, .player-2-area {
-    margin: 5px 0;
+    margin: 10px 0;
     width: 410px;
-    position: relative; /* Make the area a positioning context for overlapping */
+    position: relative;
 }
 
 .hand, .crystal-zone {
     border: 2px solid #666;
     border-radius: 5px;
-    padding: 5px;
-    margin: 5px 0;
-    min-height: 50px;
-    overflow-x: auto
+    padding: 10px;
+    margin: 10px 0;
+    background-color: #333;
+    width: 410px;
+    box-sizing: border-box;
 }
 
 .hand h3 {
@@ -46,45 +47,28 @@ body {
 
 .hand {
     display: flex;
-    gap: 5px;
-    padding: 5px;
+    gap: 10px;
+    overflow-x: auto;
+    min-height: 160px;
     white-space: nowrap;
-    background-color: #333;
-    width: 410px;
-    box-sizing: border-box;
+    align-items: center;
 }
 
-.player-1-area .hand {
-    position: absolute;
-    bottom: -20px; /* Move the hand down to overlap the Crystal Zone */
-    left: 0;
-    z-index: 2; /* Ensure the hand is above the Crystal Zone */
-}
-
-.player-1-area .crystal-zone {
-    z-index: 1; /* Ensure the Crystal Zone is below the hand */
-}
-
+.player-1-area .hand,
 .player-2-area .hand {
-    position: absolute;
-    top: -20px; /* Move the hand up to overlap the Crystal Zone */
-    left: 0;
-    z-index: 2;
-}
-
-.player-2-area .crystal-zone {
-    z-index: 1;
+    position: static;
+    z-index: auto;
 }
 
 .crystal-zone {
     background-size: cover;
     background-position: center;
-    height: 60px;
-    width: 410px;
-    margin: 0 auto;
+    height: 80px;
     display: flex;
-    gap: 5px;
+    gap: 10px;
+    overflow-x: auto;
     white-space: nowrap;
+    align-items: center;
 }
 
 #player1-crystal-zone {
@@ -193,9 +177,11 @@ button:hover {
     transform: scale(1.05);
 }
 
-.hand .card{
+.hand .card {
+    min-width: 100px;
     width: 100px;
     height: 140px;
+    flex-shrink: 0;
 }
 
 .crystal-zone .card {
@@ -269,17 +255,18 @@ button:hover {
 }
 
 .deck {
-    width: 50px;
-    height: 70px; /* Smaller than a card to represent a deck */
-    background-color: #555;
+    width: 100px;
+    height: 140px;
+    background-image: url('assets/cardback.png');
+    background-size: cover;
+    background-position: center;
     border: 2px solid #666;
     border-radius: 5px;
     display: flex;
     justify-content: center;
     align-items: center;
     cursor: pointer;
-    color: #fff;
-    font-size: 12px;
+    position: relative;
 }
 
 .deck:hover {

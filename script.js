@@ -37,7 +37,7 @@ document.addEventListener("DOMContentLoaded", () => {
         },
         {
             id: 2,
-            name: "Alchemist’s Incense",
+            name: "Alchemist's Incense",
             power: 2,
             types: ["Plant", "Wizard"],
             realms: ["Mortal"],
@@ -78,7 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
         gameState.decks[2] = shuffle([...deck]);
     }
 
-    // Draw cards into a player’s hand
+    // Draw cards into a player's hand
     function drawCards(player, numCards) {
         const deck = gameState.decks[player];
         const hand = gameState.hands[player];
@@ -110,8 +110,11 @@ document.addEventListener("DOMContentLoaded", () => {
             // Show cardback for the other player's hand
             if (player !== gameState.currentPlayer) {
                 cardElement.style.backgroundImage = `url('assets/cardback.png')`;
+                // Mark this card as being in opponent's hand
+                card.isInOpponentHand = true;
             } else {
                 cardElement.style.backgroundImage = `url('${card.image}')`;
+                card.isInOpponentHand = false;
             }
             cardElement.style.width = "100px"; // Fixed size
             cardElement.style.height = "120px";
@@ -169,7 +172,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Show the action menu (Crystallize/Summon)
     function showActionMenu(player, cardIndex, cardElement) {
         if (player !== gameState.currentPlayer) {
-            return; // Silently ignore if it’s not the player’s turn
+            return; // Silently ignore if it's not the player's turn
         }
 
         if (gameState.hasCrystallized[player] && gameState.hasSummoned[player]) {
@@ -237,7 +240,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function startSummon(player, cardIndex) {
         const card = gameState.hands[player][cardIndex];
         if (!canSummonCard(player, card)) {
-            return; // Silently ignore if the card can’t be summoned
+            return; // Silently ignore if the card can't be summoned
         }
 
         highlightEmptySlots(player, cardIndex);
@@ -371,6 +374,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Function to show the card preview
     function showCardPreview(card) {
+        // Don't show preview for opponent's hand cards
+        if (card.isInOpponentHand) {
+            return;
+        }
+        
         console.log("Showing preview for card:", card.name);
         currentPreviewCard = card;
         cardPreview.style.backgroundImage = `url('${card.image}')`;
