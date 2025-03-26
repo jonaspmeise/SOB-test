@@ -103,19 +103,18 @@ document.addEventListener("DOMContentLoaded", () => {
         const handElement = player === 1 ? player1Hand : player2Hand;
         handElement.querySelectorAll(".card").forEach(card => card.remove());
         const cards = gameState.hands[player];
-        const zoneWidth = 410;
-        const maxCardWidth = 100;
-        const minCardWidth = 50;
-        const totalCards = cards.length;
-        const cardWidth = totalCards > 0 ? Math.min(maxCardWidth, Math.max(minCardWidth, (zoneWidth - (totalCards - 1) * 5) / totalCards)) : maxCardWidth;
-        const cardHeight = cardWidth * (3.5 / 2.5);
-
+    
         cards.forEach((card, index) => {
             const cardElement = document.createElement("div");
             cardElement.classList.add("card");
-            cardElement.style.backgroundImage = `url('${card.image}')`;
-            cardElement.style.width = `${cardWidth}px`;
-            cardElement.style.height = `${cardHeight}px`;
+            // Show cardback for the other player's hand
+            if (player !== gameState.currentPlayer) {
+                cardElement.style.backgroundImage = `url('assets/cardback.png')`;
+            } else {
+                cardElement.style.backgroundImage = `url('${card.image}')`;
+            }
+            cardElement.style.width = "100px"; // Fixed size
+            cardElement.style.height = "120px";
             cardElement.dataset.cardIndex = index;
             if (canSummonCard(player, card) && !gameState.hasSummoned[player] && player === gameState.currentPlayer) {
                 cardElement.classList.add("can-summon");
@@ -127,24 +126,17 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Update renderCrystalZone to add hover events
     function renderCrystalZone(player) {
         const crystalZoneElement = player === 1 ? player1CrystalZone : player2CrystalZone;
         crystalZoneElement.querySelectorAll(".card").forEach(card => card.remove());
         const cards = gameState.crystalZones[player];
-        const zoneWidth = 410;
-        const maxCardWidth = 100;
-        const minCardWidth = 50;
-        const totalCards = cards.length;
-        const cardWidth = totalCards > 0 ? Math.min(maxCardWidth, Math.max(minCardWidth, (zoneWidth - (totalCards - 1) * 5) / totalCards)) : maxCardWidth;
-        const cardHeight = cardWidth * (3.5 / 2.5);
-
+    
         cards.forEach(card => {
             const cardElement = document.createElement("div");
             cardElement.classList.add("card");
             cardElement.style.backgroundImage = `url('${card.image}')`;
-            cardElement.style.width = `${cardWidth}px`;
-            cardElement.style.height = `${cardHeight}px`;
+            cardElement.style.width = "100px"; // Fixed size
+            cardElement.style.height = "140px";
             cardElement.addEventListener("mouseover", () => showCardPreview(card));
             cardElement.addEventListener("mouseout", hideCardPreview);
             crystalZoneElement.appendChild(cardElement);
@@ -374,15 +366,23 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    // Keep track of the currently previewed card
+    let currentPreviewCard = null;
+
     // Function to show the card preview
     function showCardPreview(card) {
+        console.log("Showing preview for card:", card.name);
+        currentPreviewCard = card;
         cardPreview.style.backgroundImage = `url('${card.image}')`;
         cardPreview.style.display = "block";
     }
 
     // Function to hide the card preview
     function hideCardPreview() {
+        console.log("Hiding Preview");
+        if (!currentPreviewCard) {
         cardPreview.style.display = "none";
+        }
     }
 }); // Close the DOMContentLoaded event listener
 
@@ -475,3 +475,7 @@ function checkWinCondition() {
     }
     return false;
 }
+
+// Add click events for the decks and set cardback image
+deckPlayer1.style.backgroundImage = "url('assets/cardback.png')";
+deckPlayer2.style.backgroundImage = "url('assets/cardback.png')";
