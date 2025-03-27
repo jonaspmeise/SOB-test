@@ -81,8 +81,6 @@ document.addEventListener("DOMContentLoaded", () => {
         crystalZones: { 1: [], 2: [] },
         realmCounts: { 1: { Divine: 0, Elemental: 0, Mortal: 0, Nature: 0, Void: 0 }, 2: { Divine: 0, Elemental: 0, Mortal: 0, Nature: 0, Void: 0 } },
         decks: { 1: [], 2: [] },
-        hasCrystallized: { 1: false, 2: false },
-        hasSummoned: { 1: false, 2: false },
         laneControl: {
             rows: Array(4).fill(null), // null, 1, or 2 for each row (0-3)
             cols: Array(5).fill(null)  // null, 1, or 2 for each column (0-4)
@@ -153,7 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
             cardElement.style.width = "100px"; // Fixed size
             cardElement.style.height = "120px";
             cardElement.dataset.cardIndex = index;
-            if (canSummonCard(player, card) && !gameState.hasSummoned[player] && player === gameState.currentPlayer) {
+            if (canSummonCard(player, card) && player === gameState.currentPlayer) {
                 cardElement.classList.add("can-summon");
             }
             cardElement.addEventListener("click", () => showActionMenu(player, index, cardElement));
@@ -224,10 +222,6 @@ function renderBoard() {
             return; // Silently ignore if it's not the player's turn
         }
 
-        if (gameState.hasCrystallized[player] && gameState.hasSummoned[player]) {
-            return; // Silently ignore if both actions are used
-        }
-
         document.querySelectorAll(".action-menu").forEach(menu => menu.remove());
 
         const menu = document.createElement("div");
@@ -237,25 +231,21 @@ function renderBoard() {
         menu.style.left = `${rect.right + 5}px`;
         menu.style.top = `${rect.top}px`;
 
-        if (!gameState.hasCrystallized[player]) {
-            const crystallizeBtn = document.createElement("button");
-            crystallizeBtn.textContent = "Crystallize";
-            crystallizeBtn.addEventListener("click", () => {
-                crystallizeCard(player, cardIndex);
-                menu.remove();
-            });
-            menu.appendChild(crystallizeBtn);
-        }
+        const crystallizeBtn = document.createElement("button");
+        crystallizeBtn.textContent = "Crystallize";
+        crystallizeBtn.addEventListener("click", () => {
+            crystallizeCard(player, cardIndex);
+            menu.remove();
+        });
+        menu.appendChild(crystallizeBtn);
 
-        if (!gameState.hasSummoned[player]) {
-            const summonBtn = document.createElement("button");
-            summonBtn.textContent = "Summon";
-            summonBtn.addEventListener("click", () => {
-                startSummon(player, cardIndex);
-                menu.remove();
-            });
-            menu.appendChild(summonBtn);
-        }
+        const summonBtn = document.createElement("button");
+        summonBtn.textContent = "Summon";
+        summonBtn.addEventListener("click", () => {
+            startSummon(player, cardIndex);
+            menu.remove();
+        });
+        menu.appendChild(summonBtn);
 
         document.body.appendChild(menu);
         menu.style.display = "block";
@@ -279,7 +269,6 @@ function renderBoard() {
             gameState.realmCounts[player][realm]++;
         });
 
-        gameState.hasCrystallized[player] = true;
         renderHand(player);
         renderCrystalZone(player);
         console.log(`Player ${player} Realm Counts:`, gameState.realmCounts[player]);
@@ -340,7 +329,6 @@ function summonCard(player, cardIndex, row, col) {
     card.player = player;
     gameState.board[row][col] = card;
     hand.splice(cardIndex, 1);
-    gameState.hasSummoned[player] = true;
     renderHand(player);
 
     // Clear highlights before rendering the board
@@ -404,8 +392,7 @@ function summonCard(player, cardIndex, row, col) {
 
     // Reset actions at the start of a turn
     function resetActions(player) {
-        gameState.hasCrystallized[player] = false;
-        gameState.hasSummoned[player] = false;
+        // No need to reset anything anymore since we removed the limits
     }
 
     // Initial setup
@@ -426,15 +413,13 @@ function summonCard(player, cardIndex, row, col) {
         
         console.log(`Ending turn for Player ${currentPlayer}, starting turn for Player ${nextPlayer}`);
         
-        if (!(currentPlayer === 1 && gameState.hasCrystallized[1] === false && gameState.hasSummoned[1] === false)) {
-            console.log("Drawing cards for next player:", nextPlayer);
-            drawCards(nextPlayer, 1);
-            renderHand(nextPlayer);
-        }
+        // Always draw a card for the next player
+        console.log("Drawing cards for next player:", nextPlayer);
+        drawCards(nextPlayer, 1);
+        renderHand(nextPlayer);
         
-        console.log("Updating game state for next player:", nextPlayer); // Debug log
+        console.log("Updating game state for next player:", nextPlayer);
         gameState.currentPlayer = nextPlayer;
-        resetActions(gameState.currentPlayer);
         updateTurnIndicator(gameState.currentPlayer);
         clearHighlights();
         updateDeckCounts();
@@ -442,15 +427,15 @@ function summonCard(player, cardIndex, row, col) {
         renderHand(gameState.currentPlayer === 1 ? 2 : 1);
         document.querySelectorAll(".action-menu").forEach(menu => menu.remove());
     
-        console.log("Calculating lane control and checking win condition"); // Debug log
+        console.log("Calculating lane control and checking win condition");
         calculateLaneControl();
         if (checkWinCondition()) {
-            console.log("Win condition met, disabling actions"); // Debug log
+            console.log("Win condition met, disabling actions");
             endTurnBtn.disabled = true;
             document.querySelectorAll(".deck").forEach(deck => deck.style.pointerEvents = "none");
         }
     
-        console.log("Finished endTurn function"); // Debug log
+        console.log("Finished endTurn function");
     }
     
     // Keep track of the currently previewed card
@@ -476,6 +461,100 @@ function summonCard(player, cardIndex, row, col) {
         cardPreview.style.display = "none";
         }
     }
+
+    // Show context menu for cards in the Crystal Zone or on the board
+    function showCardInPlayMenu(player, card, cardElement, location, index) {
+        document.querySelectorAll(".action-menu").forEach(menu => menu.remove());
+
+        const menu = document.createElement("div");
+        menu.classList.add("action-menu");
+
+        const rect = cardElement.getBoundingClientRect();
+        menu.style.left = `${rect.right + 5}px`;
+        menu.style.top = `${rect.top}px`;
+
+        // Return to Hand
+        const returnToHandBtn = document.createElement("button");
+        returnToHandBtn.textContent = "Return to Hand";
+        returnToHandBtn.addEventListener("click", () => {
+            returnToHand(player, card, location, index);
+            menu.remove();
+        });
+        menu.appendChild(returnToHandBtn);
+
+        // Move to Top of Deck
+        const moveToTopBtn = document.createElement("button");
+        moveToTopBtn.textContent = "Move to Top of Deck";
+        moveToTopBtn.addEventListener("click", () => {
+            moveToDeck(player, card, location, index, "top");
+            menu.remove();
+        });
+        menu.appendChild(moveToTopBtn);
+
+        // Move to Bottom of Deck
+        const moveToBottomBtn = document.createElement("button");
+        moveToBottomBtn.textContent = "Move to Bottom of Deck";
+        moveToBottomBtn.addEventListener("click", () => {
+            moveToDeck(player, card, location, index, "bottom");
+            menu.remove();
+        });
+        menu.appendChild(moveToBottomBtn);
+
+        document.body.appendChild(menu);
+        menu.style.display = "block";
+
+        document.addEventListener("click", function closeMenu(event) {
+            if (!menu.contains(event.target) && event.target !== cardElement) {
+                menu.remove();
+                document.removeEventListener("click", closeMenu);
+            }
+        });
+    }
+
+    // Return a card to the player's hand
+    function returnToHand(player, card, location, index) {
+        if (location === "crystalZone") {
+            gameState.crystalZones[player].splice(index, 1);
+            // Update realm counts
+            card.realms.forEach(realm => {
+                gameState.realmCounts[player][realm]--;
+            });
+            renderCrystalZone(player);
+        } else if (location === "board") {
+            const [_, row, col] = index.split('-'); // index is slotId like "slot-0-0"
+            gameState.board[row][col] = null;
+            renderBoard();
+            calculateLaneControl();
+        }
+        gameState.hands[player].push(card);
+        renderHand(player);
+        addLogEntry(`Player ${player} returned ${card.name} to hand from ${location}`, player);
+    }
+
+    // Move a card to the player's deck (top or bottom)
+    function moveToDeck(player, card, location, index, position) {
+        if (location === "crystalZone") {
+            gameState.crystalZones[player].splice(index, 1);
+            // Update realm counts
+            card.realms.forEach(realm => {
+                gameState.realmCounts[player][realm]--;
+            });
+            renderCrystalZone(player);
+        } else if (location === "board") {
+            const [_, row, col] = index.split('-'); // index is slotId like "slot-0-0"
+            gameState.board[row][col] = null;
+            renderBoard();
+            calculateLaneControl();
+        }
+        if (position === "top") {
+            gameState.decks[player].unshift(card);
+        } else {
+            gameState.decks[player].push(card);
+        }
+        updateDeckCounts();
+        addLogEntry(`Player ${player} moved ${card.name} to ${position} of deck from ${location}`, player);
+    }
+
 }); // Close the DOMContentLoaded event listener
 
 // Moved outside the DOMContentLoaded event listener
