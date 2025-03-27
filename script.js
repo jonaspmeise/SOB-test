@@ -11,12 +11,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const deckCountPlayer1 = document.getElementById("deck-count-player1");
     const deckCountPlayer2 = document.getElementById("deck-count-player2");
     const cardPreview = document.getElementById("card-preview");
+    const highlightPlayer1Btn = document.getElementById("highlight-player1");
+    const highlightPlayer2Btn = document.getElementById("highlight-player2");
+    const clearHighlightBtn = document.getElementById("clear-highlight");
 
     // Create game log
     const logContainer = document.createElement('div');
     logContainer.classList.add('game-log');
     document.body.appendChild(logContainer);
 
+    let highlightedPlayer = null;
     // Generate the game board (4x5 grid)
     for (let row = 0; row < 4; row++) {
         for (let col = 0; col < 5; col++) {
@@ -28,6 +32,25 @@ document.addEventListener("DOMContentLoaded", () => {
             gameBoard.appendChild(slot);
         }
     }
+
+    // Highlight Player 1's cards
+    highlightPlayer1Btn.addEventListener("click", () => {
+        highlightedPlayer = 1;
+        renderBoard();
+    });
+
+    // Highlight Player 2's cards
+    highlightPlayer2Btn.addEventListener("click", () => {
+        highlightedPlayer = 2;
+        renderBoard();
+    });
+
+    // Clear highlighting
+    clearHighlightBtn.addEventListener("click", () => {
+        highlightedPlayer = null;
+        renderBoard();
+        addLogEntry("Cleared card highlighting on the board", 0);
+    });
 
     // Define the card database (sample cards)
     const cardDatabase = [
@@ -154,34 +177,43 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Render the game board
-    function renderBoard() {
-        for (let row = 0; row < 4; row++) {
-            for (let col = 0; col < 5; col++) {
-                const slot = document.getElementById(`slot-${row}-${col}`);
-                if (slot) { // Ensure the slot exists
-                    slot.innerHTML = "";
-                    const card = gameState.board[row][col];
-                    if (card) {
-                        const cardElement = document.createElement("div");
-                        cardElement.classList.add("card");
-                        cardElement.style.backgroundImage = `url('${card.image}')`;
-                        cardElement.style.width = "80px"; // Ensure size matches slot
-                        cardElement.style.height = "112px";
+   // Render the game board
+function renderBoard() {
+    for (let row = 0; row < 4; row++) {
+        for (let col = 0; col < 5; col++) {
+            const slot = document.getElementById(`slot-${row}-${col}`);
+            if (slot) {
+                slot.innerHTML = "";
+                const card = gameState.board[row][col];
+                if (card) {
+                    const cardElement = document.createElement("div");
+                    cardElement.classList.add("card");
+                    cardElement.style.backgroundImage = `url('${card.image}')`;
+                    cardElement.style.width = "80px";
+                    cardElement.style.height = "112px";
 
-                        if (card.player === 2) {
-                            cardElement.style.transform = 'rotate(180deg)';
-                            cardElement.style.webkitTransform = 'rotate(180deg)';
-                            cardElement.style.mozTransform = 'rotate(180deg)';
-                        }
-                        cardElement.addEventListener("mouseover", () => showCardPreview(card));
-                        cardElement.addEventListener("mouseout", hideCardPreview);
-                        slot.appendChild(cardElement);
+                    // Apply rotation for Player 2's cards
+                    if (card.player === 2) {
+                        cardElement.style.transform = 'rotate(180deg)';
+                        cardElement.style.webkitTransform = 'rotate(180deg)';
+                        cardElement.style.mozTransform = 'rotate(180deg)';
                     }
+
+                    // Apply highlighting
+                    if (highlightedPlayer === 1 && card.player === 1) {
+                        cardElement.classList.add("highlight-player1");
+                    } else if (highlightedPlayer === 2 && card.player === 2) {
+                        cardElement.classList.add("highlight-player2");
+                    }
+
+                    cardElement.addEventListener("mouseover", () => showCardPreview(card));
+                    cardElement.addEventListener("mouseout", hideCardPreview);
+                    slot.appendChild(cardElement);
                 }
             }
         }
     }
+}
 
     // Show the action menu (Crystallize/Summon)
     function showActionMenu(player, cardIndex, cardElement) {

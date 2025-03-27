@@ -418,3 +418,34 @@ button:hover {
     padding: 5px 10px;
     cursor: pointer;
 }
+
+.card.highlight-player1 {
+    border: 3px solid red;
+    box-shadow: 0 0 5px red;
+}
+
+.card.highlight-player2 {
+    border: 3px solid blue;
+    box-shadow: 0 0 5px blue;
+}
+
+/* Style the highlight controls for better visibility */
+.highlight-controls {
+    margin-top: 10px;
+    display: flex;
+    gap: 5px;
+}
+
+.highlight-controls button {
+    padding: 5px 10px;
+    font-size: 12px;
+    background-color: #666;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.highlight-controls button:hover {
+    background-color: #888;
+}
