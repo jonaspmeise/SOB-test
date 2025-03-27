@@ -29,17 +29,17 @@
 
         <!-- Game Board (4x5 grid) -->
         <div class="game-board" id="game-board">
-                <!-- Horizontal Lanes (Rows) -->
-                <div class="lane lane-horizontal" id="lane-row-0"></div>
-                <div class="lane lane-horizontal" id="lane-row-1"></div>
-                <div class="lane lane-horizontal" id="lane-row-2"></div>
-                <div class="lane lane-horizontal" id="lane-row-3"></div>
-                <!-- Vertical Lanes (Columns) -->
-                <div class="lane lane-vertical" id="lane-col-0"></div>
-                <div class="lane lane-vertical" id="lane-col-1"></div>
-                <div class="lane lane-vertical" id="lane-col-2"></div>
-                <div class="lane lane-vertical" id="lane-col-3"></div>
-                <div class="lane lane-vertical" id="lane-col-4"></div>
+            <!-- Horizontal Lanes (Rows) -->
+            <div class="lane lane-horizontal" id="lane-row-0"></div>
+            <div class="lane lane-horizontal" id="lane-row-1"></div>
+            <div class="lane lane-horizontal" id="lane-row-2"></div>
+            <div class="lane lane-horizontal" id="lane-row-3"></div>
+            <!-- Vertical Lanes (Columns) -->
+            <div class="lane lane-vertical" id="lane-col-0"></div>
+            <div class="lane lane-vertical" id="lane-col-1"></div>
+            <div class="lane lane-vertical" id="lane-col-2"></div>
+            <div class="lane lane-vertical" id="lane-col-3"></div>
+            <div class="lane lane-vertical" id="lane-col-4"></div>
         </div>
 
         <!-- Deck and Count for Player 1 (right side) -->
@@ -66,21 +66,15 @@
             <div class="game-stats" id="game-stats">
                 <div id="player1-stats">Player 1: 0</div>
                 <div id="player2-stats">Player 2: 0</div>
-             
+
             </div>
         </div>
 
-        <!-- Add this somewhere appropriate in your game container -->
-        <div class="highlight-controls">
-            <button id="highlight-player1">Highlight P1 Cards</button>
-            <button id="highlight-player2">Highlight P2 Cards</button>
-            <button id="clear-highlight">Clear Highlight</button>
-        </div>
-
+        <!-- Game Log -->
+         <div id="log" class="game-log">
+            <!-- Log entries are generated here! -->
+            <div class="log-entry">Welcome to <b>Shards of Beyond</b></div>
+         </div>
     <script src="script.js"></script>
 </body>
 </html>
-
-        <!--https://cdn.shardsofbeyond.com/rashid-test/FILENAME.png -->
-        <!-- Falls Karte nicht existiert: Http Response Status 403; Response Status 200 falls Bild existiert -->
-    
