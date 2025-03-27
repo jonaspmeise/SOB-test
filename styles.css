@@ -312,3 +312,34 @@ button:hover {
 #player2-stats {
     color: blue; /* Match Player 2's lane control color */
 }
+
+/* Add just the game log styles */
+.game-log {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 300px;
+    height: 200px;
+    background-color: rgba(0, 0, 0, 0.8);
+    border: 1px solid #666;
+    border-radius: 5px;
+    padding: 10px;
+    overflow-y: auto;
+    color: #fff;
+    font-size: 14px;
+    z-index: 10;
+}
+
+.log-entry {
+    margin: 5px 0;
+    padding: 3px 0;
+    border-bottom: 1px solid #333;
+}
+
+.log-entry.player1 {
+    color: #ff6b6b;
+}
+
+.log-entry.player2 {
+    color: #4dabf7;
+}

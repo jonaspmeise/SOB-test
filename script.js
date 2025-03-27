@@ -12,6 +12,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const deckCountPlayer2 = document.getElementById("deck-count-player2");
     const cardPreview = document.getElementById("card-preview");
 
+    // Create game log
+    const logContainer = document.createElement('div');
+    logContainer.classList.add('game-log');
+    document.body.appendChild(logContainer);
+
     // Generate the game board (4x5 grid)
     for (let row = 0; row < 4; row++) {
         for (let col = 0; col < 5; col++) {
@@ -151,16 +156,16 @@ document.addEventListener("DOMContentLoaded", () => {
         for (let row = 0; row < 4; row++) {
             for (let col = 0; col < 5; col++) {
                 const slot = document.getElementById(`slot-${row}-${col}`);
-                if (slot) {
+                if (slot) { // Ensure the slot exists
                     slot.innerHTML = "";
                     const card = gameState.board[row][col];
                     if (card) {
                         const cardElement = document.createElement("div");
                         cardElement.classList.add("card");
                         cardElement.style.backgroundImage = `url('${card.image}')`;
-                        cardElement.style.width = "80px";
+                        cardElement.style.width = "80px"; // Ensure size matches slot
                         cardElement.style.height = "112px";
-                        // Rotate Player 2's cards
+
                         if (card.player === 2) {
                             cardElement.style.transform = 'rotate(180deg)';
                             cardElement.style.webkitTransform = 'rotate(180deg)';
@@ -240,6 +245,9 @@ document.addEventListener("DOMContentLoaded", () => {
         renderHand(player);
         renderCrystalZone(player);
         console.log(`Player ${player} Realm Counts:`, gameState.realmCounts[player]);
+
+        // Add log entry after crystallization
+        addLogEntry(`Player ${player} crystallized ${card.name}`, player);
     }
 
     // Start the summon process
@@ -295,6 +303,9 @@ document.addEventListener("DOMContentLoaded", () => {
         gameState.hasSummoned[player] = true;
         renderHand(player);
         renderBoard();
+
+        // Add log entry after card is placed
+        addLogEntry(`Player ${player} summoned ${card.name}`, player);
     }
 
     // Game setup
@@ -331,14 +342,16 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Function to update the turn indicator
-    function updateTurnIndicator() {
-        const turnStatus = document.getElementById("turn-status");
-        if (gameState.currentPlayer === 1) {
-            turnIndicator.style.backgroundImage = "url('assets/player1-icon.png')";
-            turnStatus.textContent = "Player 1's Turn";
+    function updateTurnIndicator(player) {
+        const indicator = document.querySelector('.turn-indicator');
+        const player1Area = document.querySelector('.player-1-area');
+        const player2Area = document.querySelector('.player-2-area');
+        
+        // Move indicator to current player's area
+        if (player === 1) {
+            player1Area.appendChild(indicator);
         } else {
-            turnIndicator.style.backgroundImage = "url('assets/player2-icon.png')";
-            turnStatus.textContent = "Player 2's Turn";
+            player2Area.appendChild(indicator);
         }
     }
 
@@ -350,18 +363,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Initial setup
     setupGame();
-    updateTurnIndicator();
+    updateTurnIndicator(gameState.currentPlayer);
 
     // End Turn button functionality
-    endTurnBtn.addEventListener("click", () => {
-        const nextPlayer = gameState.currentPlayer === 1 ? 2 : 1;
-        if (!(gameState.currentPlayer === 1 && gameState.hasCrystallized[1] === false && gameState.hasSummoned[1] === false)) {
+    endTurnBtn.addEventListener("click", endTurn);
+
+    function endTurn() {
+        const currentPlayer = gameState.currentPlayer;
+        const nextPlayer = currentPlayer === 1 ? 2 : 1;
+
+        console.log(`Ending turn for Player ${currentPlayer}, starting turn for Player ${nextPlayer}`); // Debug log
+        
+        if (!(currentPlayer === 1 && gameState.hasCrystallized[1] === false && gameState.hasSummoned[1] === false)) {
             drawCards(nextPlayer, 1);
             renderHand(nextPlayer);
         }
         gameState.currentPlayer = nextPlayer;
         resetActions(gameState.currentPlayer);
-        updateTurnIndicator();
+        updateTurnIndicator(gameState.currentPlayer);
         clearHighlights();
         updateDeckCounts();
         renderHand(nextPlayer);
@@ -374,7 +393,11 @@ document.addEventListener("DOMContentLoaded", () => {
             endTurnBtn.disabled = true;
             document.querySelectorAll(".deck").forEach(deck => deck.style.pointerEvents = "none");
         }
-    });
+
+        // Add log entries for turn end and next turn
+        addLogEntry(`Player ${currentPlayer}'s turn ended`, currentPlayer);
+        addLogEntry(`Player ${nextPlayer}'s turn started`, nextPlayer);
+    }
 
     // Keep track of the currently previewed card
     let currentPreviewCard = null;
@@ -495,37 +518,28 @@ function checkWinCondition() {
 deckPlayer1.style.backgroundImage = "url('assets/cardback.png')";
 deckPlayer2.style.backgroundImage = "url('assets/cardback.png')";
 
-function placeCardOnBoard(player, cardIndex, slotId) {
-    const card = gameState.hands[player][cardIndex];
-    const slot = document.getElementById(slotId);
-    
-    // Create card element
-    const cardElement = document.createElement("div");
-    cardElement.classList.add("card");
-    cardElement.style.backgroundImage = `url('${card.image}')`;
-    cardElement.setAttribute('data-player', player);
-    
-    // Apply rotation directly for Player 2's cards
-    if (player === 2) {
-        cardElement.style.transform = 'rotate(180deg)';
-        cardElement.style.webkitTransform = 'rotate(180deg)'; // For Safari support
-        cardElement.style.mozTransform = 'rotate(180deg)'; // For Firefox support
+// Add this simple logging function
+function addLogEntry(message, player) {
+    console.log("Adding log entry:", message, "for player:", player); // Debug log
+    const logContainer = document.querySelector('.game-log');
+    if (logContainer) {
+        const entry = document.createElement('div');
+        entry.classList.add('log-entry');
+        
+        // Create timestamp
+        const now = new Date();
+        const timestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+        
+        // Add timestamp to message
+        const fullMessage = `[${timestamp}] ${message}`;
+        
+        if (player) {
+            entry.classList.add(`player${player}`);
+        }
+        entry.textContent = fullMessage;
+        logContainer.appendChild(entry);
+        logContainer.scrollTop = logContainer.scrollHeight;
+    } else {
+        console.error("Log container not found!");
     }
-    
-    // Clear the slot and add the card
-    slot.innerHTML = '';
-    slot.appendChild(cardElement);
-    
-    // Update game state
-    gameState.hands[player].splice(cardIndex, 1);
-    gameState.board[slotId] = { ...card, player: player };
-    gameState.hasSummoned[player] = true;
-    
-    // Update UI
-    renderHand(player);
-    updateSummonableCards();
-    calculateLaneControl();
-    
-    // Hide action menu
-    hideActionMenu();
 }
