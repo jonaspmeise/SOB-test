@@ -1,3 +1,20 @@
+// Define gameState globally so it's accessible from all functions
+let gameState = {
+    currentPlayer: 1,
+    board: Array(4).fill().map(() => Array(5).fill(null)),
+    hands: { 1: [], 2: [] },
+    crystalZones: { 1: [], 2: [] },
+    realmCounts: { 1: { Divine: 0, Elemental: 0, Mortal: 0, Nature: 0, Void: 0 }, 2: { Divine: 0, Elemental: 0, Mortal: 0, Nature: 0, Void: 0 } },
+    decks: { 1: [], 2: [] },
+    laneControl: {
+        rows: Array(4).fill(null), // null, 1, or 2 for each row (0-3)
+        cols: Array(5).fill(null)  // null, 1, or 2 for each column (0-4)
+    }
+};
+
+// Global variables needed by functions outside the DOMContentLoaded event
+let highlightedPlayer = null;
+
 document.addEventListener("DOMContentLoaded", () => {
     const gameBoard = document.getElementById("game-board");
     const turnIndicator = document.getElementById("turn-indicator");
@@ -20,7 +37,6 @@ document.addEventListener("DOMContentLoaded", () => {
     logContainer.classList.add('game-log');
     document.body.appendChild(logContainer);
 
-    let highlightedPlayer = null;
     // Generate the game board (4x5 grid)
     for (let row = 0; row < 4; row++) {
         for (let col = 0; col < 5; col++) {
@@ -72,20 +88,6 @@ document.addEventListener("DOMContentLoaded", () => {
             image: "assets/alchemists-incense.png"
         }
     ];
-
-    // Game state
-    let gameState = {
-        currentPlayer: 1,
-        board: Array(4).fill().map(() => Array(5).fill(null)),
-        hands: { 1: [], 2: [] },
-        crystalZones: { 1: [], 2: [] },
-        realmCounts: { 1: { Divine: 0, Elemental: 0, Mortal: 0, Nature: 0, Void: 0 }, 2: { Divine: 0, Elemental: 0, Mortal: 0, Nature: 0, Void: 0 } },
-        decks: { 1: [], 2: [] },
-        laneControl: {
-            rows: Array(4).fill(null), // null, 1, or 2 for each row (0-3)
-            cols: Array(5).fill(null)  // null, 1, or 2 for each column (0-4)
-        }
-    };
 
     // Function to shuffle an array (Fisher-Yates shuffle)
     function shuffle(array) {
@@ -183,6 +185,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
    // Render the game board
 function renderBoard() {
+    console.log("Rendering board");
     for (let row = 0; row < 4; row++) {
         for (let col = 0; col < 5; col++) {
             const slot = document.getElementById(`slot-${row}-${col}`);
@@ -190,6 +193,7 @@ function renderBoard() {
                 slot.innerHTML = "";
                 const card = gameState.board[row][col];
                 if (card) {
+                    console.log(`Found card at slot-${row}-${col}:`, card.name);
                     const cardElement = document.createElement("div");
                     cardElement.classList.add("card");
                     cardElement.style.backgroundImage = `url('${card.image}')`;
@@ -212,12 +216,16 @@ function renderBoard() {
 
                     cardElement.addEventListener("mouseover", () => showCardPreview(card));
                     cardElement.addEventListener("mouseout", hideCardPreview);
-                    cardElement.addEventListener("click", () => showCardInPlayMenu(card.player, card, cardElement, "board", `slot-${row}-${col}`));
+                    cardElement.addEventListener("click", () => {
+                        console.log(`Card clicked at slot-${row}-${col}:`, card.name);
+                        showCardInPlayMenu(card.player, card, cardElement, "board", `slot-${row}-${col}`);
+                    });
                     slot.appendChild(cardElement);
                 }
             }
         }
     }
+    console.log("Board rendering complete");
 }
 
     // Show the action menu (Crystallize/Summon)
@@ -406,6 +414,10 @@ function summonCard(player, cardIndex, row, col) {
     // End Turn button functionality
     endTurnBtn.addEventListener("click", endTurn);
 
+    // Add click events for the decks and set cardback image
+    deckPlayer1.style.backgroundImage = "url('assets/cardback.png')";
+    deckPlayer2.style.backgroundImage = "url('assets/cardback.png')";
+
     function endTurn() {
         console.log("Starting endTurn function");
         const currentPlayer = gameState.currentPlayer;
@@ -468,7 +480,16 @@ function summonCard(player, cardIndex, row, col) {
 
     // Show context menu for cards in the Crystal Zone or on the board
     function showCardInPlayMenu(player, card, cardElement, location, index) {
+        console.log("showCardInPlayMenu called with:", { 
+            player, 
+            card: card.name, 
+            location, 
+            index,
+            isCurrentPlayer: player === gameState.currentPlayer
+        });
+        
         if (player !== gameState.currentPlayer) {
+            console.log("Not the current player's turn, ignoring menu request");
             return; // Silently ignore if it's not the player's turn
         }
 
@@ -486,6 +507,7 @@ function summonCard(player, cardIndex, row, col) {
         const returnToHandBtn = document.createElement("button");
         returnToHandBtn.textContent = "Return to Hand";
         returnToHandBtn.addEventListener("click", () => {
+            console.log("Return to Hand clicked for:", card.name, "at", index);
             menu.remove(); // Remove menu first
             returnToHand(player, card, location, index);
         });
@@ -496,6 +518,7 @@ function summonCard(player, cardIndex, row, col) {
             const crystallizeBtn = document.createElement("button");
             crystallizeBtn.textContent = "Crystallize";
             crystallizeBtn.addEventListener("click", () => {
+                console.log("Crystallize clicked for:", card.name, "at", index);
                 menu.remove(); // Remove menu first
                 crystallizeCardFromBoard(player, card, index);
             });
@@ -506,6 +529,7 @@ function summonCard(player, cardIndex, row, col) {
         const moveToTopBtn = document.createElement("button");
         moveToTopBtn.textContent = "Move to Top of Deck";
         moveToTopBtn.addEventListener("click", () => {
+            console.log("Move to Top clicked for:", card.name, "at", index);
             menu.remove(); // Remove menu first
             moveToDeck(player, card, location, index, "top");
         });
@@ -515,6 +539,7 @@ function summonCard(player, cardIndex, row, col) {
         const moveToBottomBtn = document.createElement("button");
         moveToBottomBtn.textContent = "Move to Bottom of Deck";
         moveToBottomBtn.addEventListener("click", () => {
+            console.log("Move to Bottom clicked for:", card.name, "at", index);
             menu.remove(); // Remove menu first
             moveToDeck(player, card, location, index, "bottom");
         });
@@ -522,12 +547,14 @@ function summonCard(player, cardIndex, row, col) {
 
         document.body.appendChild(menu);
         menu.style.display = "block";
+        console.log("Action menu displayed for:", card.name);
 
         // Add a click handler to the document that will be removed when the menu is closed
         function closeMenuHandler(event) {
             if (!menu.contains(event.target) && event.target !== cardElement) {
                 menu.remove();
                 document.removeEventListener("click", closeMenuHandler);
+                console.log("Action menu closed");
             }
         }
 
@@ -561,38 +588,101 @@ function summonCard(player, cardIndex, row, col) {
 
     // Return a card to the player's hand
     function returnToHand(player, card, location, index) {
-        let cardToReturn = {...card}; // Create a copy of the card
-        cardToReturn.player = player; // Ensure player ownership is preserved
+        console.log("returnToHand called with:", { player, card: card.name, location, index });
+        
+        // Remove any existing menus first
+        document.querySelectorAll(".action-menu").forEach(menu => menu.remove());
+
+        let cardToReturn = JSON.parse(JSON.stringify(card)); // Deep copy
+        cardToReturn.player = player;
+        
+        console.log("Card to return:", cardToReturn);
 
         if (location === "crystalZone") {
+            console.log("Returning from crystal zone at index:", index);
             gameState.crystalZones[player].splice(index, 1);
-            // Update realm counts
             cardToReturn.realms.forEach(realm => {
                 gameState.realmCounts[player][realm]--;
             });
             renderCrystalZone(player);
             gameState.hands[player].push(cardToReturn);
             renderHand(player);
-            addLogEntry(`Player ${player} returned ${cardToReturn.name} from Crystal Zone to hand`, player);
+            
+            // Log the action
+            const logMessage = `Player ${player} returned ${cardToReturn.name} from Crystal Zone to hand`;
+            console.log("Adding log entry:", logMessage);
+            addLogEntry(logMessage, player);
+            
         } else if (location === "board") {
-            const [_, row, col] = index.split('-');
-            const position = slotToChessNotation(index);
-            gameState.board[parseInt(row)][parseInt(col)] = null;
-            gameState.hands[player].push(cardToReturn);
-            renderBoard();
-            renderHand(player);
-            calculateLaneControl();
-            addLogEntry(`Player ${player} returned ${cardToReturn.name} from ${position} to hand`, player);
+            console.log("Returning from board at position:", index);
+            
+            try {
+                // Parse board position
+                const parts = index.split('-');
+                console.log("Split parts:", parts);
+                
+                if (parts.length !== 3) {
+                    console.error("Invalid board position format:", index);
+                    return;
+                }
+                
+                const row = parseInt(parts[1]);
+                const col = parseInt(parts[2]);
+                
+                console.log("Parsed position:", { row, col });
+                
+                // Get chess notation before we remove the card
+                const position = slotToChessNotation(index);
+                console.log("Board position in chess notation:", position);
+                
+                // Verify the card is at this position
+                const cardAtPosition = gameState.board[row][col];
+                console.log("Card at position:", cardAtPosition);
+                
+                if (!cardAtPosition) {
+                    console.error("No card found at position:", index);
+                    return;
+                }
+                
+                // Remove from board
+                gameState.board[row][col] = null;
+                console.log("Removed card from board position");
+                
+                // Add to hand
+                gameState.hands[player].push(cardToReturn);
+                console.log("Added card to hand, new hand size:", gameState.hands[player].length);
+                
+                // Update UI
+                renderBoard();
+                renderHand(player);
+                calculateLaneControl();
+                
+                // Log the action
+                const logMessage = `Player ${player} returned ${cardToReturn.name} from ${position} to hand`;
+                console.log("Adding log entry:", logMessage);
+                addLogEntry(logMessage, player);
+                
+            } catch (error) {
+                console.error("Error in returnToHand for board card:", error);
+            }
         }
     }
 
     // Move a card to the player's deck (top or bottom)
     function moveToDeck(player, card, location, index, deckPosition) {
+        console.log("moveToDeck called with:", { player, card: card.name, location, index, deckPosition });
+        
+        // Remove any existing menus first
+        document.querySelectorAll(".action-menu").forEach(menu => menu.remove());
+
         // Create a deep copy of the card with all properties
         let cardToMove = JSON.parse(JSON.stringify(card));
         cardToMove.player = player;
+        
+        console.log("Card to move:", cardToMove);
 
         if (location === "crystalZone") {
+            console.log("Moving from crystal zone at index:", index);
             // Remove from crystal zone
             gameState.crystalZones[player].splice(index, 1);
             cardToMove.realms.forEach(realm => {
@@ -607,37 +697,78 @@ function summonCard(player, cardIndex, row, col) {
                 gameState.decks[player].push(cardToMove);
             }
             updateDeckCounts();
-            addLogEntry(`Player ${player} moved ${cardToMove.name} from Crystal Zone to the ${deckPosition} of their deck`, player);
+            
+            // Log the action
+            const logMessage = `Player ${player} moved ${cardToMove.name} from Crystal Zone to the ${deckPosition} of their deck`;
+            console.log("Adding log entry:", logMessage);
+            addLogEntry(logMessage, player);
+            
         } else if (location === "board") {
-            // Parse board position
-            const [_, row, col] = index.split('-');
-            const boardPosition = slotToChessNotation(index);
+            console.log("Moving from board at position:", index);
             
-            // Remove from board
-            gameState.board[parseInt(row)][parseInt(col)] = null;
-            
-            // Add to deck
-            if (deckPosition === "top") {
-                gameState.decks[player].unshift(cardToMove);
-            } else {
-                gameState.decks[player].push(cardToMove);
+            try {
+                // Parse board position
+                const parts = index.split('-');
+                console.log("Split parts:", parts);
+                
+                if (parts.length !== 3) {
+                    console.error("Invalid board position format:", index);
+                    return;
+                }
+                
+                const row = parseInt(parts[1]);
+                const col = parseInt(parts[2]);
+                
+                console.log("Parsed position:", { row, col });
+                
+                // Get chess notation before we remove the card
+                const boardPosition = slotToChessNotation(index);
+                console.log("Board position in chess notation:", boardPosition);
+                
+                // Verify the card is at this position
+                const cardAtPosition = gameState.board[row][col];
+                console.log("Card at position:", cardAtPosition);
+                
+                if (!cardAtPosition) {
+                    console.error("No card found at position:", index);
+                    return;
+                }
+                
+                // Remove from board
+                gameState.board[row][col] = null;
+                console.log("Removed card from board position");
+                
+                // Add to deck
+                if (deckPosition === "top") {
+                    console.log("Adding to top of deck");
+                    gameState.decks[player].unshift(cardToMove);
+                } else {
+                    console.log("Adding to bottom of deck");
+                    gameState.decks[player].push(cardToMove);
+                }
+                
+                // Update UI
+                renderBoard();
+                updateDeckCounts();
+                calculateLaneControl();
+                
+                // Log the action
+                const logMessage = `Player ${player} moved ${cardToMove.name} from ${boardPosition} to the ${deckPosition} of their deck`;
+                console.log("Adding log entry:", logMessage);
+                addLogEntry(logMessage, player);
+                
+            } catch (error) {
+                console.error("Error in moveToDeck for board card:", error);
             }
-            
-            // Update UI
-            renderBoard();
-            updateDeckCounts();
-            calculateLaneControl();
-            
-            addLogEntry(`Player ${player} moved ${cardToMove.name} from ${boardPosition} to the ${deckPosition} of their deck`, player);
         }
 
         // Debug log
-        console.log(`Deck after move (${player}):`, JSON.stringify(gameState.decks[player]));
+        console.log(`Deck after move (${player}):`, gameState.decks[player].map(c => c.name));
     }
 
 }); // Close the DOMContentLoaded event listener
 
-// Moved outside the DOMContentLoaded event listener
+// Calculate lane control
 function calculateLaneControl() {
     let player1Lanes = 0;
     let player2Lanes = 0;
@@ -767,6 +898,7 @@ function calculateLaneControl() {
     return { player1: player1Lanes, player2: player2Lanes };
 }
 
+// Check win condition
 function checkWinCondition() {
     const { player1Lanes, player2Lanes } = calculateLaneControl();
     if (player1Lanes >= 4) {
@@ -778,10 +910,6 @@ function checkWinCondition() {
     }
     return false;
 }
-
-// Add click events for the decks and set cardback image
-deckPlayer1.style.backgroundImage = "url('assets/cardback.png')";
-deckPlayer2.style.backgroundImage = "url('assets/cardback.png')";
 
 // Add this simple logging function
 function addLogEntry(message, player) {
@@ -802,6 +930,10 @@ function addLogEntry(message, player) {
             entry.classList.add(`player${player}`);
         }
         entry.textContent = fullMessage;
+        
+        // Debug - print stacktrace to see where this is being called from
+        console.log("Log entry call stack:", new Error().stack);
+        
         logContainer.appendChild(entry);
         logContainer.scrollTop = logContainer.scrollHeight;
         console.log("Log entry added successfully:", fullMessage); // Debug log
@@ -812,11 +944,26 @@ function addLogEntry(message, player) {
 
 // Helper function to convert slot ID to chess notation
 function slotToChessNotation(slotId) {
-    // Convert "slot-0-0" format to "a1" format
-    const [_, row, col] = slotId.split('-');
-    const columns = ['a', 'b', 'c', 'd', 'e'];
-    const rows = ['4', '3', '2', '1']; // Reversed order since our grid starts from top
-    return columns[col] + rows[row];
+    console.log("Converting to chess notation:", slotId); // Debug log
+    
+    // Handle if slotId is already parsed
+    if (typeof slotId === 'string') {
+        // Convert "slot-0-0" format to "a1" format
+        const parts = slotId.split('-');
+        if (parts.length === 3) {
+            const row = parseInt(parts[1]);
+            const col = parseInt(parts[2]);
+            const columns = ['a', 'b', 'c', 'd', 'e'];
+            const rows = ['4', '3', '2', '1']; // Reversed order since our grid starts from top
+            
+            const notation = columns[col] + rows[row];
+            console.log("Converted to chess notation:", notation); // Debug log
+            return notation;
+        }
+    }
+    
+    console.error("Invalid slotId format:", slotId);
+    return "unknown";
 }
 
 function placeCardOnBoard(player, cardIndex, slotId) {
