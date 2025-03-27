@@ -324,14 +324,19 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Function to update the turn indicator
-    function updateTurnIndicator() {
-        const turnStatus = document.getElementById("turn-status");
-        if (gameState.currentPlayer === 1) {
-            turnIndicator.style.backgroundImage = "url('assets/player1-icon.png')";
-            turnStatus.textContent = "Player 1's Turn";
+    function updateTurnIndicator(player) {
+        const indicator = document.querySelector('.turn-indicator');
+        const player1Area = document.querySelector('.player-1-area');
+        const player2Area = document.querySelector('.player-2-area');
+        
+        // Update icon image based on player
+        indicator.style.backgroundImage = `url('assets/player${player}-icon.png')`;
+        
+        // Move indicator to current player's area
+        if (player === 1) {
+            player1Area.appendChild(indicator);
         } else {
-            turnIndicator.style.backgroundImage = "url('assets/player2-icon.png')";
-            turnStatus.textContent = "Player 2's Turn";
+            player2Area.appendChild(indicator);
         }
     }
 
@@ -343,7 +348,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Initial setup
     setupGame();
-    updateTurnIndicator();
+    updateTurnIndicator(gameState.currentPlayer);
 
     // End Turn button functionality
     endTurnBtn.addEventListener("click", () => {
@@ -354,7 +359,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         gameState.currentPlayer = nextPlayer;
         resetActions(gameState.currentPlayer);
-        updateTurnIndicator();
+        updateTurnIndicator(gameState.currentPlayer);
         clearHighlights();
         updateDeckCounts();
         renderHand(nextPlayer);

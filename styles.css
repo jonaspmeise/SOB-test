@@ -25,18 +25,18 @@ body {
 }
 
 .player-1-area, .player-2-area {
-    margin: 10px 0;
-    width: 410px;
+    width: 635px;
     position: relative;
+    margin: 10px 0;
 }
 
 .hand, .crystal-zone {
-    border: 2px solid #666;
-    border-radius: 5px;
-    padding: 10px;
-    margin: 10px 0;
+    border: 1px solid #666;
+    border-radius: 4px;
+    padding: 5px;
+    margin: 5px 0;
     background-color: #333;
-    width: 410px;
+    width: 635px;
     box-sizing: border-box;
 }
 
@@ -133,19 +133,43 @@ body {
 
 .action-buttons {
     position: absolute;
-    right: 100px;
+    right: -120px;
     top: 50%;
     transform: translateY(-50%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
+}
+
+.turn-status {
+    display: none;
 }
 
 .turn-indicator {
-    width: 50px;
-    height: 50px;
-    background-size: cover;
+    width: 80px;
+    height: 80px;
+    background-image: url('assets/player-icon.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    box-shadow: 0 0 15px #ffd700;
+    position: absolute;
+    z-index: 10;
+}
+
+.turn-indicator.player1 {
+    background-image: url('assets/player1-icon.png');
+}
+
+.turn-indicator.player2 {
+    background-image: url('assets/player2-icon.png');
+}
+
+.player-1-area .turn-indicator {
+    right: -100px;
+    bottom: 120px;
+}
+
+.player-2-area .turn-indicator {
+    right: -100px;
+    top: 120px;
 }
 
 button {
@@ -160,6 +184,11 @@ button {
 
 button:hover {
     background-color: #888;
+}
+
+button#end-turn-btn {
+    display: block;
+    margin: 5px auto;
 }
 
 .card {
@@ -222,19 +251,6 @@ button:hover {
     background-color: #888;
 }
 
-.turn-indicator {
-    width: 50px;
-    height: 50px;
-    background-size: cover;
-    box-shadow: 0 0 10px #ffd700; /* Gold glow effect */
-}
-
-.turn-status {
-    font-size: 14px;
-    color: #ffd700; /* Gold color to match the theme */
-    margin-bottom: 5px;
-}
-
 .deck-area {
     position: absolute;
     display: flex;
@@ -243,15 +259,13 @@ button:hover {
 }
 
 .deck-player1 {
-    right: 20px; /* Position on the right side (Player 1's deck) */
-    bottom: 20px;
-    transform: none;
+    right: -20px;
+    top: 360px;
 }
 
 .deck-player2 {
-    left: 20px; /* Position on the left side (Player 2's deck) */
-    top: 20px;
-    transform: none;
+    left: -20px;
+    top: 100px;
 }
 
 .deck {
@@ -286,7 +300,7 @@ button:hover {
 
 .card-preview {
     position: fixed;
-    left: 200px;
+    left: 100px;
     top: 50%;
     transform: translateY(-50%);
     width: 300px;
