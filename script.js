@@ -304,8 +304,9 @@ document.addEventListener("DOMContentLoaded", () => {
         renderHand(player);
         renderBoard();
 
-        // Add log entry after card is placed
-        addLogEntry(`Player ${player} summoned ${card.name}`, player);
+        // Add log entry with chess notation
+        const position = slotToChessNotation(`slot-${row}-${col}`);
+        addLogEntry(`Player ${player} summoned ${card.name} to ${position}`, player);
     }
 
     // Game setup
@@ -549,4 +550,13 @@ function addLogEntry(message, player) {
     } else {
         console.error("Log container not found!");
     }
+}
+
+// Helper function to convert slot ID to chess notation
+function slotToChessNotation(slotId) {
+    // Convert "slot-0-0" format to "a1" format
+    const [_, row, col] = slotId.split('-');
+    const columns = ['a', 'b', 'c', 'd', 'e'];
+    const rows = ['4', '3', '2', '1']; // Reversed order since our grid starts from top
+    return columns[col] + rows[row];
 }
