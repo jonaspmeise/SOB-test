@@ -97,6 +97,8 @@ body {
 .lane {
     position: absolute;
     pointer-events: none;
+    border: 2px solid transparent;
+    box-sizing: border-box;
 }
 
 .lane-horizontal {
@@ -302,11 +304,13 @@ button:hover {
 }
 
 .lane-controlled-player1 {
-    border: 3px solid red; /* Red border for Player 1 */
+    border: 3px solid red !important;
+    box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
 }
 
 .lane-controlled-player2 {
-    border: 3px solid blue; /* Blue border for Player 2 */
+    border: 3px solid blue !important;
+    box-shadow: 0 0 10px rgba(0, 0, 255, 0.5);
 }
 
 .game-stats {
@@ -321,6 +325,31 @@ button:hover {
 
 #player2-stats {
     color: blue; /* Match Player 2's lane control color */
+}
+
+.game-stats button {
+    margin: 5px;
+    padding: 5px 10px;
+    font-size: 12px;
+    background-color: #666;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.game-stats button:hover {
+    background-color: #888;
+}
+
+.card.highlight-player1 {
+    border: 3px solid red;
+    box-shadow: 0 0 5px red;
+}
+
+.card.highlight-player2 {
+    border: 3px solid blue;
+    box-shadow: 0 0 5px blue;
 }
 
 /* Add just the game log styles */
@@ -362,4 +391,30 @@ button:hover {
 /* Explicitly keep Player 1's deck normal */
 .deck-player1 .deck {
     transform: rotate(0deg);
+}
+
+/* Add highlight styles */
+.highlight-player1 {
+    box-shadow: 0 0 15px rgba(255, 0, 0, 0.7) !important;
+    border: 2px solid red !important;
+}
+
+.highlight-player2 {
+    box-shadow: 0 0 15px rgba(0, 0, 255, 0.7) !important;
+    border: 2px solid blue !important;
+}
+
+/* Style the highlight control buttons */
+.highlight-controls {
+    position: fixed;
+    right: 20px;
+    bottom: 240px; /* Position above the game log */
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.highlight-controls button {
+    padding: 5px 10px;
+    cursor: pointer;
 }

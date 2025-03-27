@@ -58,11 +58,23 @@
             </div>
         </div>
 
-        <!-- Turn Indicator and Action Buttons -->
+       <!-- Turn Indicator, Action Buttons, and Game Stats -->
         <div class="action-buttons">
-            <div class="turn-status" id="turn-status">Player 1's Turn</div> <!-- Add turn status text -->
+            <div class="turn-status" id="turn-status">Player 1's Turn</div>
             <div class="turn-indicator" id="turn-indicator"></div>
             <button id="end-turn-btn">End Turn</button>
+            <div class="game-stats" id="game-stats">
+                <div id="player1-stats">Player 1: 0</div>
+                <div id="player2-stats">Player 2: 0</div>
+             
+            </div>
+        </div>
+
+        <!-- Add this somewhere appropriate in your game container -->
+        <div class="highlight-controls">
+            <button id="highlight-player1">Highlight P1 Cards</button>
+            <button id="highlight-player2">Highlight P2 Cards</button>
+            <button id="clear-highlight">Clear Highlight</button>
         </div>
 
     <script src="script.js"></script>

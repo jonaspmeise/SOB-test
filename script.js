@@ -84,13 +84,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Draw cards into a player's hand
-    function drawCards(player, numCards) {
-        const deck = gameState.decks[player];
-        const hand = gameState.hands[player];
-        const cardsToDraw = Math.min(numCards, deck.length);
-        for (let i = 0; i < cardsToDraw; i++) {
-            hand.push(deck.pop());
+    function drawCards(player, count) {
+        for (let i = 0; i < count; i++) {
+            if (gameState.decks[player].length > 0) {
+                const card = gameState.decks[player].pop();
+                gameState.hands[player].push(card);
+                addLogEntry(`Player ${player} drew a card`, player);
+            }
         }
+        updateDeckCounts();
+        renderHand(player);
     }
 
     // Check if a card can be summoned
@@ -397,6 +400,7 @@ document.addEventListener("DOMContentLoaded", () => {
         document.querySelectorAll(".action-menu").forEach(menu => menu.remove());
     
         console.log("Calculating lane control and checking win condition"); // Debug log
+        calculateLaneControl();
         if (checkWinCondition()) {
             console.log("Win condition met, disabling actions"); // Debug log
             endTurnBtn.disabled = true;
@@ -433,80 +437,99 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Moved outside the DOMContentLoaded event listener
 function calculateLaneControl() {
-    let player1Lanes = 0;
-    let player2Lanes = 0;
-
-    // Clear previous lane control indicators
-    document.querySelectorAll(".lane").forEach(lane => {
-        lane.classList.remove("lane-controlled-player1", "lane-controlled-player2");
-    });
-
-    // Track which player owns each card
-    const cardOwnership = new Map(); // Map card to player
-    gameState.hands[1].forEach(card => cardOwnership.set(card, 1));
-    gameState.hands[2].forEach(card => cardOwnership.set(card, 2));
-    gameState.crystalZones[1].forEach(card => cardOwnership.set(card, 1));
-    gameState.crystalZones[2].forEach(card => cardOwnership.set(card, 2));
+    let p1Lanes = 0;
+    let p2Lanes = 0;
 
     // Check horizontal lanes (rows)
     for (let row = 0; row < 4; row++) {
-        const slots = Array.from(document.querySelectorAll(`.slot[data-row="${row}"]`));
-        const isFull = slots.every(slot => gameState.board[row][slot.dataset.col]);
+        let p1Power = 0;
+        let p2Power = 0;
+        let isFull = true;
+
+        // Check each slot in the row
+        for (let col = 0; col < 5; col++) {
+            const slotId = `slot-${row}-${col}`;
+            const card = gameState.board[row][col];
+            if (!card) {
+                isFull = false;
+                break;
+            }
+            if (card.player === 1) {
+                p1Power += card.power;
+            } else if (card.player === 2) {
+                p2Power += card.power;
+            }
+        }
+
+        // If lane is full, determine control
         if (isFull) {
-            let player1Power = 0;
-            let player2Power = 0;
-            slots.forEach(slot => {
-                const card = gameState.board[row][slot.dataset.col];
-                if (card) {
-                    const player = cardOwnership.get(card) || (gameState.board[row][slot.dataset.col] === card ? (gameState.currentPlayer === 1 ? 2 : 1) : 0);
-                    if (player === 1) {
-                        player1Power += card.power;
-                    } else if (player === 2) {
-                        player2Power += card.power;
-                    }
-                }
-            });
             const laneElement = document.getElementById(`lane-row-${row}`);
-            if (player1Power > player2Power) {
-                player1Lanes++;
+            if (p1Power > p2Power) {
+                p1Lanes++;
                 laneElement.classList.add("lane-controlled-player1");
-            } else if (player2Power > player1Power) {
-                player2Lanes++;
+                laneElement.classList.remove("lane-controlled-player2");
+                console.log(`Row ${row} controlled by Player 1: ${p1Power} vs ${p2Power}`);
+            } else if (p2Power > p1Power) {
+                p2Lanes++;
                 laneElement.classList.add("lane-controlled-player2");
+                laneElement.classList.remove("lane-controlled-player1");
+                console.log(`Row ${row} controlled by Player 2: ${p2Power} vs ${p1Power}`);
             }
         }
     }
 
     // Check vertical lanes (columns)
     for (let col = 0; col < 5; col++) {
-        const slots = Array.from(document.querySelectorAll(`.slot[data-col="${col}"]`));
-        const isFull = slots.every(slot => gameState.board[slot.dataset.row][col]);
+        let p1Power = 0;
+        let p2Power = 0;
+        let isFull = true;
+
+        // Check each slot in the column
+        for (let row = 0; row < 4; row++) {
+            const slotId = `slot-${row}-${col}`;
+            const card = gameState.board[row][col];
+            if (!card) {
+                isFull = false;
+                break;
+            }
+            if (card.player === 1) {
+                p1Power += card.power;
+            } else if (card.player === 2) {
+                p2Power += card.power;
+            }
+        }
+
+        // If lane is full, determine control
         if (isFull) {
-            let player1Power = 0;
-            let player2Power = 0;
-            slots.forEach(slot => {
-                const card = gameState.board[slot.dataset.row][col];
-                if (card) {
-                    const player = cardOwnership.get(card) || (gameState.board[slot.dataset.row][col] === card ? (gameState.currentPlayer === 1 ? 2 : 1) : 0);
-                    if (player === 1) {
-                        player1Power += card.power;
-                    } else if (player === 2) {
-                        player2Power += card.power;
-                    }
-                }
-            });
             const laneElement = document.getElementById(`lane-col-${col}`);
-            if (player1Power > player2Power) {
-                player1Lanes++;
+            if (p1Power > p2Power) {
+                p1Lanes++;
                 laneElement.classList.add("lane-controlled-player1");
-            } else if (player2Power > player1Power) {
-                player2Lanes++;
+                laneElement.classList.remove("lane-controlled-player2");
+                console.log(`Column ${col} controlled by Player 1: ${p1Power} vs ${p2Power}`);
+            } else if (p2Power > p1Power) {
+                p2Lanes++;
                 laneElement.classList.add("lane-controlled-player2");
+                laneElement.classList.remove("lane-controlled-player1");
+                console.log(`Column ${col} controlled by Player 2: ${p2Power} vs ${p1Power}`);
             }
         }
     }
 
-    return { player1Lanes, player2Lanes };
+    // Update the game stats display
+    const p1Stats = document.getElementById("player1-stats");
+    const p2Stats = document.getElementById("player2-stats");
+    if (p1Stats && p2Stats) {
+        p1Stats.textContent = `Player 1: ${p1Lanes}`;
+        p2Stats.textContent = `Player 2: ${p2Lanes}`;
+    }
+
+    // Log lane control changes
+    if (p1Lanes > 0 || p2Lanes > 0) {
+        addLogEntry(`Lane control update - Player 1: ${p1Lanes}, Player 2: ${p2Lanes}`);
+    }
+
+    return { player1: p1Lanes, player2: p2Lanes };
 }
 
 function checkWinCondition() {
@@ -559,4 +582,31 @@ function slotToChessNotation(slotId) {
     const columns = ['a', 'b', 'c', 'd', 'e'];
     const rows = ['4', '3', '2', '1']; // Reversed order since our grid starts from top
     return columns[col] + rows[row];
+}
+
+function placeCardOnBoard(player, cardIndex, slotId) {
+    // ... existing code ...
+    
+    // Update game state
+    gameState.hands[player].splice(cardIndex, 1);
+    gameState.board[slotId] = { ...card, player: player };
+    gameState.hasSummoned[player] = true;
+    
+    // Update UI
+    renderHand(player);
+    updateSummonableCards();
+    calculateLaneControl(); // Make sure this is called
+    
+    // ... rest of the code ...
+}
+
+function endTurn() {
+    // ... existing code ...
+    
+    calculateLaneControl(); // Make sure lane control is updated at end of turn
+    
+    if (checkWinCondition()) {
+        endTurnBtn.disabled = true;
+        document.querySelectorAll(".deck").forEach(deck => deck.style.pointerEvents = "none");
+    }
 }
