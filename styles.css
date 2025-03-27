@@ -285,18 +285,18 @@ button:hover {
 }
 
 .card-preview {
-    position: absolute;
-    left: -250px; /* Position to the left of the board */
+    position: fixed;
+    left: 200px;
     top: 50%;
     transform: translateY(-50%);
-    width: 300px; /* Larger preview size */
-    height: 420px; /* Maintain 2.5:3.5 ratio */
+    width: 300px;
+    height: 420px;
     background-size: cover;
     background-position: center;
     border: 2px solid #ffd700;
     border-radius: 5px;
-    display: none; /* Hidden by default */
-    z-index: 10; /* Ensure it appears above other elements */
+    display: none;
+    z-index: 10;
 }
 
 .lane-controlled-player1 {
