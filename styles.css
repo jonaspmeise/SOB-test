@@ -353,3 +353,13 @@ button:hover {
 .log-entry.player2 {
     color: #4dabf7;
 }
+
+/* Add rotation for Player 2's deck */
+.deck-player2 .deck {
+    transform: rotate(180deg);
+}
+
+/* Explicitly keep Player 1's deck normal */
+.deck-player1 .deck {
+    transform: rotate(0deg);
+}
