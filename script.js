@@ -15,6 +15,10 @@ let gameState = {
 // Global variables needed by functions outside the DOMContentLoaded event
 let highlightedPlayer = null;
 
+// Global references to key functions
+let globalRenderBoard = null;
+let globalCalculateLaneControl = null;
+
 document.addEventListener("DOMContentLoaded", () => {
     const gameBoard = document.getElementById("game-board");
     const turnIndicator = document.getElementById("turn-indicator");
@@ -117,7 +121,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const cardToHand = {...card}; // Create a copy of the card
                 cardToHand.player = player; // Ensure player ownership
                 gameState.hands[player].push(cardToHand);
-                addLogEntry(`Player ${player} drew ${cardToHand.name}`, player);
+                addLogEntry(`Player ${player} drew a card`, player); // Don't reveal which card was drawn
             }
         }
         updateDeckCounts();
@@ -183,50 +187,50 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-   // Render the game board
-function renderBoard() {
-    console.log("Rendering board");
-    for (let row = 0; row < 4; row++) {
-        for (let col = 0; col < 5; col++) {
-            const slot = document.getElementById(`slot-${row}-${col}`);
-            if (slot) {
-                slot.innerHTML = "";
-                const card = gameState.board[row][col];
-                if (card) {
-                    console.log(`Found card at slot-${row}-${col}:`, card.name);
-                    const cardElement = document.createElement("div");
-                    cardElement.classList.add("card");
-                    cardElement.style.backgroundImage = `url('${card.image}')`;
-                    cardElement.style.width = "80px";
-                    cardElement.style.height = "112px";
+    // Render the game board
+    function renderBoard() {
+        console.log("Rendering board");
+        for (let row = 0; row < 4; row++) {
+            for (let col = 0; col < 5; col++) {
+                const slot = document.getElementById(`slot-${row}-${col}`);
+                if (slot) {
+                    slot.innerHTML = "";
+                    const card = gameState.board[row][col];
+                    if (card) {
+                        console.log(`Found card at slot-${row}-${col}:`, card.name);
+                        const cardElement = document.createElement("div");
+                        cardElement.classList.add("card");
+                        cardElement.style.backgroundImage = `url('${card.image}')`;
+                        cardElement.style.width = "80px";
+                        cardElement.style.height = "112px";
 
-                    // Apply rotation for Player 2's cards
-                    if (card.player === 2) {
-                        cardElement.style.transform = 'rotate(180deg)';
-                        cardElement.style.webkitTransform = 'rotate(180deg)';
-                        cardElement.style.mozTransform = 'rotate(180deg)';
+                        // Apply rotation for Player 2's cards
+                        if (card.player === 2) {
+                            cardElement.style.transform = 'rotate(180deg)';
+                            cardElement.style.webkitTransform = 'rotate(180deg)';
+                            cardElement.style.mozTransform = 'rotate(180deg)';
+                        }
+
+                        // Apply highlighting
+                        if (highlightedPlayer === 1 && card.player === 1) {
+                            cardElement.classList.add("highlight-player1");
+                        } else if (highlightedPlayer === 2 && card.player === 2) {
+                            cardElement.classList.add("highlight-player2");
+                        }
+
+                        cardElement.addEventListener("mouseover", () => showCardPreview(card));
+                        cardElement.addEventListener("mouseout", hideCardPreview);
+                        cardElement.addEventListener("click", () => {
+                            console.log(`Card clicked at slot-${row}-${col}:`, card.name);
+                            showCardInPlayMenu(card.player, card, cardElement, "board", `slot-${row}-${col}`);
+                        });
+                        slot.appendChild(cardElement);
                     }
-
-                    // Apply highlighting
-                    if (highlightedPlayer === 1 && card.player === 1) {
-                        cardElement.classList.add("highlight-player1");
-                    } else if (highlightedPlayer === 2 && card.player === 2) {
-                        cardElement.classList.add("highlight-player2");
-                    }
-
-                    cardElement.addEventListener("mouseover", () => showCardPreview(card));
-                    cardElement.addEventListener("mouseout", hideCardPreview);
-                    cardElement.addEventListener("click", () => {
-                        console.log(`Card clicked at slot-${row}-${col}:`, card.name);
-                        showCardInPlayMenu(card.player, card, cardElement, "board", `slot-${row}-${col}`);
-                    });
-                    slot.appendChild(cardElement);
                 }
             }
         }
+        console.log("Board rendering complete");
     }
-    console.log("Board rendering complete");
-}
 
     // Show the action menu (Crystallize/Summon)
     function showActionMenu(player, cardIndex, cardElement) {
@@ -286,74 +290,60 @@ function renderBoard() {
         console.log(`Player ${player} Realm Counts:`, gameState.realmCounts[player]);
 
         // Add log entry after crystallization
-        addLogEntry(`Player ${player} crystallized ${card.name}`, player);
+        addLogEntry(`Player ${player} crystallized a card`, player);
     }
 
-  // Start the summon process
-function startSummon(player, cardIndex) {
-    const card = gameState.hands[player][cardIndex];
-    if (!canSummonCard(player, card)) {
-        return; // Silently ignore if the card can't be summoned
+    // Start the summon process
+    function startSummon(player, cardIndex) {
+        const card = gameState.hands[player][cardIndex];
+        if (!canSummonCard(player, card)) {
+            return; // Silently ignore if the card can't be summoned
+        }
+
+        highlightEmptySlots(player, cardIndex);
     }
 
-    highlightEmptySlots(player, cardIndex);
-}
-
-// Highlight empty slots on the board
-function highlightEmptySlots(player, cardIndex) {
-    const highlightColor = player === 1 ? "rgba(255, 0, 0, 0.3)" : "rgba(0, 0, 255, 0.3)";
-    for (let row = 0; row < 4; row++) {
-        for (let col = 0; col < 5; col++) {
-            if (!gameState.board[row][col]) {
-                const slot = document.getElementById(`slot-${row}-${col}`);
-                slot.style.backgroundColor = highlightColor;
-                slot.style.cursor = "pointer";
-                // Remove any existing click listeners to prevent stacking
-                slot.removeEventListener("click", slot._summonHandler);
-                slot._summonHandler = function summonHandler() {
-                    summonCard(player, cardIndex, row, col);
-                    // No need to call clearHighlights here since summonCard will handle it
-                };
-                slot.addEventListener("click", slot._summonHandler);
+    // Highlight empty slots on the board
+    function highlightEmptySlots(player, cardIndex) {
+        const highlightColor = player === 1 ? "rgba(255, 0, 0, 0.3)" : "rgba(0, 0, 255, 0.3)";
+        for (let row = 0; row < 4; row++) {
+            for (let col = 0; col < 5; col++) {
+                if (!gameState.board[row][col]) {
+                    const slot = document.getElementById(`slot-${row}-${col}`);
+                    slot.style.backgroundColor = highlightColor;
+                    slot.style.cursor = "pointer";
+                    // Remove any existing click listeners to prevent stacking
+                    slot.removeEventListener("click", slot._summonHandler);
+                    slot._summonHandler = function summonHandler() {
+                        summonCard(player, cardIndex, row, col);
+                        // No need to call clearHighlights here since summonCard will handle it
+                    };
+                    slot.addEventListener("click", slot._summonHandler);
+                }
             }
         }
     }
-}
 
-// Clear highlights from the board
-function clearHighlights() {
-    console.log("Clearing highlights from the board"); // Debug log
-    for (let row = 0; row < 4; row++) {
-        for (let col = 0; col < 5; col++) {
-            const slot = document.getElementById(`slot-${row}-${col}`);
-            slot.style.backgroundColor = "transparent";
-            slot.style.cursor = "default";
-            slot.removeEventListener("click", slot._summonHandler);
-            delete slot._summonHandler; // Ensure the handler is fully removed
-        }
+    // Summon a card to the board
+    function summonCard(player, cardIndex, row, col) {
+        const hand = gameState.hands[player];
+        const card = hand[cardIndex];
+        card.player = player;
+        gameState.board[row][col] = card;
+        hand.splice(cardIndex, 1);
+        renderHand(player);
+
+        // Clear highlights before rendering the board
+        clearHighlights();
+        renderBoard();
+
+        // Add log entry with chess notation
+        const position = slotToChessNotation(`slot-${row}-${col}`);
+        addLogEntry(`Player ${player} summoned a card to ${position}`, player);
+
+        // Calculate lane control after summoning
+        calculateLaneControl();
     }
-}
-
-// Summon a card to the board
-function summonCard(player, cardIndex, row, col) {
-    const hand = gameState.hands[player];
-    const card = hand[cardIndex];
-    card.player = player;
-    gameState.board[row][col] = card;
-    hand.splice(cardIndex, 1);
-    renderHand(player);
-
-    // Clear highlights before rendering the board
-    clearHighlights();
-    renderBoard();
-
-    // Add log entry with chess notation
-    const position = slotToChessNotation(`slot-${row}-${col}`);
-    addLogEntry(`Player ${player} summoned ${card.name} to ${position}`, player);
-
-    // Calculate lane control after summoning
-    calculateLaneControl();
-}
 
     // Game setup
     function setupGame() {
@@ -365,6 +355,10 @@ function summonCard(player, cardIndex, row, col) {
         updateDeckCounts(); // Initialize deck counts
         console.log("Player 1 Hand:", gameState.hands[1]);
         console.log("Player 2 Hand:", gameState.hands[2]);
+        
+        // Assign functions to global references
+        globalRenderBoard = renderBoard;
+        globalCalculateLaneControl = calculateLaneControl;
     }
 
     // Update deck counts
@@ -513,8 +507,18 @@ function summonCard(player, cardIndex, row, col) {
         });
         menu.appendChild(returnToHandBtn);
 
-        // Crystallize (only for cards on the board)
+        // Move Card (only for cards on the board)
         if (location === "board") {
+            const moveCardBtn = document.createElement("button");
+            moveCardBtn.textContent = "Move Card";
+            moveCardBtn.addEventListener("click", () => {
+                console.log("Move Card clicked for:", card.name, "at", index);
+                menu.remove(); // Remove menu first
+                startMoveCard(player, card, index);
+            });
+            menu.appendChild(moveCardBtn);
+            
+            // Crystallize (only for cards on the board)
             const crystallizeBtn = document.createElement("button");
             crystallizeBtn.textContent = "Crystallize";
             crystallizeBtn.addEventListener("click", () => {
@@ -583,7 +587,7 @@ function summonCard(player, cardIndex, row, col) {
         renderBoard();
         renderCrystalZone(player);
         calculateLaneControl();
-        addLogEntry(`Player ${player} moved ${cardToCrystallize.name} from ${position} to Crystal Zone`, player);
+        addLogEntry(`Player ${player} moved a card from ${position} to Crystal Zone`, player);
     }
 
     // Return a card to the player's hand
@@ -609,7 +613,7 @@ function summonCard(player, cardIndex, row, col) {
             renderHand(player);
             
             // Log the action
-            const logMessage = `Player ${player} returned ${cardToReturn.name} from Crystal Zone to hand`;
+            const logMessage = `Player ${player} returned a card from Crystal Zone to hand`;
             console.log("Adding log entry:", logMessage);
             addLogEntry(logMessage, player);
             
@@ -658,7 +662,7 @@ function summonCard(player, cardIndex, row, col) {
                 calculateLaneControl();
                 
                 // Log the action
-                const logMessage = `Player ${player} returned ${cardToReturn.name} from ${position} to hand`;
+                const logMessage = `Player ${player} returned a card from ${position} to hand`;
                 console.log("Adding log entry:", logMessage);
                 addLogEntry(logMessage, player);
                 
@@ -699,7 +703,7 @@ function summonCard(player, cardIndex, row, col) {
             updateDeckCounts();
             
             // Log the action
-            const logMessage = `Player ${player} moved ${cardToMove.name} from Crystal Zone to the ${deckPosition} of their deck`;
+            const logMessage = `Player ${player} moved a card from Crystal Zone to the ${deckPosition} of their deck`;
             console.log("Adding log entry:", logMessage);
             addLogEntry(logMessage, player);
             
@@ -753,7 +757,7 @@ function summonCard(player, cardIndex, row, col) {
                 calculateLaneControl();
                 
                 // Log the action
-                const logMessage = `Player ${player} moved ${cardToMove.name} from ${boardPosition} to the ${deckPosition} of their deck`;
+                const logMessage = `Player ${player} moved a card from ${boardPosition} to the ${deckPosition} of their deck`;
                 console.log("Adding log entry:", logMessage);
                 addLogEntry(logMessage, player);
                 
@@ -766,6 +770,122 @@ function summonCard(player, cardIndex, row, col) {
         console.log(`Deck after move (${player}):`, gameState.decks[player].map(c => c.name));
     }
 
+    // Start the process to move a card on the board
+    function startMoveCard(player, card, slotId) {
+        console.log("Starting move card process for:", card.name, "at", slotId);
+        
+        // Parse the current position
+        const parts = slotId.split('-');
+        if (parts.length !== 3) {
+            console.error("Invalid slot ID format:", slotId);
+            return;
+        }
+        
+        const currentRow = parseInt(parts[1]);
+        const currentCol = parseInt(parts[2]);
+        const currentPosition = slotToChessNotation(slotId);
+        
+        // Store the card and its current position in a global object
+        window.moveCardState = {
+            player: player,
+            card: card,
+            sourceSlotId: slotId,
+            sourceRow: currentRow,
+            sourceCol: currentCol
+        };
+        
+        // Highlight empty slots where the card can be moved
+        highlightEmptySlotsForMove();
+    }
+
+    // Highlight empty slots for moving a card
+    function highlightEmptySlotsForMove() {
+        const player = window.moveCardState.player;
+        const highlightColor = player === 1 ? "rgba(255, 0, 0, 0.3)" : "rgba(0, 0, 255, 0.3)";
+        
+        for (let row = 0; row < 4; row++) {
+            for (let col = 0; col < 5; col++) {
+                // Skip the original position of the card
+                if (row === window.moveCardState.sourceRow && col === window.moveCardState.sourceCol) {
+                    continue;
+                }
+                
+                // Only highlight empty slots
+                if (!gameState.board[row][col]) {
+                    const slot = document.getElementById(`slot-${row}-${col}`);
+                    slot.style.backgroundColor = highlightColor;
+                    slot.style.cursor = "pointer";
+                    
+                    // Remove any existing click listeners to prevent stacking
+                    slot.removeEventListener("click", slot._moveHandler);
+                    
+                    slot._moveHandler = function moveHandler() {
+                        moveCardToSlot(row, col);
+                    };
+                    
+                    slot.addEventListener("click", slot._moveHandler);
+                }
+            }
+        }
+    }
+
+    // Move the card to a new slot
+    function moveCardToSlot(targetRow, targetCol) {
+        const { player, card, sourceRow, sourceCol, sourceSlotId } = window.moveCardState;
+        
+        // Remove card from original position
+        gameState.board[sourceRow][sourceCol] = null;
+        
+        // Place card in new position
+        gameState.board[targetRow][targetCol] = card;
+        
+        // Clear highlights and update UI
+        clearHighlights();
+        
+        // Use global references to UI update functions
+        if (globalRenderBoard) {
+            globalRenderBoard();
+        } else {
+            console.error("globalRenderBoard is not defined");
+        }
+        
+        if (globalCalculateLaneControl) {
+            globalCalculateLaneControl();
+        } else {
+            console.error("globalCalculateLaneControl is not defined");
+        }
+        
+        // Log the move with chess notation
+        const sourcePosition = slotToChessNotation(sourceSlotId);
+        const targetPosition = slotToChessNotation(`slot-${targetRow}-${targetCol}`);
+        
+        addLogEntry(`Player ${player} moved a card from ${sourcePosition} to ${targetPosition}`, player);
+        
+        // Clean up the move state
+        delete window.moveCardState;
+    }
+
+    // Clear highlights from the board
+    function clearHighlights() {
+        console.log("Clearing highlights from the board"); // Debug log
+        for (let row = 0; row < 4; row++) {
+            for (let col = 0; col < 5; col++) {
+                const slot = document.getElementById(`slot-${row}-${col}`);
+                if (slot) {
+                    slot.style.backgroundColor = "transparent";
+                    slot.style.cursor = "default";
+                    if (slot._summonHandler) {
+                        slot.removeEventListener("click", slot._summonHandler);
+                        delete slot._summonHandler;
+                    }
+                    if (slot._moveHandler) {
+                        slot.removeEventListener("click", slot._moveHandler);
+                        delete slot._moveHandler;
+                    }
+                }
+            }
+        }
+    }
 }); // Close the DOMContentLoaded event listener
 
 // Calculate lane control
@@ -990,5 +1110,122 @@ function endTurn() {
     if (checkWinCondition()) {
         endTurnBtn.disabled = true;
         document.querySelectorAll(".deck").forEach(deck => deck.style.pointerEvents = "none");
+    }
+}
+
+// Start the process to move a card on the board
+function startMoveCard(player, card, slotId) {
+    console.log("Starting move card process for:", card.name, "at", slotId);
+    
+    // Parse the current position
+    const parts = slotId.split('-');
+    if (parts.length !== 3) {
+        console.error("Invalid slot ID format:", slotId);
+        return;
+    }
+    
+    const currentRow = parseInt(parts[1]);
+    const currentCol = parseInt(parts[2]);
+    const currentPosition = slotToChessNotation(slotId);
+    
+    // Store the card and its current position in a global object
+    window.moveCardState = {
+        player: player,
+        card: card,
+        sourceSlotId: slotId,
+        sourceRow: currentRow,
+        sourceCol: currentCol
+    };
+    
+    // Highlight empty slots where the card can be moved
+    highlightEmptySlotsForMove();
+}
+
+// Highlight empty slots for moving a card
+function highlightEmptySlotsForMove() {
+    const player = window.moveCardState.player;
+    const highlightColor = player === 1 ? "rgba(255, 0, 0, 0.3)" : "rgba(0, 0, 255, 0.3)";
+    
+    for (let row = 0; row < 4; row++) {
+        for (let col = 0; col < 5; col++) {
+            // Skip the original position of the card
+            if (row === window.moveCardState.sourceRow && col === window.moveCardState.sourceCol) {
+                continue;
+            }
+            
+            // Only highlight empty slots
+            if (!gameState.board[row][col]) {
+                const slot = document.getElementById(`slot-${row}-${col}`);
+                slot.style.backgroundColor = highlightColor;
+                slot.style.cursor = "pointer";
+                
+                // Remove any existing click listeners to prevent stacking
+                slot.removeEventListener("click", slot._moveHandler);
+                
+                slot._moveHandler = function moveHandler() {
+                    moveCardToSlot(row, col);
+                };
+                
+                slot.addEventListener("click", slot._moveHandler);
+            }
+        }
+    }
+}
+
+// Move the card to a new slot
+function moveCardToSlot(targetRow, targetCol) {
+    const { player, card, sourceRow, sourceCol, sourceSlotId } = window.moveCardState;
+    
+    // Remove card from original position
+    gameState.board[sourceRow][sourceCol] = null;
+    
+    // Place card in new position
+    gameState.board[targetRow][targetCol] = card;
+    
+    // Clear highlights and update UI
+    clearHighlights();
+    
+    // Use global references to UI update functions
+    if (globalRenderBoard) {
+        globalRenderBoard();
+    } else {
+        console.error("globalRenderBoard is not defined");
+    }
+    
+    if (globalCalculateLaneControl) {
+        globalCalculateLaneControl();
+    } else {
+        console.error("globalCalculateLaneControl is not defined");
+    }
+    
+    // Log the move with chess notation
+    const sourcePosition = slotToChessNotation(sourceSlotId);
+    const targetPosition = slotToChessNotation(`slot-${targetRow}-${targetCol}`);
+    
+    addLogEntry(`Player ${player} moved a card from ${sourcePosition} to ${targetPosition}`, player);
+    
+    // Clean up the move state
+    delete window.moveCardState;
+}
+
+// Clear highlights from the board
+function clearHighlights() {
+    console.log("Clearing highlights from the board"); // Debug log
+    for (let row = 0; row < 4; row++) {
+        for (let col = 0; col < 5; col++) {
+            const slot = document.getElementById(`slot-${row}-${col}`);
+            if (slot) {
+                slot.style.backgroundColor = "transparent";
+                slot.style.cursor = "default";
+                if (slot._summonHandler) {
+                    slot.removeEventListener("click", slot._summonHandler);
+                    delete slot._summonHandler;
+                }
+                if (slot._moveHandler) {
+                    slot.removeEventListener("click", slot._moveHandler);
+                    delete slot._moveHandler;
+                }
+            }
+        }
     }
 }
