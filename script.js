@@ -369,15 +369,23 @@ document.addEventListener("DOMContentLoaded", () => {
     endTurnBtn.addEventListener("click", endTurn);
 
     function endTurn() {
+        console.log("Starting endTurn function");
         const currentPlayer = gameState.currentPlayer;
         const nextPlayer = currentPlayer === 1 ? 2 : 1;
-
-        console.log(`Ending turn for Player ${currentPlayer}, starting turn for Player ${nextPlayer}`); // Debug log
+        
+        // Move logging here, before any game state changes
+        addLogEntry(`Player ${currentPlayer}'s turn ended`, currentPlayer);
+        addLogEntry(`Player ${nextPlayer}'s turn started`, nextPlayer);
+        
+        console.log(`Ending turn for Player ${currentPlayer}, starting turn for Player ${nextPlayer}`);
         
         if (!(currentPlayer === 1 && gameState.hasCrystallized[1] === false && gameState.hasSummoned[1] === false)) {
+            console.log("Drawing cards for next player:", nextPlayer);
             drawCards(nextPlayer, 1);
             renderHand(nextPlayer);
         }
+        
+        console.log("Updating game state for next player:", nextPlayer); // Debug log
         gameState.currentPlayer = nextPlayer;
         resetActions(gameState.currentPlayer);
         updateTurnIndicator(gameState.currentPlayer);
@@ -386,19 +394,17 @@ document.addEventListener("DOMContentLoaded", () => {
         renderHand(nextPlayer);
         renderHand(gameState.currentPlayer === 1 ? 2 : 1);
         document.querySelectorAll(".action-menu").forEach(menu => menu.remove());
-
-        // Calculate lane control and check win condition
+    
+        console.log("Calculating lane control and checking win condition"); // Debug log
         if (checkWinCondition()) {
-            // Disable further actions if someone wins
+            console.log("Win condition met, disabling actions"); // Debug log
             endTurnBtn.disabled = true;
             document.querySelectorAll(".deck").forEach(deck => deck.style.pointerEvents = "none");
         }
-
-        // Add log entries for turn end and next turn
-        addLogEntry(`Player ${currentPlayer}'s turn ended`, currentPlayer);
-        addLogEntry(`Player ${nextPlayer}'s turn started`, nextPlayer);
+    
+        console.log("Finished endTurn function"); // Debug log
     }
-
+    
     // Keep track of the currently previewed card
     let currentPreviewCard = null;
 
@@ -539,6 +545,7 @@ function addLogEntry(message, player) {
         entry.textContent = fullMessage;
         logContainer.appendChild(entry);
         logContainer.scrollTop = logContainer.scrollHeight;
+        console.log("Log entry added successfully:", fullMessage); // Debug log
     } else {
         console.error("Log container not found!");
     }
