@@ -4,7 +4,10 @@ let gameState = {
     board: Array(4).fill().map(() => Array(5).fill(null)),
     hands: { 1: [], 2: [] },
     crystalZones: { 1: [], 2: [] },
-    realmCounts: { 1: { Divine: 0, Elemental: 0, Mortal: 0, Nature: 0, Void: 0 }, 2: { Divine: 0, Elemental: 0, Mortal: 0, Nature: 0, Void: 0 } },
+    realmCounts: { 
+        1: { Divine: 0, Elemental: 0, Mortal: 0, Nature: 0, Void: 0, Colorless: 0 }, 
+        2: { Divine: 0, Elemental: 0, Mortal: 0, Nature: 0, Void: 0, Colorless: 0 } 
+    },
     decks: { 1: [], 2: [] },
     laneControl: {
         rows: Array(4).fill(null), // null, 1, or 2 for each row (0-3)
@@ -14,10 +17,9 @@ let gameState = {
 
 // Global variables needed by functions outside the DOMContentLoaded event
 let highlightedPlayer = null;
-
-// Global references to key functions
-let globalRenderBoard = null;
-let globalCalculateLaneControl = null;
+let globalRenderBoard;
+let globalRenderCrystalZone;
+let globalCalculateLaneControl;
 
 document.addEventListener("DOMContentLoaded", () => {
     const gameBoard = document.getElementById("game-board");
@@ -90,6 +92,42 @@ document.addEventListener("DOMContentLoaded", () => {
             realms: ["Mortal"],
             crystalRequirements: { Mortal: 1 },
             image: "assets/alchemists-incense.png"
+        },
+        {
+            id: 3,
+            name: "Mystic Wanderer",
+            power: 3,
+            types: ["Human", "Wizard"],
+            realms: ["Divine"],
+            crystalRequirements: { Divine: 1, Colorless: 1 },  // 1 Divine and 1 of any realm
+            image: "assets/advocate-of-the-grove.png"  // Reusing image for demo
+        },
+        {
+            id: 4,
+            name: "Ancient Artifact",
+            power: 4,
+            types: ["Artifact"],
+            realms: ["Colorless"],  // A fully colorless card
+            crystalRequirements: { Colorless: 2 },  // 2 of any realm
+            image: "assets/alchemists-incense.png"  // Reusing image for demo
+        },
+        {
+            id: 5,
+            name: "Divine Void Speaker",
+            power: 6,
+            types: ["Human", "Spirit"],
+            realms: ["Divine", "Void"],  // Dual-realm card
+            crystalRequirements: { Divine: 1, Void: 1 },
+            image: "assets/advocate-of-the-grove.png"  // Reusing image for demo
+        },
+        {
+            id: 6,
+            name: "Elemental Nature Guardian",
+            power: 4,
+            types: ["Elemental", "Plant"],
+            realms: ["Elemental", "Nature"],  // Dual-realm card
+            crystalRequirements: { Elemental: 1, Nature: 1 },
+            image: "assets/alchemists-incense.png"  // Reusing image for demo
         }
     ];
 
@@ -130,39 +168,133 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Check if a card can be summoned
     function canSummonCard(player, card) {
+        console.log(`Checking if player ${player} can summon card ${card.name}...`);
         const requirements = card.crystalRequirements;
-        for (const [realm, required] of Object.entries(requirements)) {
-            if (gameState.realmCounts[player][realm] < required) {
-                return false;
+        console.log(`Crystal requirements:`, requirements);
+        
+        // First, get a list of all crystal cards with their available realms
+        const crystalCards = gameState.crystalZones[player].map(card => ({
+            id: Math.random(), // Unique ID to track each card
+            realms: card.realms // The realm(s) this card provides
+        }));
+        
+        console.log(`Player ${player} has ${crystalCards.length} crystals:`, 
+            crystalCards.map(c => c.realms.join('/')));
+        
+        // Track which crystal cards have been used
+        const usedCrystalIds = new Set();
+        
+        // Check each realm requirement
+        for (const [requiredRealm, requiredCount] of Object.entries(requirements)) {
+            if (requiredRealm === 'Colorless') continue; // Handle colorless separately
+            
+            console.log(`Checking requirement: ${requiredCount} ${requiredRealm}`);
+            let availableCount = 0;
+            
+            // First, try to use single-realm cards matching the required realm
+            for (const crystal of crystalCards) {
+                if (usedCrystalIds.has(crystal.id)) continue; // Skip if already used
+                
+                // If this is a single-realm card that matches the requirement
+                if (crystal.realms.length === 1 && crystal.realms[0] === requiredRealm) {
+                    usedCrystalIds.add(crystal.id);
+                    availableCount++;
+                    console.log(`Used single-realm ${requiredRealm} crystal. Count: ${availableCount}/${requiredCount}`);
+                    
+                    if (availableCount >= requiredCount) break; // We have enough
+                }
+            }
+            
+            // If we still need more, try to use multi-realm cards that include this realm
+            if (availableCount < requiredCount) {
+                for (const crystal of crystalCards) {
+                    if (usedCrystalIds.has(crystal.id)) continue; // Skip if already used
+                    
+                    // If this is a multi-realm card that includes the required realm
+                    if (crystal.realms.length > 1 && crystal.realms.includes(requiredRealm)) {
+                        usedCrystalIds.add(crystal.id);
+                        availableCount++;
+                        console.log(`Used multi-realm crystal containing ${requiredRealm}. Count: ${availableCount}/${requiredCount}`);
+                        
+                        if (availableCount >= requiredCount) break; // We have enough
+                    }
+                }
+            }
+            
+            // Check if we have enough
+            if (availableCount < requiredCount) {
+                console.log(`Not enough ${requiredRealm}. Have ${availableCount}, need ${requiredCount}`);
+                return false; // Not enough of this realm
             }
         }
+        
+        // Handle colorless requirements
+        const colorlessRequired = requirements.Colorless || 0;
+        if (colorlessRequired > 0) {
+            console.log(`Checking colorless requirement: ${colorlessRequired}`);
+            let remainingColorless = colorlessRequired;
+            
+            // Use remaining unused crystals for colorless requirements
+            for (const crystal of crystalCards) {
+                if (usedCrystalIds.has(crystal.id)) continue; // Skip if already used
+                
+                usedCrystalIds.add(crystal.id);
+                remainingColorless--;
+                console.log(`Used a crystal for colorless requirement. Remaining: ${remainingColorless}`);
+                
+                if (remainingColorless <= 0) break; // We have enough
+            }
+            
+            if (remainingColorless > 0) {
+                console.log(`Not enough crystals for colorless requirements. Need ${remainingColorless} more`);
+                return false; // Not enough crystals for colorless requirements
+            }
+        }
+        
+        console.log(`Player ${player} CAN summon ${card.name}!`);
         return true;
     }
 
     function renderHand(player) {
+        console.log(`Rendering hand for player ${player}`);
         const handElement = player === 1 ? player1Hand : player2Hand;
         handElement.querySelectorAll(".card").forEach(card => card.remove());
         const cards = gameState.hands[player];
+        
+        console.log(`Player ${player} has ${cards.length} cards in hand`);
     
         cards.forEach((card, index) => {
             const cardElement = document.createElement("div");
             cardElement.classList.add("card");
             // Show cardback for the other player's hand
             if (player !== gameState.currentPlayer) {
+                console.log(`Card ${card.name} belongs to non-current player, showing cardback`);
                 cardElement.style.backgroundImage = `url('assets/cardback.png')`;
                 // Mark this card as being in opponent's hand
                 card.isInOpponentHand = true;
             } else {
+                console.log(`Showing card ${card.name} face-up for current player ${player}`);
                 cardElement.style.backgroundImage = `url('${card.image}')`;
                 card.isInOpponentHand = false;
+                
+                // Only add the summon highlight for the current player's cards
+                if (canSummonCard(player, card)) {
+                    console.log(`Card ${card.name} CAN be summoned, adding highlight`);
+                    cardElement.classList.add("can-summon");
+                } else {
+                    console.log(`Card ${card.name} CANNOT be summoned, no highlight`);
+                }
             }
             cardElement.style.width = "100px"; // Fixed size
             cardElement.style.height = "120px";
             cardElement.dataset.cardIndex = index;
-            if (canSummonCard(player, card) && player === gameState.currentPlayer) {
-                cardElement.classList.add("can-summon");
+            
+            // Only the current player can interact with their cards
+            if (player === gameState.currentPlayer) {
+                console.log(`Adding click handler for card ${card.name} (current player)`);
+                cardElement.addEventListener("click", () => showActionMenu(player, index, cardElement));
             }
-            cardElement.addEventListener("click", () => showActionMenu(player, index, cardElement));
+            
             cardElement.addEventListener("mouseover", () => showCardPreview(card));
             cardElement.addEventListener("mouseout", hideCardPreview);
             handElement.appendChild(cardElement);
@@ -177,9 +309,79 @@ document.addEventListener("DOMContentLoaded", () => {
         cards.forEach((card, index) => {
             const cardElement = document.createElement("div");
             cardElement.classList.add("card");
-            cardElement.style.backgroundImage = `url('${card.image}')`;
+            
+            // Use cardback for buried cards, otherwise normal card image
+            if (card.isBuried) {
+                cardElement.style.backgroundImage = `url('assets/cardback.png')`;
+                
+                // Add a label with the card name for buried cards
+                const nameLabel = document.createElement("div");
+                nameLabel.classList.add("card-name-label");
+                nameLabel.textContent = card.name;
+                nameLabel.style.position = "absolute";
+                nameLabel.style.top = "50%";
+                nameLabel.style.left = "50%";
+                nameLabel.style.transform = "translate(-50%, -50%)";
+                nameLabel.style.width = "90%";
+                nameLabel.style.textAlign = "center";
+                nameLabel.style.backgroundColor = "rgba(0,0,0,0.7)";
+                nameLabel.style.color = "white";
+                nameLabel.style.padding = "5px";
+                nameLabel.style.fontSize = "14px";
+                nameLabel.style.fontWeight = "bold";
+                nameLabel.style.borderRadius = "3px";
+                nameLabel.style.wordWrap = "break-word";
+                
+                cardElement.appendChild(nameLabel);
+            } else {
+                cardElement.style.backgroundImage = `url('${card.image}')`;
+            }
+            
             cardElement.style.width = "100px"; // Fixed size
             cardElement.style.height = "140px";
+            cardElement.style.position = "relative";
+            
+            // Add a visual indicator for the realm(s)
+            const realmIndicator = document.createElement("div");
+            realmIndicator.classList.add("realm-indicator");
+            
+            // If card is buried, show "Colorless" realm
+            if (card.isBuried) {
+                realmIndicator.textContent = "Colorless (Buried)";
+            } else {
+                realmIndicator.textContent = card.realms.join(", ");
+            }
+            
+            realmIndicator.style.position = "absolute";
+            realmIndicator.style.bottom = "5px";
+            realmIndicator.style.left = "5px";
+            realmIndicator.style.right = "5px";
+            realmIndicator.style.backgroundColor = "rgba(0,0,0,0.7)";
+            realmIndicator.style.color = "white";
+            realmIndicator.style.padding = "2px 5px";
+            realmIndicator.style.borderRadius = "3px";
+            realmIndicator.style.fontSize = "10px";
+            realmIndicator.style.textAlign = "center";
+            
+            cardElement.appendChild(realmIndicator);
+            
+            // Add "buried" visual indicator if the card is buried
+            if (card.isBuried) {
+                cardElement.classList.add("buried-card");
+                // Add a semi-transparent overlay to indicate buried status
+                const buriedOverlay = document.createElement("div");
+                buriedOverlay.classList.add("buried-overlay");
+                buriedOverlay.style.position = "absolute";
+                buriedOverlay.style.top = "0";
+                buriedOverlay.style.left = "0";
+                buriedOverlay.style.width = "100%";
+                buriedOverlay.style.height = "100%";
+                buriedOverlay.style.backgroundColor = "rgba(0,0,0,0.4)";
+                buriedOverlay.style.zIndex = "1";
+                buriedOverlay.style.pointerEvents = "none"; // Allow clicks to pass through
+                cardElement.appendChild(buriedOverlay);
+            }
+            
             cardElement.addEventListener("mouseover", () => showCardPreview(card));
             cardElement.addEventListener("mouseout", hideCardPreview);
             cardElement.addEventListener("click", () => showCardInPlayMenu(player, card, cardElement, "crystalZone", index));
@@ -187,50 +389,99 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Render the game board
-    function renderBoard() {
-        console.log("Rendering board");
-        for (let row = 0; row < 4; row++) {
-            for (let col = 0; col < 5; col++) {
-                const slot = document.getElementById(`slot-${row}-${col}`);
-                if (slot) {
-                    slot.innerHTML = "";
-                    const card = gameState.board[row][col];
-                    if (card) {
-                        console.log(`Found card at slot-${row}-${col}:`, card.name);
-                        const cardElement = document.createElement("div");
-                        cardElement.classList.add("card");
+   // Render the game board
+function renderBoard() {
+    console.log("Rendering board");
+    for (let row = 0; row < 4; row++) {
+        for (let col = 0; col < 5; col++) {
+            const slot = document.getElementById(`slot-${row}-${col}`);
+            if (slot) {
+                slot.innerHTML = "";
+                const card = gameState.board[row][col];
+                if (card) {
+                    console.log(`Found card at slot-${row}-${col}:`, card.name);
+                    const cardElement = document.createElement("div");
+                    cardElement.classList.add("card");
+                    
+                    // Use cardback for buried cards, otherwise normal card image
+                    if (card.isBuried) {
+                        cardElement.style.backgroundImage = `url('assets/cardback.png')`;
+                        
+                        // Add a label with the card name for buried cards
+                        const nameLabel = document.createElement("div");
+                        nameLabel.classList.add("card-name-label");
+                        nameLabel.textContent = card.name;
+                        nameLabel.style.position = "absolute";
+                        nameLabel.style.top = "50%";
+                        nameLabel.style.left = "50%";
+                        nameLabel.style.transform = "translate(-50%, -50%)";
+                        nameLabel.style.width = "90%";
+                        nameLabel.style.textAlign = "center";
+                        nameLabel.style.backgroundColor = "rgba(0,0,0,0.7)";
+                        nameLabel.style.color = "white";
+                        nameLabel.style.padding = "5px";
+                        nameLabel.style.fontSize = "14px";
+                        nameLabel.style.fontWeight = "bold";
+                        nameLabel.style.borderRadius = "3px";
+                        nameLabel.style.wordWrap = "break-word";
+                        
+                        // Position relatively to add the label
+                        cardElement.style.position = "relative";
+                        cardElement.appendChild(nameLabel);
+                    } else {
                         cardElement.style.backgroundImage = `url('${card.image}')`;
-                        cardElement.style.width = "80px";
-                        cardElement.style.height = "112px";
-
-                        // Apply rotation for Player 2's cards
-                        if (card.player === 2) {
-                            cardElement.style.transform = 'rotate(180deg)';
-                            cardElement.style.webkitTransform = 'rotate(180deg)';
-                            cardElement.style.mozTransform = 'rotate(180deg)';
-                        }
-
-                        // Apply highlighting
-                        if (highlightedPlayer === 1 && card.player === 1) {
-                            cardElement.classList.add("highlight-player1");
-                        } else if (highlightedPlayer === 2 && card.player === 2) {
-                            cardElement.classList.add("highlight-player2");
-                        }
-
-                        cardElement.addEventListener("mouseover", () => showCardPreview(card));
-                        cardElement.addEventListener("mouseout", hideCardPreview);
-                        cardElement.addEventListener("click", () => {
-                            console.log(`Card clicked at slot-${row}-${col}:`, card.name);
-                            showCardInPlayMenu(card.player, card, cardElement, "board", `slot-${row}-${col}`);
-                        });
-                        slot.appendChild(cardElement);
                     }
+                    
+                    cardElement.style.width = "80px";
+                    cardElement.style.height = "112px";
+
+                    // Apply rotation for Player 2's cards
+                    if (card.player === 2) {
+                        cardElement.style.transform = 'rotate(180deg)';
+                        cardElement.style.webkitTransform = 'rotate(180deg)';
+                        cardElement.style.mozTransform = 'rotate(180deg)';
+                    }
+
+                    // Apply highlighting
+                    if (highlightedPlayer === 1 && card.player === 1) {
+                        cardElement.classList.add("highlight-player1");
+                    } else if (highlightedPlayer === 2 && card.player === 2) {
+                        cardElement.classList.add("highlight-player2");
+                    }
+                    
+                    // Add "buried" visual indicator if the card is buried
+                    if (card.isBuried) {
+                        cardElement.classList.add("buried-card");
+                        // Add a semi-transparent overlay to indicate buried status
+                        const buriedOverlay = document.createElement("div");
+                        buriedOverlay.classList.add("buried-overlay");
+                        buriedOverlay.style.position = "absolute";
+                        buriedOverlay.style.top = "0";
+                        buriedOverlay.style.left = "0";
+                        buriedOverlay.style.width = "100%";
+                        buriedOverlay.style.height = "100%";
+                        buriedOverlay.style.backgroundColor = "rgba(0,0,0,0.4)";
+                        buriedOverlay.style.zIndex = "1";
+                        buriedOverlay.style.pointerEvents = "none"; // Allow clicks to pass through
+                        cardElement.appendChild(buriedOverlay);
+                    }
+
+                    cardElement.addEventListener("mouseover", () => showCardPreview(card));
+                    cardElement.addEventListener("mouseout", hideCardPreview);
+                    cardElement.addEventListener("click", () => {
+                        console.log(`Card clicked at slot-${row}-${col}:`, card.name);
+                        // Store the position data directly on the card for easier access
+                        card.boardRow = row;
+                        card.boardCol = col;
+                        showCardInPlayMenu(card.player, card, cardElement, "board", `slot-${row}-${col}`);
+                    });
+                    slot.appendChild(cardElement);
                 }
             }
         }
-        console.log("Board rendering complete");
     }
+    console.log("Board rendering complete");
+}
 
     // Show the action menu (Crystallize/Summon)
     function showActionMenu(player, cardIndex, cardElement) {
@@ -278,72 +529,169 @@ document.addEventListener("DOMContentLoaded", () => {
     function crystallizeCard(player, cardIndex) {
         const hand = gameState.hands[player];
         const card = hand[cardIndex];
-        gameState.crystalZones[player].push(card);
+        
+        // Add card to crystal zone (preserving all realms)
+        const cardCopy = { ...card };
+        gameState.crystalZones[player].push(cardCopy);
         hand.splice(cardIndex, 1);
-
+        
+        // Increment realm counts for all realms
         card.realms.forEach(realm => {
             gameState.realmCounts[player][realm]++;
         });
-
+        
+        // Update UI
         renderHand(player);
         renderCrystalZone(player);
         console.log(`Player ${player} Realm Counts:`, gameState.realmCounts[player]);
-
-        // Add log entry after crystallization
-        addLogEntry(`Player ${player} crystallized a card`, player);
+        
+        // Add log entry
+        const realmsText = card.realms.length > 1 
+            ? `${card.realms.join("/")} (dual-realm)` 
+            : card.realms[0];
+        addLogEntry(`Player ${player} crystallized a ${realmsText} card`, player);
     }
 
-    // Start the summon process
-    function startSummon(player, cardIndex) {
-        const card = gameState.hands[player][cardIndex];
-        if (!canSummonCard(player, card)) {
-            return; // Silently ignore if the card can't be summoned
-        }
-
-        highlightEmptySlots(player, cardIndex);
+  // Start the summon process
+function startSummon(player, cardIndex) {
+    const card = gameState.hands[player][cardIndex];
+    if (!canSummonCard(player, card)) {
+        return; // Silently ignore if the card can't be summoned
     }
 
-    // Highlight empty slots on the board
-    function highlightEmptySlots(player, cardIndex) {
-        const highlightColor = player === 1 ? "rgba(255, 0, 0, 0.3)" : "rgba(0, 0, 255, 0.3)";
-        for (let row = 0; row < 4; row++) {
-            for (let col = 0; col < 5; col++) {
-                if (!gameState.board[row][col]) {
-                    const slot = document.getElementById(`slot-${row}-${col}`);
-                    slot.style.backgroundColor = highlightColor;
-                    slot.style.cursor = "pointer";
-                    // Remove any existing click listeners to prevent stacking
-                    slot.removeEventListener("click", slot._summonHandler);
-                    slot._summonHandler = function summonHandler() {
-                        summonCard(player, cardIndex, row, col);
-                        // No need to call clearHighlights here since summonCard will handle it
-                    };
-                    slot.addEventListener("click", slot._summonHandler);
+    highlightEmptySlots(player, cardIndex);
+}
+
+// Highlight empty slots on the board
+function highlightEmptySlots(player, cardIndex) {
+    const highlightColor = player === 1 ? "rgba(255, 0, 0, 0.2)" : "rgba(0, 0, 255, 0.2)";
+    console.log(`Highlighting empty slots for player ${player} with color ${highlightColor}`);
+    
+    let foundEmptySlots = 0;
+    
+    for (let row = 0; row < 4; row++) {
+        for (let col = 0; col < 5; col++) {
+            if (!gameState.board[row][col]) {
+                foundEmptySlots++;
+                const slot = document.getElementById(`slot-${row}-${col}`);
+                if (!slot) {
+                    console.error(`Could not find DOM element for slot-${row}-${col}`);
+                    continue;
                 }
+                
+                console.log(`Highlighting slot-${row}-${col} with color ${highlightColor}`);
+                
+                // More subtle highlighting
+                slot.style.backgroundColor = highlightColor;
+                slot.style.border = "2px solid yellow";
+                slot.style.cursor = "pointer";
+                
+                // Remove any existing click listeners to prevent stacking
+                if (slot._summonHandler) {
+                    slot.removeEventListener("click", slot._summonHandler);
+                }
+                
+                // Create a direct handler in global scope
+                window[`summon_${row}_${col}`] = function() {
+                    console.log(`Direct summon function called for slot-${row}-${col}`);
+                    summonCard(player, cardIndex, row, col);
+                };
+                
+                // Use direct onclick handler
+                slot.onclick = window[`summon_${row}_${col}`];
+                
+                // Store for cleanup
+                slot._summonHandler = window[`summon_${row}_${col}`];
             }
         }
     }
+    
+    console.log(`Highlighted ${foundEmptySlots} empty slots for summoning`);
+}
 
-    // Summon a card to the board
-    function summonCard(player, cardIndex, row, col) {
-        const hand = gameState.hands[player];
-        const card = hand[cardIndex];
-        card.player = player;
-        gameState.board[row][col] = card;
-        hand.splice(cardIndex, 1);
-        renderHand(player);
-
-        // Clear highlights before rendering the board
-        clearHighlights();
-        renderBoard();
-
-        // Add log entry with chess notation
-        const position = slotToChessNotation(`slot-${row}-${col}`);
-        addLogEntry(`Player ${player} summoned a card to ${position}`, player);
-
-        // Calculate lane control after summoning
-        calculateLaneControl();
+// Clear highlights from the board
+function clearHighlights() {
+    console.log("Clearing highlights from the board");
+    
+    // Clear the global move tracking if it exists
+    if (window.currentMoveCard) {
+        console.log("Clearing global move tracking");
+        window.currentMoveCard = null;
     }
+    
+    for (let row = 0; row < 4; row++) {
+        for (let col = 0; col < 5; col++) {
+            const slot = document.getElementById(`slot-${row}-${col}`);
+            if (!slot) {
+                console.error(`Could not find DOM element for slot-${row}-${col}`);
+                continue;
+            }
+            
+            // Reset styles
+            slot.style.backgroundColor = "";
+            slot.style.border = "";
+            slot.style.cursor = "";
+            slot.style.boxShadow = "";
+            
+            // IMPORTANT: Remove any direct click handlers
+            slot.onclick = null;
+            
+            // Remove data attributes
+            slot.removeAttribute('data-destination-row');
+            slot.removeAttribute('data-destination-col');
+            slot.removeAttribute('data-is-move-target');
+            
+            // Clean up any remaining event listeners
+            if (slot._summonHandler) {
+                slot.removeEventListener("click", slot._summonHandler);
+                slot._summonHandler = null;
+            }
+            
+            if (slot._moveHandler) {
+                slot.removeEventListener("click", slot._moveHandler);
+                slot._moveHandler = null;
+            }
+            
+            // Clean up global handlers
+            if (window[`summon_${row}_${col}`]) {
+                window[`summon_${row}_${col}`] = null;
+            }
+            
+            if (window[`move_${row}_${col}`]) {
+                window[`move_${row}_${col}`] = null;
+            }
+        }
+    }
+    
+    // Remove any document-level handlers for move cancellation
+    document.removeEventListener("click", cancelMoveHandler);
+}
+
+// Summon a card to the board
+function summonCard(player, cardIndex, row, col) {
+    const hand = gameState.hands[player];
+    const card = hand[cardIndex];
+    card.player = player;
+    
+    // Store the position directly on the card for later use
+    card.boardRow = row;
+    card.boardCol = col;
+    
+    gameState.board[row][col] = card;
+    hand.splice(cardIndex, 1);
+    renderHand(player);
+
+    // Clear highlights before rendering the board
+    clearHighlights();
+    renderBoard();
+
+    // Add log entry with chess notation
+    const position = slotToChessNotation(`slot-${row}-${col}`);
+    addLogEntry(`Player ${player} summoned a card to ${position}`, player);
+
+    // Calculate lane control after summoning
+    calculateLaneControl();
+}
 
     // Game setup
     function setupGame() {
@@ -358,6 +706,7 @@ document.addEventListener("DOMContentLoaded", () => {
         
         // Assign functions to global references
         globalRenderBoard = renderBoard;
+        globalRenderCrystalZone = renderCrystalZone;
         globalCalculateLaneControl = calculateLaneControl;
     }
 
@@ -423,20 +772,27 @@ document.addEventListener("DOMContentLoaded", () => {
         
         console.log(`Ending turn for Player ${currentPlayer}, starting turn for Player ${nextPlayer}`);
         
-        // Always draw a card for the next player
-        console.log("Drawing cards for next player:", nextPlayer);
-        drawCards(nextPlayer, 1);
-        renderHand(nextPlayer);
-        
-        console.log("Updating game state for next player:", nextPlayer);
-        gameState.currentPlayer = nextPlayer;
-        updateTurnIndicator(gameState.currentPlayer);
+        // Clear any pending actions or menus first
         clearHighlights();
-        updateDeckCounts();
-        renderHand(nextPlayer);
-        renderHand(gameState.currentPlayer === 1 ? 2 : 1);
         document.querySelectorAll(".action-menu").forEach(menu => menu.remove());
-    
+        
+        // Update the game state
+        gameState.currentPlayer = nextPlayer;
+        
+        // Always draw a card for the new current player
+        console.log("Drawing cards for new current player:", nextPlayer);
+        drawCards(nextPlayer, 1);
+        
+        // Update the UI
+        updateTurnIndicator(nextPlayer);
+        updateDeckCounts();
+        
+        // Re-render hands for both players
+        console.log("Re-rendering hands for both players");
+        renderHand(1);
+        renderHand(2);
+        
+        // Recalculate lane control and check win condition
         console.log("Calculating lane control and checking win condition");
         calculateLaneControl();
         if (checkWinCondition()) {
@@ -527,6 +883,27 @@ document.addEventListener("DOMContentLoaded", () => {
                 crystallizeCardFromBoard(player, card, index);
             });
             menu.appendChild(crystallizeBtn);
+        }
+
+        // Bury/Unearth Option (for both crystal zone and board)
+        if (card.isBuried) {
+            const unearthBtn = document.createElement("button");
+            unearthBtn.textContent = "Unearth";
+            unearthBtn.addEventListener("click", () => {
+                console.log("Unearth clicked for:", card.name, "at", index);
+                menu.remove(); // Remove menu first
+                unearthCard(player, card, location, index);
+            });
+            menu.appendChild(unearthBtn);
+        } else {
+            const buryBtn = document.createElement("button");
+            buryBtn.textContent = "Bury";
+            buryBtn.addEventListener("click", () => {
+                console.log("Bury clicked for:", card.name, "at", index);
+                menu.remove(); // Remove menu first
+                buryCard(player, card, location, index);
+            });
+            menu.appendChild(buryBtn);
         }
 
         // Move to Top of Deck
@@ -770,122 +1147,326 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log(`Deck after move (${player}):`, gameState.decks[player].map(c => c.name));
     }
 
-    // Start the process to move a card on the board
+    // Function to bury a card (flip face-down)
+    function buryCard(player, card, location, index) {
+        if (location === "crystalZone") {
+            // Get the card from the crystal zone
+            const crystalCard = gameState.crystalZones[player][index];
+            
+            if (!crystalCard) {
+                console.error("Card not found in crystal zone:", index);
+                return;
+            }
+            
+            // Before burying, remove the current realm counts
+            crystalCard.realms.forEach(realm => {
+                gameState.realmCounts[player][realm]--;
+            });
+            
+            // Save original realms if not already saved
+            if (!crystalCard.originalRealms) {
+                crystalCard.originalRealms = [...crystalCard.realms];
+            }
+            
+            // Set to buried state
+            crystalCard.isBuried = true;
+            crystalCard.realms = ["Colorless"]; // Buried crystals are considered Colorless
+            
+            // Add to colorless count
+            gameState.realmCounts[player].Colorless++;
+            
+            // Update UI
+            renderCrystalZone(player);
+            
+            // Log the action
+            addLogEntry(`Player ${player} buried a crystal card (${card.name})`, player);
+        } 
+        else if (location === "board") {
+            // Parse board position
+            const parts = index.split('-');
+            if (parts.length !== 3) {
+                console.error("Invalid board position format:", index);
+                return;
+            }
+            
+            const row = parseInt(parts[1]);
+            const col = parseInt(parts[2]);
+            
+            // Get chess notation before modification
+            const position = slotToChessNotation(index);
+            
+            // Get the card from the board
+            const boardCard = gameState.board[row][col];
+            
+            if (!boardCard) {
+                console.error("Card not found on board:", index);
+                return;
+            }
+            
+            // Store original power if not already stored
+            if (boardCard.originalPower === undefined) {
+                boardCard.originalPower = boardCard.power;
+            }
+            
+            // Set to buried state
+            boardCard.isBuried = true;
+            boardCard.power = 0; // Buried cards on board have 0 power
+            
+            // Update UI
+            renderBoard();
+            
+            // Recalculate lane control after burying
+            calculateLaneControl();
+            
+            // Log the action
+            addLogEntry(`Player ${player} buried a card at ${position} (${card.name})`, player);
+        }
+    }
+    
+    // Function to unearth a card (flip face-up)
+    function unearthCard(player, card, location, index) {
+        if (location === "crystalZone") {
+            // Get the card from the crystal zone
+            const crystalCard = gameState.crystalZones[player][index];
+            
+            if (!crystalCard) {
+                console.error("Card not found in crystal zone:", index);
+                return;
+            }
+            
+            // Remove colorless count
+            gameState.realmCounts[player].Colorless--;
+            
+            // Restore original realms
+            if (crystalCard.originalRealms) {
+                crystalCard.realms = [...crystalCard.originalRealms];
+                
+                // Add back original realm counts
+                crystalCard.realms.forEach(realm => {
+                    gameState.realmCounts[player][realm]++;
+                });
+            }
+            
+            // Set to unearthed state
+            crystalCard.isBuried = false;
+            
+            // Update UI
+            renderCrystalZone(player);
+            
+            // Log the action
+            addLogEntry(`Player ${player} unearthed a crystal card (${card.name})`, player);
+        } 
+        else if (location === "board") {
+            // Parse board position
+            const parts = index.split('-');
+            if (parts.length !== 3) {
+                console.error("Invalid board position format:", index);
+                return;
+            }
+            
+            const row = parseInt(parts[1]);
+            const col = parseInt(parts[2]);
+            
+            // Get chess notation before modification
+            const position = slotToChessNotation(index);
+            
+            // Get the card from the board
+            const boardCard = gameState.board[row][col];
+            
+            if (!boardCard) {
+                console.error("Card not found on board:", index);
+                return;
+            }
+            
+            // Restore original power
+            if (boardCard.originalPower !== undefined) {
+                boardCard.power = boardCard.originalPower;
+            }
+            
+            // Set to unearthed state
+            boardCard.isBuried = false;
+            
+            // Update UI
+            renderBoard();
+            
+            // Recalculate lane control after unearthing
+            calculateLaneControl();
+            
+            // Log the action
+            addLogEntry(`Player ${player} unearthed a card at ${position} (${card.name})`, player);
+        }
+    }
+
+    // Function to start moving a card on the board
     function startMoveCard(player, card, slotId) {
-        console.log("Starting move card process for:", card.name, "at", slotId);
+        console.log("Starting to move card:", card.name, "from", slotId);
         
-        // Parse the current position
-        const parts = slotId.split('-');
-        if (parts.length !== 3) {
-            console.error("Invalid slot ID format:", slotId);
+        // Use the position stored directly on the card (more reliable)
+        if (card.boardRow !== undefined && card.boardCol !== undefined) {
+            const currentRow = card.boardRow;
+            const currentCol = card.boardCol;
+            
+            console.log(`Using stored position: row=${currentRow}, col=${currentCol}`);
+            console.log(`Card at position:`, gameState.board[currentRow][currentCol]);
+            
+            // Verify the card exists at this position
+            if (!gameState.board[currentRow][currentCol]) {
+                console.error("No card found at stored position:", `slot-${currentRow}-${currentCol}`);
+                return;
+            }
+            
+            // Clear any existing highlights
+            clearHighlights();
+            
+            // Set a global variable to track the card being moved
+            window.currentMoveCard = {
+                sourceRow: currentRow,
+                sourceCol: currentCol,
+                player: player
+            };
+            
+            console.log("Set global move tracking:", window.currentMoveCard);
+            
+            // Highlight empty slots on the board
+            const highlightColor = player === 1 ? "rgba(255, 0, 0, 0.2)" : "rgba(0, 0, 255, 0.2)";
+            console.log(`Highlighting empty slots for player ${player} with color ${highlightColor}`);
+            
+            let foundEmptySlots = 0;
+            
+            for (let row = 0; row < 4; row++) {
+                for (let col = 0; col < 5; col++) {
+                    // Skip the current position
+                    if (row === currentRow && col === currentCol) {
+                        continue;
+                    }
+                    
+                    // Only highlight empty slots
+                    if (!gameState.board[row][col]) {
+                        foundEmptySlots++;
+                        const slot = document.getElementById(`slot-${row}-${col}`);
+                        if (!slot) {
+                            console.error(`Could not find DOM element for slot-${row}-${col}`);
+                            continue;
+                        }
+                        
+                        console.log(`Highlighting slot-${row}-${col} with color ${highlightColor}`);
+                        
+                        // More subtle highlighting
+                        slot.style.backgroundColor = highlightColor;
+                        slot.style.border = "2px solid yellow";
+                        slot.style.cursor = "pointer";
+                        
+                        // Set destination attributes directly on the element
+                        slot.setAttribute('data-destination-row', row);
+                        slot.setAttribute('data-destination-col', col);
+                        slot.setAttribute('data-is-move-target', 'true');
+                        
+                        // Simpler direct click handler
+                        slot.onclick = handleMoveClick;
+                    }
+                }
+            }
+            
+            console.log(`Highlighted ${foundEmptySlots} empty slots on the board`);
+            
+            if (foundEmptySlots === 0) {
+                console.warn("No empty slots found to highlight! The board might be full.");
+                return;
+            }
+            
+            // Allow clicking anywhere else to cancel the move
+            document.addEventListener("click", cancelMoveHandler);
+        } else {
+            console.error("Card position information not available");
+        }
+    }
+
+    // Global handler for slot clicks during move
+    function handleMoveClick(event) {
+        // Stop event propagation immediately
+        event.stopPropagation();
+        event.preventDefault();
+        
+        console.log("Slot clicked for move");
+        
+        // Check if we have a valid move in progress
+        if (!window.currentMoveCard) {
+            console.error("No card currently being moved!");
+            clearHighlights(); // Clean up any lingering highlights
             return;
         }
         
-        const currentRow = parseInt(parts[1]);
-        const currentCol = parseInt(parts[2]);
-        const currentPosition = slotToChessNotation(slotId);
+        // Get the slot that was clicked
+        const targetSlot = event.currentTarget;
         
-        // Store the card and its current position in a global object
-        window.moveCardState = {
-            player: player,
-            card: card,
-            sourceSlotId: slotId,
-            sourceRow: currentRow,
-            sourceCol: currentCol
-        };
-        
-        // Highlight empty slots where the card can be moved
-        highlightEmptySlotsForMove();
-    }
-
-    // Highlight empty slots for moving a card
-    function highlightEmptySlotsForMove() {
-        const player = window.moveCardState.player;
-        const highlightColor = player === 1 ? "rgba(255, 0, 0, 0.3)" : "rgba(0, 0, 255, 0.3)";
-        
-        for (let row = 0; row < 4; row++) {
-            for (let col = 0; col < 5; col++) {
-                // Skip the original position of the card
-                if (row === window.moveCardState.sourceRow && col === window.moveCardState.sourceCol) {
-                    continue;
-                }
-                
-                // Only highlight empty slots
-                if (!gameState.board[row][col]) {
-                    const slot = document.getElementById(`slot-${row}-${col}`);
-                    slot.style.backgroundColor = highlightColor;
-                    slot.style.cursor = "pointer";
-                    
-                    // Remove any existing click listeners to prevent stacking
-                    slot.removeEventListener("click", slot._moveHandler);
-                    
-                    slot._moveHandler = function moveHandler() {
-                        moveCardToSlot(row, col);
-                    };
-                    
-                    slot.addEventListener("click", slot._moveHandler);
-                }
-            }
+        // Sanity check - make sure this is actually a slot
+        if (!targetSlot || !targetSlot.id || !targetSlot.id.startsWith('slot-')) {
+            console.error("Invalid target element:", targetSlot);
+            return;
         }
-    }
-
-    // Move the card to a new slot
-    function moveCardToSlot(targetRow, targetCol) {
-        const { player, card, sourceRow, sourceCol, sourceSlotId } = window.moveCardState;
         
-        // Remove card from original position
-        gameState.board[sourceRow][sourceCol] = null;
+        // Get the destination coordinates
+        const destRow = parseInt(targetSlot.getAttribute('data-destination-row'));
+        const destCol = parseInt(targetSlot.getAttribute('data-destination-col'));
         
-        // Place card in new position
-        gameState.board[targetRow][targetCol] = card;
+        console.log(`Move target clicked: destination (${destRow},${destCol})`);
         
-        // Clear highlights and update UI
+        if (isNaN(destRow) || isNaN(destCol)) {
+            console.error("Invalid destination attributes on target element");
+            return;
+        }
+        
+        // Verify the source still has a card and destination is empty
+        const sourceRow = window.currentMoveCard.sourceRow;
+        const sourceCol = window.currentMoveCard.sourceCol;
+        const player = window.currentMoveCard.player;
+        
+        if (!gameState.board[sourceRow][sourceCol]) {
+            console.error("Source position no longer has a card");
+            clearHighlights();
+            return;
+        }
+        
+        if (gameState.board[destRow][destCol]) {
+            console.error("Destination position is already occupied");
+            clearHighlights();
+            return;
+        }
+        
+        console.log(`Executing move from (${sourceRow},${sourceCol}) to (${destRow},${destCol}) for player ${player}`);
+        
+        // Execute the move
+        moveCardToSlot(player, sourceRow, sourceCol, destRow, destCol);
+        
+        // Clean up
         clearHighlights();
-        
-        // Use global references to UI update functions
-        if (globalRenderBoard) {
-            globalRenderBoard();
-        } else {
-            console.error("globalRenderBoard is not defined");
-        }
-        
-        if (globalCalculateLaneControl) {
-            globalCalculateLaneControl();
-        } else {
-            console.error("globalCalculateLaneControl is not defined");
-        }
-        
-        // Log the move with chess notation
-        const sourcePosition = slotToChessNotation(sourceSlotId);
-        const targetPosition = slotToChessNotation(`slot-${targetRow}-${targetCol}`);
-        
-        addLogEntry(`Player ${player} moved a card from ${sourcePosition} to ${targetPosition}`, player);
-        
-        // Clean up the move state
-        delete window.moveCardState;
     }
 
-    // Clear highlights from the board
-    function clearHighlights() {
-        console.log("Clearing highlights from the board"); // Debug log
-        for (let row = 0; row < 4; row++) {
-            for (let col = 0; col < 5; col++) {
-                const slot = document.getElementById(`slot-${row}-${col}`);
-                if (slot) {
-                    slot.style.backgroundColor = "transparent";
-                    slot.style.cursor = "default";
-                    if (slot._summonHandler) {
-                        slot.removeEventListener("click", slot._summonHandler);
-                        delete slot._summonHandler;
-                    }
-                    if (slot._moveHandler) {
-                        slot.removeEventListener("click", slot._moveHandler);
-                        delete slot._moveHandler;
-                    }
-                }
-            }
+    // Handler for cancelling moves
+    function cancelMoveHandler(event) {
+        // Get the clicked element
+        const target = event.target;
+        
+        // If the click is on a move target, don't cancel
+        if (target && target.getAttribute && target.getAttribute('data-is-move-target') === 'true') {
+            console.log("Click on valid move target, not canceling");
+            return;
         }
+        
+        // If we're clicking on an action menu or a card, don't cancel
+        if (target && (
+            (target.classList && target.classList.contains('action-menu')) ||
+            (target.parentElement && target.parentElement.classList && target.parentElement.classList.contains('action-menu')) ||
+            (target.classList && target.classList.contains('card'))
+        )) {
+            console.log("Click on menu or card, not canceling");
+            return;
+        }
+        
+        console.log("Clicked outside highlighted area, canceling move");
+        clearHighlights(); // This will also remove the event listener and clear the tracking
     }
+
 }); // Close the DOMContentLoaded event listener
 
 // Calculate lane control
@@ -910,6 +1491,12 @@ function calculateLaneControl() {
                 isFull = false;
                 continue;
             }
+            
+            // Skip power calculation for buried cards - they contribute 0 power
+            if (card.isBuried) {
+                continue;
+            }
+            
             if (card.player === 1) {
                 player1Power += card.power;
             } else if (card.player === 2) {
@@ -966,6 +1553,12 @@ function calculateLaneControl() {
                 isFull = false;
                 continue;
             }
+            
+            // Skip power calculation for buried cards - they contribute 0 power
+            if (card.isBuried) {
+                continue;
+            }
+            
             if (card.player === 1) {
                 player1Power += card.power;
             } else if (card.player === 2) {
@@ -1113,119 +1706,122 @@ function endTurn() {
     }
 }
 
-// Start the process to move a card on the board
-function startMoveCard(player, card, slotId) {
-    console.log("Starting move card process for:", card.name, "at", slotId);
+// Test function to highlight all empty slots (for debug purposes)
+function testHighlightEmptySlots() {
+    const highlightColor = "rgba(0, 255, 255, 0.5)"; // Cyan color for testing
+    console.log("DEBUG: Highlighting all empty slots for testing");
     
-    // Parse the current position
-    const parts = slotId.split('-');
-    if (parts.length !== 3) {
-        console.error("Invalid slot ID format:", slotId);
-        return;
-    }
-    
-    const currentRow = parseInt(parts[1]);
-    const currentCol = parseInt(parts[2]);
-    const currentPosition = slotToChessNotation(slotId);
-    
-    // Store the card and its current position in a global object
-    window.moveCardState = {
-        player: player,
-        card: card,
-        sourceSlotId: slotId,
-        sourceRow: currentRow,
-        sourceCol: currentCol
-    };
-    
-    // Highlight empty slots where the card can be moved
-    highlightEmptySlotsForMove();
-}
-
-// Highlight empty slots for moving a card
-function highlightEmptySlotsForMove() {
-    const player = window.moveCardState.player;
-    const highlightColor = player === 1 ? "rgba(255, 0, 0, 0.3)" : "rgba(0, 0, 255, 0.3)";
-    
+    let count = 0;
     for (let row = 0; row < 4; row++) {
         for (let col = 0; col < 5; col++) {
-            // Skip the original position of the card
-            if (row === window.moveCardState.sourceRow && col === window.moveCardState.sourceCol) {
-                continue;
-            }
-            
-            // Only highlight empty slots
             if (!gameState.board[row][col]) {
+                count++;
                 const slot = document.getElementById(`slot-${row}-${col}`);
+                if (!slot) {
+                    console.error(`Could not find DOM element for slot-${row}-${col}`);
+                    continue;
+                }
+                
+                // Force stronger styling to ensure visibility
                 slot.style.backgroundColor = highlightColor;
+                slot.style.border = "3px solid yellow";
                 slot.style.cursor = "pointer";
-                
-                // Remove any existing click listeners to prevent stacking
-                slot.removeEventListener("click", slot._moveHandler);
-                
-                slot._moveHandler = function moveHandler() {
-                    moveCardToSlot(row, col);
-                };
-                
-                slot.addEventListener("click", slot._moveHandler);
+                slot.style.boxShadow = "0 0 10px yellow";
             }
         }
     }
+    
+    console.log(`DEBUG: Highlighted ${count} empty slots`);
+    
+    // Auto-clear highlights after 3 seconds
+    setTimeout(() => {
+        clearHighlights();
+        console.log("DEBUG: Auto-cleared highlights");
+    }, 3000);
 }
 
-// Move the card to a new slot
-function moveCardToSlot(targetRow, targetCol) {
-    const { player, card, sourceRow, sourceCol, sourceSlotId } = window.moveCardState;
+// Debug function to test slot click detection
+function testSlotClicks() {
+    console.log("Setting up click test on all slots");
     
-    // Remove card from original position
-    gameState.board[sourceRow][sourceCol] = null;
-    
-    // Place card in new position
-    gameState.board[targetRow][targetCol] = card;
-    
-    // Clear highlights and update UI
+    // First clean up any existing handlers
     clearHighlights();
     
-    // Use global references to UI update functions
-    if (globalRenderBoard) {
-        globalRenderBoard();
-    } else {
-        console.error("globalRenderBoard is not defined");
-    }
-    
-    if (globalCalculateLaneControl) {
-        globalCalculateLaneControl();
-    } else {
-        console.error("globalCalculateLaneControl is not defined");
-    }
-    
-    // Log the move with chess notation
-    const sourcePosition = slotToChessNotation(sourceSlotId);
-    const targetPosition = slotToChessNotation(`slot-${targetRow}-${targetCol}`);
-    
-    addLogEntry(`Player ${player} moved a card from ${sourcePosition} to ${targetPosition}`, player);
-    
-    // Clean up the move state
-    delete window.moveCardState;
-}
-
-// Clear highlights from the board
-function clearHighlights() {
-    console.log("Clearing highlights from the board"); // Debug log
     for (let row = 0; row < 4; row++) {
         for (let col = 0; col < 5; col++) {
             const slot = document.getElementById(`slot-${row}-${col}`);
-            if (slot) {
-                slot.style.backgroundColor = "transparent";
-                slot.style.cursor = "default";
-                if (slot._summonHandler) {
-                    slot.removeEventListener("click", slot._summonHandler);
-                    delete slot._summonHandler;
-                }
-                if (slot._moveHandler) {
-                    slot.removeEventListener("click", slot._moveHandler);
-                    delete slot._moveHandler;
-                }
+            if (!slot) {
+                console.error(`Could not find DOM element for slot-${row}-${col}`);
+                continue;
             }
+            
+            // Make the slot visibly clickable
+            slot.style.backgroundColor = "rgba(0, 255, 0, 0.2)";
+            slot.style.border = "1px solid green";
+            slot.style.cursor = "pointer";
+            
+            // Direct click handler
+            slot.onclick = function() {
+                console.log(`TEST CLICK DETECTED on slot-${row}-${col}`);
+                alert(`Clicked on slot-${row}-${col}`);
+            };
         }
     }
+    
+    console.log("Test slots set up - click any slot to test");
+    
+    // Auto-clear after 10 seconds
+    setTimeout(function() {
+        console.log("Clearing test slot handlers");
+        clearHighlights();
+    }, 10000);
+}
+
+// Function to move a card from one slot to another
+function moveCardToSlot(player, fromRow, fromCol, toRow, toCol) {
+    console.log(`Moving card from (${fromRow},${fromCol}) to (${toRow},${toCol})`);
+    
+    // Get the card that's being moved
+    const card = gameState.board[fromRow][fromCol];
+    if (!card) {
+        console.error("No card found at source position");
+        return;
+    }
+    
+    // Make sure the destination is empty
+    if (gameState.board[toRow][toCol]) {
+        console.error("Destination slot is not empty!");
+        return;
+    }
+    
+    // Update the stored position on the card object
+    card.boardRow = toRow;
+    card.boardCol = toCol;
+    
+    // Move the card in the game state
+    gameState.board[toRow][toCol] = card;
+    gameState.board[fromRow][fromCol] = null;
+    
+    // Get chess notation for positions
+    const fromPosition = slotToChessNotation(`slot-${fromRow}-${fromCol}`);
+    const toPosition = slotToChessNotation(`slot-${toRow}-${toCol}`);
+    
+    // Update the UI
+    if (typeof globalRenderBoard === 'function') {
+        globalRenderBoard();
+    } else {
+        renderBoard();
+    }
+    
+    // Recalculate lane control
+    if (typeof globalCalculateLaneControl === 'function') {
+        globalCalculateLaneControl();
+    } else {
+        calculateLaneControl();
+    }
+    
+    // Log the action
+    addLogEntry(`Player ${player} moved a card from ${fromPosition} to ${toPosition}`, player);
+    
+    console.log(`Successfully moved card from ${fromPosition} to ${toPosition}`);
 }
