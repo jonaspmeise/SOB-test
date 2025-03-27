@@ -151,15 +151,21 @@ document.addEventListener("DOMContentLoaded", () => {
         for (let row = 0; row < 4; row++) {
             for (let col = 0; col < 5; col++) {
                 const slot = document.getElementById(`slot-${row}-${col}`);
-                if (slot) { // Ensure the slot exists
+                if (slot) {
                     slot.innerHTML = "";
                     const card = gameState.board[row][col];
                     if (card) {
                         const cardElement = document.createElement("div");
                         cardElement.classList.add("card");
                         cardElement.style.backgroundImage = `url('${card.image}')`;
-                        cardElement.style.width = "80px"; // Ensure size matches slot
+                        cardElement.style.width = "80px";
                         cardElement.style.height = "112px";
+                        // Rotate Player 2's cards
+                        if (card.player === 2) {
+                            cardElement.style.transform = 'rotate(180deg)';
+                            cardElement.style.webkitTransform = 'rotate(180deg)';
+                            cardElement.style.mozTransform = 'rotate(180deg)';
+                        }
                         cardElement.addEventListener("mouseover", () => showCardPreview(card));
                         cardElement.addEventListener("mouseout", hideCardPreview);
                         slot.appendChild(cardElement);
@@ -283,6 +289,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function summonCard(player, cardIndex, row, col) {
         const hand = gameState.hands[player];
         const card = hand[cardIndex];
+        card.player = player;
         gameState.board[row][col] = card;
         hand.splice(cardIndex, 1);
         gameState.hasSummoned[player] = true;
@@ -324,19 +331,14 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Function to update the turn indicator
-    function updateTurnIndicator(player) {
-        const indicator = document.querySelector('.turn-indicator');
-        const player1Area = document.querySelector('.player-1-area');
-        const player2Area = document.querySelector('.player-2-area');
-        
-        // Update icon image based on player
-        indicator.style.backgroundImage = `url('assets/player${player}-icon.png')`;
-        
-        // Move indicator to current player's area
-        if (player === 1) {
-            player1Area.appendChild(indicator);
+    function updateTurnIndicator() {
+        const turnStatus = document.getElementById("turn-status");
+        if (gameState.currentPlayer === 1) {
+            turnIndicator.style.backgroundImage = "url('assets/player1-icon.png')";
+            turnStatus.textContent = "Player 1's Turn";
         } else {
-            player2Area.appendChild(indicator);
+            turnIndicator.style.backgroundImage = "url('assets/player2-icon.png')";
+            turnStatus.textContent = "Player 2's Turn";
         }
     }
 
@@ -348,7 +350,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Initial setup
     setupGame();
-    updateTurnIndicator(gameState.currentPlayer);
+    updateTurnIndicator();
 
     // End Turn button functionality
     endTurnBtn.addEventListener("click", () => {
@@ -359,7 +361,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         gameState.currentPlayer = nextPlayer;
         resetActions(gameState.currentPlayer);
-        updateTurnIndicator(gameState.currentPlayer);
+        updateTurnIndicator();
         clearHighlights();
         updateDeckCounts();
         renderHand(nextPlayer);
@@ -492,3 +494,38 @@ function checkWinCondition() {
 // Add click events for the decks and set cardback image
 deckPlayer1.style.backgroundImage = "url('assets/cardback.png')";
 deckPlayer2.style.backgroundImage = "url('assets/cardback.png')";
+
+function placeCardOnBoard(player, cardIndex, slotId) {
+    const card = gameState.hands[player][cardIndex];
+    const slot = document.getElementById(slotId);
+    
+    // Create card element
+    const cardElement = document.createElement("div");
+    cardElement.classList.add("card");
+    cardElement.style.backgroundImage = `url('${card.image}')`;
+    cardElement.setAttribute('data-player', player);
+    
+    // Apply rotation directly for Player 2's cards
+    if (player === 2) {
+        cardElement.style.transform = 'rotate(180deg)';
+        cardElement.style.webkitTransform = 'rotate(180deg)'; // For Safari support
+        cardElement.style.mozTransform = 'rotate(180deg)'; // For Firefox support
+    }
+    
+    // Clear the slot and add the card
+    slot.innerHTML = '';
+    slot.appendChild(cardElement);
+    
+    // Update game state
+    gameState.hands[player].splice(cardIndex, 1);
+    gameState.board[slotId] = { ...card, player: player };
+    gameState.hasSummoned[player] = true;
+    
+    // Update UI
+    renderHand(player);
+    updateSummonableCards();
+    calculateLaneControl();
+    
+    // Hide action menu
+    hideActionMenu();
+}

@@ -139,37 +139,20 @@ body {
 }
 
 .turn-status {
-    display: none;
+    position: absolute;
+    right: -120px;
+    top: 40%;
+    color: #ffd700;
+    text-align: right;
+    white-space: nowrap;
 }
 
 .turn-indicator {
-    width: 80px;
-    height: 80px;
-    background-image: url('assets/player-icon.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    box-shadow: 0 0 15px #ffd700;
     position: absolute;
-    z-index: 10;
-}
-
-.turn-indicator.player1 {
-    background-image: url('assets/player1-icon.png');
-}
-
-.turn-indicator.player2 {
-    background-image: url('assets/player2-icon.png');
-}
-
-.player-1-area .turn-indicator {
-    right: -100px;
-    bottom: 120px;
-}
-
-.player-2-area .turn-indicator {
-    right: -100px;
-    top: 120px;
+    right: -50px;
+    top: 40%;
+    width: 50px;
+    height: 50px;
 }
 
 button {
@@ -184,11 +167,6 @@ button {
 
 button:hover {
     background-color: #888;
-}
-
-button#end-turn-btn {
-    display: block;
-    margin: 5px auto;
 }
 
 .card {
