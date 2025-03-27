@@ -111,9 +111,11 @@ document.addEventListener("DOMContentLoaded", () => {
     function drawCards(player, count) {
         for (let i = 0; i < count; i++) {
             if (gameState.decks[player].length > 0) {
-                const card = gameState.decks[player].pop();
-                gameState.hands[player].push(card);
-                addLogEntry(`Player ${player} drew a card`, player);
+                const card = gameState.decks[player].shift(); // Always draw from the top (front) of the deck
+                const cardToHand = {...card}; // Create a copy of the card
+                cardToHand.player = player; // Ensure player ownership
+                gameState.hands[player].push(cardToHand);
+                addLogEntry(`Player ${player} drew ${cardToHand.name}`, player);
             }
         }
         updateDeckCounts();
@@ -166,7 +168,7 @@ document.addEventListener("DOMContentLoaded", () => {
         crystalZoneElement.querySelectorAll(".card").forEach(card => card.remove());
         const cards = gameState.crystalZones[player];
     
-        cards.forEach(card => {
+        cards.forEach((card, index) => {
             const cardElement = document.createElement("div");
             cardElement.classList.add("card");
             cardElement.style.backgroundImage = `url('${card.image}')`;
@@ -174,6 +176,7 @@ document.addEventListener("DOMContentLoaded", () => {
             cardElement.style.height = "140px";
             cardElement.addEventListener("mouseover", () => showCardPreview(card));
             cardElement.addEventListener("mouseout", hideCardPreview);
+            cardElement.addEventListener("click", () => showCardInPlayMenu(player, card, cardElement, "crystalZone", index));
             crystalZoneElement.appendChild(cardElement);
         });
     }
@@ -209,6 +212,7 @@ function renderBoard() {
 
                     cardElement.addEventListener("mouseover", () => showCardPreview(card));
                     cardElement.addEventListener("mouseout", hideCardPreview);
+                    cardElement.addEventListener("click", () => showCardInPlayMenu(card.player, card, cardElement, "board", `slot-${row}-${col}`));
                     slot.appendChild(cardElement);
                 }
             }
@@ -464,6 +468,11 @@ function summonCard(player, cardIndex, row, col) {
 
     // Show context menu for cards in the Crystal Zone or on the board
     function showCardInPlayMenu(player, card, cardElement, location, index) {
+        if (player !== gameState.currentPlayer) {
+            return; // Silently ignore if it's not the player's turn
+        }
+
+        // Remove any existing menus first
         document.querySelectorAll(".action-menu").forEach(menu => menu.remove());
 
         const menu = document.createElement("div");
@@ -477,17 +486,28 @@ function summonCard(player, cardIndex, row, col) {
         const returnToHandBtn = document.createElement("button");
         returnToHandBtn.textContent = "Return to Hand";
         returnToHandBtn.addEventListener("click", () => {
+            menu.remove(); // Remove menu first
             returnToHand(player, card, location, index);
-            menu.remove();
         });
         menu.appendChild(returnToHandBtn);
+
+        // Crystallize (only for cards on the board)
+        if (location === "board") {
+            const crystallizeBtn = document.createElement("button");
+            crystallizeBtn.textContent = "Crystallize";
+            crystallizeBtn.addEventListener("click", () => {
+                menu.remove(); // Remove menu first
+                crystallizeCardFromBoard(player, card, index);
+            });
+            menu.appendChild(crystallizeBtn);
+        }
 
         // Move to Top of Deck
         const moveToTopBtn = document.createElement("button");
         moveToTopBtn.textContent = "Move to Top of Deck";
         moveToTopBtn.addEventListener("click", () => {
+            menu.remove(); // Remove menu first
             moveToDeck(player, card, location, index, "top");
-            menu.remove();
         });
         menu.appendChild(moveToTopBtn);
 
@@ -495,64 +515,124 @@ function summonCard(player, cardIndex, row, col) {
         const moveToBottomBtn = document.createElement("button");
         moveToBottomBtn.textContent = "Move to Bottom of Deck";
         moveToBottomBtn.addEventListener("click", () => {
+            menu.remove(); // Remove menu first
             moveToDeck(player, card, location, index, "bottom");
-            menu.remove();
         });
         menu.appendChild(moveToBottomBtn);
 
         document.body.appendChild(menu);
         menu.style.display = "block";
 
-        document.addEventListener("click", function closeMenu(event) {
+        // Add a click handler to the document that will be removed when the menu is closed
+        function closeMenuHandler(event) {
             if (!menu.contains(event.target) && event.target !== cardElement) {
                 menu.remove();
-                document.removeEventListener("click", closeMenu);
+                document.removeEventListener("click", closeMenuHandler);
             }
+        }
+
+        // Add the event listener with a slight delay to prevent immediate triggering
+        setTimeout(() => {
+            document.addEventListener("click", closeMenuHandler);
+        }, 0);
+    }
+
+    // Add new function to crystallize a card from the board
+    function crystallizeCardFromBoard(player, card, slotId) {
+        // Remove all action menus first
+        document.querySelectorAll(".action-menu").forEach(menu => menu.remove());
+
+        const [_, row, col] = slotId.split('-');
+        const position = slotToChessNotation(slotId);
+        gameState.board[parseInt(row)][parseInt(col)] = null;
+        
+        let cardToCrystallize = {...card}; // Create a copy of the card
+        gameState.crystalZones[player].push(cardToCrystallize);
+
+        cardToCrystallize.realms.forEach(realm => {
+            gameState.realmCounts[player][realm]++;
         });
+
+        renderBoard();
+        renderCrystalZone(player);
+        calculateLaneControl();
+        addLogEntry(`Player ${player} moved ${cardToCrystallize.name} from ${position} to Crystal Zone`, player);
     }
 
     // Return a card to the player's hand
     function returnToHand(player, card, location, index) {
+        let cardToReturn = {...card}; // Create a copy of the card
+        cardToReturn.player = player; // Ensure player ownership is preserved
+
         if (location === "crystalZone") {
             gameState.crystalZones[player].splice(index, 1);
             // Update realm counts
-            card.realms.forEach(realm => {
+            cardToReturn.realms.forEach(realm => {
                 gameState.realmCounts[player][realm]--;
             });
             renderCrystalZone(player);
+            gameState.hands[player].push(cardToReturn);
+            renderHand(player);
+            addLogEntry(`Player ${player} returned ${cardToReturn.name} from Crystal Zone to hand`, player);
         } else if (location === "board") {
-            const [_, row, col] = index.split('-'); // index is slotId like "slot-0-0"
-            gameState.board[row][col] = null;
+            const [_, row, col] = index.split('-');
+            const position = slotToChessNotation(index);
+            gameState.board[parseInt(row)][parseInt(col)] = null;
+            gameState.hands[player].push(cardToReturn);
             renderBoard();
+            renderHand(player);
             calculateLaneControl();
+            addLogEntry(`Player ${player} returned ${cardToReturn.name} from ${position} to hand`, player);
         }
-        gameState.hands[player].push(card);
-        renderHand(player);
-        addLogEntry(`Player ${player} returned ${card.name} to hand from ${location}`, player);
     }
 
     // Move a card to the player's deck (top or bottom)
-    function moveToDeck(player, card, location, index, position) {
+    function moveToDeck(player, card, location, index, deckPosition) {
+        // Create a deep copy of the card with all properties
+        let cardToMove = JSON.parse(JSON.stringify(card));
+        cardToMove.player = player;
+
         if (location === "crystalZone") {
+            // Remove from crystal zone
             gameState.crystalZones[player].splice(index, 1);
-            // Update realm counts
-            card.realms.forEach(realm => {
+            cardToMove.realms.forEach(realm => {
                 gameState.realmCounts[player][realm]--;
             });
             renderCrystalZone(player);
+            
+            // Add to deck
+            if (deckPosition === "top") {
+                gameState.decks[player].unshift(cardToMove);
+            } else {
+                gameState.decks[player].push(cardToMove);
+            }
+            updateDeckCounts();
+            addLogEntry(`Player ${player} moved ${cardToMove.name} from Crystal Zone to the ${deckPosition} of their deck`, player);
         } else if (location === "board") {
-            const [_, row, col] = index.split('-'); // index is slotId like "slot-0-0"
-            gameState.board[row][col] = null;
+            // Parse board position
+            const [_, row, col] = index.split('-');
+            const boardPosition = slotToChessNotation(index);
+            
+            // Remove from board
+            gameState.board[parseInt(row)][parseInt(col)] = null;
+            
+            // Add to deck
+            if (deckPosition === "top") {
+                gameState.decks[player].unshift(cardToMove);
+            } else {
+                gameState.decks[player].push(cardToMove);
+            }
+            
+            // Update UI
             renderBoard();
+            updateDeckCounts();
             calculateLaneControl();
+            
+            addLogEntry(`Player ${player} moved ${cardToMove.name} from ${boardPosition} to the ${deckPosition} of their deck`, player);
         }
-        if (position === "top") {
-            gameState.decks[player].unshift(card);
-        } else {
-            gameState.decks[player].push(card);
-        }
-        updateDeckCounts();
-        addLogEntry(`Player ${player} moved ${card.name} to ${position} of deck from ${location}`, player);
+
+        // Debug log
+        console.log(`Deck after move (${player}):`, JSON.stringify(gameState.decks[player]));
     }
 
 }); // Close the DOMContentLoaded event listener
