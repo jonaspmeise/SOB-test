@@ -449,3 +449,38 @@ button:hover {
 .highlight-controls button:hover {
     background-color: #888;
 }
+
+/* Crystalborn ability styling */
+.crystalborn-highlight {
+    border: 3px solid purple !important;
+    box-shadow: 0 0 15px rgba(138, 43, 226, 0.9) !important;
+    z-index: 5;
+    position: relative;
+    animation: crystalborn-slot-pulse 1.5s infinite;
+}
+
+@keyframes crystalborn-slot-pulse {
+    0% { box-shadow: 0 0 10px rgba(138, 43, 226, 0.7) !important; }
+    50% { box-shadow: 0 0 20px rgba(138, 43, 226, 1) !important; }
+    100% { box-shadow: 0 0 10px rgba(138, 43, 226, 0.7) !important; }
+}
+
+button.crystalborn-btn {
+    background-color: #8a2be2;
+    color: white;
+}
+
+button.crystalborn-btn:hover {
+    background-color: #9b30ff;
+}
+
+.card.crystalborn-active {
+    border: 2px solid purple;
+    animation: crystalborn-pulse 1.5s infinite;
+}
+
+@keyframes crystalborn-pulse {
+    0% { box-shadow: 0 0 5px rgba(138, 43, 226, 0.7); }
+    50% { box-shadow: 0 0 15px rgba(138, 43, 226, 0.9); }
+    100% { box-shadow: 0 0 5px rgba(138, 43, 226, 0.7); }
+}

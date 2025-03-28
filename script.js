@@ -199,13 +199,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (crystal.realms.length === 1 && crystal.realms[0] === requiredRealm) {
                     usedCrystalIds.add(crystal.id);
                     availableCount++;
-                    console.log(`Used single-realm ${requiredRealm} crystal. Count: ${availableCount}/${requiredCount}`);
                     
-                    if (availableCount >= requiredCount) break; // We have enough
+                    if (availableCount >= requiredCount) {
+                        break; // We've satisfied this realm requirement
+                    }
                 }
             }
             
-            // If we still need more, try to use multi-realm cards that include this realm
+            // If we still need more of this realm, try using multi-realm cards
             if (availableCount < requiredCount) {
                 for (const crystal of crystalCards) {
                     if (usedCrystalIds.has(crystal.id)) continue; // Skip if already used
@@ -214,45 +215,48 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (crystal.realms.length > 1 && crystal.realms.includes(requiredRealm)) {
                         usedCrystalIds.add(crystal.id);
                         availableCount++;
-                        console.log(`Used multi-realm crystal containing ${requiredRealm}. Count: ${availableCount}/${requiredCount}`);
                         
-                        if (availableCount >= requiredCount) break; // We have enough
+                        if (availableCount >= requiredCount) {
+                            break; // We've satisfied this realm requirement
+                        }
                     }
                 }
             }
             
-            // Check if we have enough
+            // Check if we met the requirement
             if (availableCount < requiredCount) {
-                console.log(`Not enough ${requiredRealm}. Have ${availableCount}, need ${requiredCount}`);
-                return false; // Not enough of this realm
-            }
-        }
-        
-        // Handle colorless requirements
-        const colorlessRequired = requirements.Colorless || 0;
-        if (colorlessRequired > 0) {
-            console.log(`Checking colorless requirement: ${colorlessRequired}`);
-            let remainingColorless = colorlessRequired;
-            
-            // Use remaining unused crystals for colorless requirements
-            for (const crystal of crystalCards) {
-                if (usedCrystalIds.has(crystal.id)) continue; // Skip if already used
-                
-                usedCrystalIds.add(crystal.id);
-                remainingColorless--;
-                console.log(`Used a crystal for colorless requirement. Remaining: ${remainingColorless}`);
-                
-                if (remainingColorless <= 0) break; // We have enough
+                console.log(`Requirement not met: Need ${requiredCount} ${requiredRealm}, have ${availableCount}`);
+                return false; // Not enough crystals for this realm
             }
             
-            if (remainingColorless > 0) {
-                console.log(`Not enough crystals for colorless requirements. Need ${remainingColorless} more`);
-                return false; // Not enough crystals for colorless requirements
-            }
+            console.log(`Requirement met: ${requiredRealm}`);
         }
         
-        console.log(`Player ${player} CAN summon ${card.name}!`);
+        // Handle Colorless requirements separately (any realm can be used)
+        if (requirements.Colorless) {
+            const colorlessRequired = requirements.Colorless;
+            console.log(`Checking Colorless requirement: ${colorlessRequired}`);
+            
+            const remainingCrystals = crystalCards.filter(crystal => !usedCrystalIds.has(crystal.id));
+            
+            if (remainingCrystals.length < colorlessRequired) {
+                console.log(`Not enough remaining crystals for Colorless requirement: 
+                    Need ${colorlessRequired}, have ${remainingCrystals.length}`);
+                return false;
+            }
+            
+            console.log(`Colorless requirement met`);
+        }
+        
+        console.log(`Card ${card.name} can be summoned by player ${player}`);
         return true;
+    }
+
+    // Check if a card can be summoned directly from the Crystal Zone (Crystalborn ability)
+    // Crystallized cards don't need to meet crystal requirements again
+    function canCrystalbornSummon(player) {
+        // The player only needs to have at least one card in their Crystal Zone that isn't buried
+        return gameState.crystalZones[player].some(card => !card.isBuried);
     }
 
     function renderHand(player) {
@@ -619,6 +623,12 @@ function clearHighlights() {
         window.currentMoveCard = null;
     }
     
+    // Clear Crystalborn state if it exists
+    if (window.crystalbornSummon) {
+        console.log("Clearing global Crystalborn tracking");
+        window.crystalbornSummon = null;
+    }
+    
     for (let row = 0; row < 4; row++) {
         for (let col = 0; col < 5; col++) {
             const slot = document.getElementById(`slot-${row}-${col}`);
@@ -632,6 +642,7 @@ function clearHighlights() {
             slot.style.border = "";
             slot.style.cursor = "";
             slot.style.boxShadow = "";
+            slot.classList.remove("crystalborn-highlight");
             
             // IMPORTANT: Remove any direct click handlers
             slot.onclick = null;
@@ -652,6 +663,11 @@ function clearHighlights() {
                 slot._moveHandler = null;
             }
             
+            if (slot._crystalbornHandler) {
+                slot.removeEventListener("click", slot._crystalbornHandler);
+                slot._crystalbornHandler = null;
+            }
+            
             // Clean up global handlers
             if (window[`summon_${row}_${col}`]) {
                 window[`summon_${row}_${col}`] = null;
@@ -663,8 +679,11 @@ function clearHighlights() {
         }
     }
     
-    // Remove any document-level handlers for move cancellation
+    // Remove any document-level handlers for cancellation
     document.removeEventListener("click", cancelMoveHandler);
+    document.removeEventListener("click", cancelCrystalbornHandler);
+    
+    console.log("Board highlights and handlers cleared");
 }
 
 // Summon a card to the board
@@ -853,6 +872,19 @@ function summonCard(player, cardIndex, row, col) {
         menu.style.left = `${rect.right + 5}px`;
         menu.style.top = `${rect.top}px`;
 
+        // Crystalborn (only for cards in the Crystal Zone that aren't buried)
+        if (location === "crystalZone" && !card.isBuried) {
+            const crystalbornBtn = document.createElement("button");
+            crystalbornBtn.textContent = "Crystalborn";
+            crystalbornBtn.classList.add("crystalborn-btn");
+            crystalbornBtn.addEventListener("click", () => {
+                console.log("Crystalborn clicked for:", card.name, "at index", index);
+                menu.remove(); // Remove menu first
+                startCrystalbornSummon(player, card, index);
+            });
+            menu.appendChild(crystalbornBtn);
+        }
+
         // Return to Hand
         const returnToHandBtn = document.createElement("button");
         returnToHandBtn.textContent = "Return to Hand";
@@ -945,7 +977,7 @@ function summonCard(player, cardIndex, row, col) {
         }, 0);
     }
 
-    // Add new function to crystallize a card from the board
+    // Crystallize a card from the board
     function crystallizeCardFromBoard(player, card, slotId) {
         // Remove all action menus first
         document.querySelectorAll(".action-menu").forEach(menu => menu.remove());
@@ -965,6 +997,166 @@ function summonCard(player, cardIndex, row, col) {
         renderCrystalZone(player);
         calculateLaneControl();
         addLogEntry(`Player ${player} moved a card from ${position} to Crystal Zone`, player);
+    }
+
+    // Start the Crystalborn process to summon a card from Crystal Zone to the board
+    function startCrystalbornSummon(player, card, crystalIndex) {
+        console.log(`Starting Crystalborn summon for player ${player} with card ${card.name}`);
+        
+        // Remove any existing menus
+        document.querySelectorAll(".action-menu").forEach(menu => menu.remove());
+        
+        // Set global state to track which card is being summoned
+        window.crystalbornSummon = {
+            player: player,
+            card: card,
+            crystalIndex: crystalIndex
+        };
+        
+        // Highlight empty slots for summoning
+        highlightEmptySlotsForCrystalborn(player);
+    }
+    
+    // Highlight empty slots for Crystalborn summoning
+    function highlightEmptySlotsForCrystalborn(player) {
+        const highlightColor = player === 1 ? "rgba(255, 0, 0, 0.2)" : "rgba(0, 0, 255, 0.2)";
+        console.log(`Highlighting empty slots for Crystalborn summon by player ${player}`);
+        
+        let foundEmptySlots = 0;
+        
+        for (let row = 0; row < 4; row++) {
+            for (let col = 0; col < 5; col++) {
+                if (!gameState.board[row][col]) {
+                    foundEmptySlots++;
+                    const slot = document.getElementById(`slot-${row}-${col}`);
+                    if (!slot) {
+                        console.error(`Could not find DOM element for slot-${row}-${col}`);
+                        continue;
+                    }
+                    
+                    // Style for highlighting
+                    slot.style.backgroundColor = highlightColor;
+                    slot.classList.add("crystalborn-highlight");
+                    slot.style.cursor = "pointer";
+                    
+                    // Remove any existing handlers
+                    if (slot._crystalbornHandler) {
+                        slot.removeEventListener("click", slot._crystalbornHandler);
+                    }
+                    
+                    // Store board position directly on the slot for easier access
+                    slot.dataset.row = row;
+                    slot.dataset.col = col;
+                    
+                    // Create direct onclick handler for more reliability
+                    slot.onclick = function(event) {
+                        console.log(`Direct onclick handler fired for slot-${row}-${col}`);
+                        
+                        // Stop propagation to prevent the cancel handler from firing
+                        event.stopPropagation();
+                        
+                        // Check if crystalborn state exists
+                        if (!window.crystalbornSummon) {
+                            console.error("Crystalborn state not found!");
+                            return;
+                        }
+                        
+                        console.log(`Executing Crystalborn summon to slot-${row}-${col}`);
+                        
+                        crystalbornSummonToBoard(
+                            window.crystalbornSummon.player, 
+                            window.crystalbornSummon.card, 
+                            window.crystalbornSummon.crystalIndex, 
+                            row, 
+                            col
+                        );
+                    };
+                }
+            }
+        }
+        
+        console.log(`Highlighted ${foundEmptySlots} empty slots for Crystalborn summoning`);
+        
+        // Add click handler to cancel summoning when clicking outside a slot
+        // Use a timeout to ensure this runs after the current click event
+        setTimeout(() => {
+            document.addEventListener("click", cancelCrystalbornHandler);
+        }, 100);
+    }
+    
+    // Handler to cancel Crystalborn summoning when clicking outside of valid slots
+    function cancelCrystalbornHandler(event) {
+        console.log("Cancel Crystalborn handler triggered by:", event.target);
+        
+        // Check if the click is on a slot or something inside a slot
+        const isSlot = event.target.classList.contains("slot") || 
+                      event.target.closest(".slot") !== null;
+                      
+        // Cancel if clicked outside of a slot
+        if (!isSlot) {
+            console.log("Cancelling Crystalborn summon - click was outside a slot");
+            clearHighlights();
+            window.crystalbornSummon = null;
+            document.removeEventListener("click", cancelCrystalbornHandler);
+        } else {
+            console.log("Not cancelling - click was on a slot");
+        }
+    }
+    
+    // Execute the Crystalborn summon from Crystal Zone to the board
+    function crystalbornSummonToBoard(player, card, crystalIndex, row, col) {
+        console.log(`Crystalborn summon: Player ${player} summons ${card.name} from Crystal Zone to position (${row}, ${col})`);
+        
+        // Make sure the slot is valid and empty
+        if (row < 0 || row >= 4 || col < 0 || col >= 5) {
+            console.error(`Invalid board position: (${row}, ${col})`);
+            return;
+        }
+        
+        // Check if the target slot is empty
+        if (gameState.board[row][col]) {
+            console.error(`Target slot (${row}, ${col}) is already occupied`);
+            return;
+        }
+        
+        try {
+            // Remove card from Crystal Zone
+            gameState.crystalZones[player].splice(crystalIndex, 1);
+            
+            // Update realm counts
+            card.realms.forEach(realm => {
+                gameState.realmCounts[player][realm]--;
+            });
+            
+            // Create a copy for the board
+            const cardCopy = {...card};
+            cardCopy.player = player;
+            cardCopy.boardRow = row;
+            cardCopy.boardCol = col;
+            
+            // Add to board
+            gameState.board[row][col] = cardCopy;
+            
+            console.log(`Successfully summoned ${card.name} to (${row}, ${col})`);
+            
+            // Clean up
+            clearHighlights();
+            window.crystalbornSummon = null;
+            document.removeEventListener("click", cancelCrystalbornHandler);
+            
+            // Update UI
+            renderBoard();
+            renderCrystalZone(player);
+            calculateLaneControl();
+            
+            // Add log entry
+            const position = slotToChessNotation(`slot-${row}-${col}`);
+            addLogEntry(`Player ${player} used Crystalborn to summon ${card.name} from Crystal Zone to ${position}`, player);
+            
+            console.log("Crystalborn summoning completed successfully");
+        } catch (error) {
+            console.error("Error during Crystalborn summoning:", error);
+        }
     }
 
     // Return a card to the player's hand
