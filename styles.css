@@ -157,7 +157,7 @@ TODO
     color: #fff;
 }
 
-.slot:hover, .deck:hover, .card:hover {
+.slot:hover, .deck:hover, .card:hover, .crystalzone:hover {
     border-color: goldenrod;
     border-style: solid;
     cursor: pointer;
@@ -212,10 +212,12 @@ button {
     margin-right: 5px;
 }
 
-.slot .card {
+.slot, .card {
     width: 80px;
     height: 112px;
     margin: 0;
+    background-size: cover;
+    background-position: center;
 }
 
 .decks-area {
@@ -336,4 +338,9 @@ button {
     row-gap: 5px;
     margin-left: 5px;
     margin-top: 5px;
+}
+
+.highlight {
+    border-color: aqua;
+    border-width: 4px;
 }

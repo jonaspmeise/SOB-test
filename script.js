@@ -23,20 +23,18 @@ const identify = (obj, types, name) => {
 };
 
 const createPlayerDefaultSettings = (name) => {
-    const createOwnedContainer = (id, name, type) => {
+    const createOwnedContainer = (id) => {
         const container = [];
         container.owner$ = id;
-        container.name = `${name}'s ${type}`;
 
+        console.error(`CONTAINER`, container);
         return container;
-    }
+    };
 
-    let player = identify({}, ['player']);
-    player = {...player, 
-        name: name,
-        toString: () => name,
-        deck: identify(createOwnedContainer(player.id), ['deck'], `${name}'s Deck`),
-        hand: identify(createOwnedContainer(player.id), ['hand'], `${name}'s Deck`),
+    let player = identify({}, ['player'], name);
+    player = {...player,
+        deck$: identify(createOwnedContainer(player.id), ['deck'], `${name}'s Deck`),
+        hand$: identify(createOwnedContainer(player.id), ['hand'], `${name}'s Hand`),
         crystalZone: identify({
             cards: [],
             realmCounts: {
@@ -71,7 +69,7 @@ const log = (text, fancy = false) => {
 
 // Do an entire tick of the game state - update the view, actions, ...
 const tick = () => {
-    console.log('...tack');
+    console.log('...tack', state);
 
     // Render state.
     render(state);
@@ -79,13 +77,13 @@ const tick = () => {
     // Calculate action space for both players.
     state.actions = [
         // If an action like that is "found", update the UI for it, too.
-        {actor: 32, type: 'draw', args: [32]},
+        {actor: 32, type: 'draw', args: [null, 30]},
         {actor: 66, type: 'summon', args: [32, 66, 15]},
         {actor: 66, type: 'summon', args: [32, 66, 16]},
         {actor: 66, type: 'summon', args: [32, 66, 17]},
         {actor: 66, type: 'summon', args: [32, 66, 18]},
         {actor: 66, type: 'summon', args: [32, 66, 19]},
-        {actor: 66, type: 'summon', args: [32, 66, 20]}
+        {actor: 66, type: 'crystallize', args: [32, 66, 32]}
     ];
 
     console.info('Current action space:', state.actions);
@@ -103,9 +101,40 @@ const hideCardPreview = () => {
 };
 
 // TODO: AI should simply do a random action from its action space, whenever feasible.
+// TODO: This should be an Object with Type -> Args, but for now we only accept single types.
+let handleContextArguments = null;
 const handleInteraction = (id) => {
     const component = componentMap.get(id);
     log(`${state.currentPlayer} interacted with ${component} (#${id})`, true);
+
+    // We check whether this interaction has finalized a choice of previous action suggestions.
+    if(handleContextArguments != null) {
+        if(handleContextArguments.resolving.includes(id)) {
+            console.info('Finalized choice!');
+
+            const parameters = handleContextArguments.choices
+                .map(p => {
+                    if(!Array.isArray(p)) {
+                        return p;
+                    }
+
+                    if(p.includes(id)) {
+                        return id;
+                    }
+
+                    console.error(`WTF?? Context Choice was ${id}, but couldn't resolve! Context:`, handleContextArguments);
+                    throw new Error('????');
+                });
+
+            actions[handleContextArguments.type](...parameters);
+            handleContextArguments = null;
+            return;
+        } else {
+            // Reset context and disable highlight!
+            handleContextArguments = null;
+            document.querySelectorAll('.highlight').forEach(e => e.classList.remove('highlight'));
+        }
+    }
 
     console.debug('Before filtering actions:', component.types, state.actions);
     const possibleActions = state.actions
@@ -119,13 +148,15 @@ const handleInteraction = (id) => {
             console.debug('Action debug #2: ', id, action.args);
             return action.args.includes(id);
         });
-        // TODO: Filter only one's own actions!
+        // TODO: Filter only one's own actions (player)!
 
     console.debug('After filtering actions:', possibleActions);
 
     if(possibleActions.length == 1) {
         const action = possibleActions[0];
 
+        // Reset handle context.
+        handleContextArguments = null;
         // Execute chosen action.
         actions[action.type](...action.args);
     } else {
@@ -133,8 +164,49 @@ const handleInteraction = (id) => {
             console.warn(`No actions for ${id} available!`);
         } else {
             console.debug('Possible actions for selected Component:', possibleActions);
+
+            const possibleActionTypes = [...new Set(possibleActions.map(action => action.type))];
+            console.info('Possible action types:', possibleActionTypes);
+
+            if(possibleActionTypes > 1) {
+                logger.error(`Not implemented selecting different action types!`);
+                return;
+            }
+
+            const targetAction = possibleActionTypes[0];
+
+            // TODO: Filter out for different action types.
+            // TODO: SAVE CONSTANT VALUES IN CONTEXT.
             // Find "spread" of components to calculate the possible selection from.
-            
+            const context = possibleActions
+                .map(action => action.args)
+                .reduce((prev, current) => {
+                    if(prev.length === 0) {
+                        return current.map(v => [v]);
+                    }
+
+                    return prev.map((v, i) => [...v, current[i]]);
+                } ,[])
+                // If there is no "real" choice for a certain parameter, that is good!
+                // Otherwise we map all choices into an array.
+                .map(choice => {
+                    if(new Set(choice).size === 1) {
+                        return choice[0];
+                    }
+
+                    return choice;
+                });
+
+            const choices = context
+                .filter(parameter => Array.isArray(parameter))
+                .flat();
+            // Update all "chooseable" elements in the UI.
+            choices
+                .forEach(id => {
+                    const element = document.getElementById(id);
+                    element.classList.add('highlight');
+                });
+            handleContextArguments = {type: targetAction, choices: context, resolving: choices};
         }
     }
 };
@@ -163,37 +235,27 @@ const render = (model) => {
     // Cards on Board.
     model.board.slots.forEach(slot => {
         // TODO: Only render when element doesn't yet exist.
-        if(document.getElementById(slot.id) != null) {
-            return;
+        let slotElement = document.getElementById(slot.id);
+
+        const renderCardArtFunction = () => slot.card === undefined ? null : `url('${resolveCardArt(slot.card.Name)}')`;
+        if(slotElement == null) {
+            slotElement = document.createElement('div');
+            slotElement.classList.add('slot');
+            slotElement.id = slot.id;
+
+            slotElement.addEventListener('click', () => handleInteraction(slot.id));
+            slotElement.addEventListener('mouseover', renderCardArtFunction);
+    
+            document.getElementById('game-board').appendChild(slotElement);
         }
 
-        const slotElement = document.createElement('div');
-        slotElement.classList.add('slot');
-        slotElement.id = slot.id;
-
-        slotElement.addEventListener('click', () => handleInteraction(slot.id));
-        slotElement.addEventListener('mouseover', () => slot.card === undefined ? null : showCardPreview(imageUrl));
-        slotElement.addEventListener('drop', (e) => {
-            e.preventDefault();
-            const draggedId = e.dataTransfer.getData('text/plain');
-            // TODO: Handle interaction
-            console.info(`${componentMap.get(draggedId)} was dragged onto ${slot}`);
-        });
-        slotElement.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            slotElement.classList.add('drag-over');
-        });
-        slotElement.addEventListener('dragleave', (e) => {
-            slotElement.classList.remove('drag-over');
-        });
-
-        document.getElementById('game-board').appendChild(slotElement);
+        console.log(slot.card);
+        slotElement.style.backgroundImage = renderCardArtFunction();
     });
 
     // Deck.
     model.players.forEach((player, i) => {
-        const deckId = player.deck.id;
+        const deckId = player.deck$.id;
         // TODO: Only render when element doesn't yet exist.
         if(document.getElementById(deckId) != null) {
             return;
@@ -253,20 +315,6 @@ const render = (model) => {
         crystalZoneElement.id = crystalZoneId;
         crystalZoneElement.classList.add('crystalzone', `player${i + 1}-crystalzone`);
         crystalZoneElement.addEventListener('click', () => handleInteraction(crystalZoneId));
-        crystalZoneElement.addEventListener('drop', (e) => {
-            e.preventDefault();
-            const draggedId = e.dataTransfer.getData('text/plain');
-            // TODO: Handle interaction
-            console.info(`${componentMap.get(draggedId)} was dragged onto ${slot}`);
-        });
-        crystalZoneElement.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            crystalZoneElement.classList.add('drag-over');
-        });
-        crystalZoneElement.addEventListener('dragleave', (e) => {
-            crystalZoneElement.classList.remove('drag-over');
-        });
 
         const playerArea = document.getElementById(`player${i + 1}-area`);
         playerArea.appendChild(crystalZoneElement);
@@ -274,7 +322,7 @@ const render = (model) => {
 
     // Hand.
     model.players.forEach((player, i) => {
-        const handId = player.hand.id;
+        const handId = player.hand$.id;
 
         if(document.getElementById(handId) != null) {
             return;
@@ -290,38 +338,42 @@ const render = (model) => {
     
     // Cards in Hand.
     model.players.forEach(player => {
-        const hand = document.getElementById(player.hand.id);
+        const handElement = document.getElementById(player.hand$.id);
 
-        player.hand.forEach(card => {
+        // Remove no longer referenced nodes in the DOM, if the model doesn't hold the card anymore.
+        const handCardElementsToRemove = [
+                ...document.getElementById(player.hand$.id)
+                .childNodes
+                .values()
+            ]
+            .filter(node => !player.hand$.includes(+node.id));
+        console.log(handCardElementsToRemove, player.hand$);
+
+        player.hand$.forEach(cardId => {
+            const card = componentMap.get(cardId);
             const imageUrl = `url('${resolveCardArt(card.Name)}')`;
 
             // TODO: Only render when element doesn't yet exist.
-            if(document.getElementById(card.id) != null) {
-                return;
+            let cardElement = document.getElementById(cardId);
+            if(cardElement == null) {
+                cardElement = document.createElement('div');
+                cardElement.classList.add('card');
+                cardElement.id = cardId;
+
+                cardElement.addEventListener('mouseover', () => showCardPreview(imageUrl));
+                cardElement.addEventListener('click', () => handleInteraction(cardId));
+                
+                handElement.appendChild(cardElement);
             }
 
-            const cardElement = document.createElement('div');
-            cardElement.classList.add('card');
             cardElement.style.backgroundImage = imageUrl;
-            cardElement.id = card.id;
-
-            cardElement.addEventListener('mouseover', () => showCardPreview(imageUrl));
-            cardElement.addEventListener('click', () => handleInteraction(card.id));
-            cardElement.addEventListener('dragstart', (e) => {
-                console.log(`Starting to drag ${card}`);
-                // TODO: Highlight possible target DOM elements.
-                e.dataTransfer.setData('text/plain', card.id);
-                e.dataTransfer.effectAllowed = 'move';
-            });
-
-            hand.appendChild(cardElement);
         });
     });
 
     model.players.forEach((player, i) => {       
         const deckArea = document.getElementById(`deck-area-player${i + 1}`)
 
-        const deckId = player.deck.id;
+        const deckId = player.deck$.id;
         if(document.getElementById(deckId) == null) {
             const deckElement = document.createElement('div');
             deckElement.classList.add('deck');
@@ -342,7 +394,7 @@ const render = (model) => {
             deckArea.appendChild(deckCounterElement);
         }
         // Always update this value!
-        deckCounterElement.textContent = player.deck.length;
+        deckCounterElement.textContent = player.deck$.length;
     });
 
 };
@@ -359,7 +411,7 @@ let state = {
                 y: y
             };
 
-            return identify(slot, ['slot'], `Slot ${x}/${y}`);
+            return identify(slot, ['slot'], `Slot ${x + 1}/${y + 1}`);
         })).flat(),
         lanes: [
             // 4 Horizontal Lanes
@@ -387,6 +439,8 @@ let state = {
     actions: []
 };
 
+console.error('STATE', state);
+
 // ACTION DICTIONARY
 const RAW_ACTION_DICTIONARY = {
     draw: {
@@ -396,9 +450,10 @@ const RAW_ACTION_DICTIONARY = {
                 player = componentMap.get(deck.owner$);
             }
 
+            console.error(`DRAW`, player, deck);
             const card = deck.pop();
-            player.hand.push(card);
-            card.location$ = player.hand.id;
+            player.hand$.push(card.id);
+            card.location$ = player.hand$.id;
             
             return [player, deck];
         },
@@ -413,6 +468,7 @@ const RAW_ACTION_DICTIONARY = {
             const previousLocation = componentMap.get(card.location$);
 
             let newReference;
+            console.info(`Removing ${card} from ${previousLocation}`);
             if(Array.isArray(previousLocation)) {
                 newReference = previousLocation.filter(c => c.id != card.id);
             } else {
@@ -426,6 +482,28 @@ const RAW_ACTION_DICTIONARY = {
             return [player, card, slot];
         },
         log: (player, card, slot) => `Player ${player} summoned a ${card} into Slot ${slot}.`,
+        target: 'card'
+    },
+    crystallize: {
+        execute: (player, card) => {
+
+            // Remove card from previous location.
+            const previousLocation = componentMap.get(card.location$);
+
+            let newReference;
+            if(Array.isArray(previousLocation)) {
+                newReference = previousLocation.filter(c => c.id != card.id);
+            } else {
+                newReference = undefined;
+            }
+            // Modify the existing container by rewriting the reference.
+            componentMap.set(card.location$, newReference);
+            
+            card.location$ = player.crystalzone.id;
+
+            return [player, card];
+        },
+        log: (player, card) => `Player ${player} crystallized ${card}.`,
         target: 'card'
     },
 };
@@ -462,7 +540,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const request = await fetch(cardFile);
     const cards = (await request.json())
         .filter(card => card.Set == 1) // Only valid cards from Set 1 should be made into decks.
-        .filter(card => card.Cardtype === 'Unit'); // Only play with Units.
+        .filter(card => card.Cardtype === 'Unit')
+        // FIXME: Remove!
+        .map(card => {
+            return {
+                ...card,
+                Name: 'Ambrosia Bee'
+            }
+        }); // Only play with Units.
 
     log(`Loaded a total of ${cards.length} cards!`, true);
 
@@ -472,7 +557,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const randomCard = cards[Math.floor(Math.random() * cards.length)];
 
             // Add ownership to cards.
-            player.deck.push({...identify(randomCard, ['card'], randomCard.Name), owner$: player.id, location$: player.deck.id});
+            player.deck$.push(identify({...randomCard, owner$: player.id, location$: player.deck$.id}, ['card'], randomCard.Name).id);
         });
     });
 
@@ -483,7 +568,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     state.players.forEach(player => {
         Array(5).fill().forEach(() => {
             console.log(player);
-            actions.draw(null, player.deck);
+            actions.draw(null, player.deck$);
         });
     });
 
