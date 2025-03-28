@@ -8,34 +8,38 @@
 </head>
 <body>
     <div class="game-container">
-        <!-- Player 2's Crystal Zone and Hand -->
-        <div id="player2-area" class="player2-area">
-            <!-- Automatically generate components here. -->
-        </div>
-        
         <!-- Add this inside the game-container, before the deck-player2 -->
         <div class="card-preview" id="card-preview"></div>
 
-        <!-- Deck and Count for Player 2 (left side) -->
-        <div class="deck-area deck-player2">
-            <div class="deck" id="deck-player2"></div>
-            <div class="deck-count" id="deck-count-player2">30</div>
+        <div class="game-center">
+            <!-- Player 2's Crystal Zone and Hand -->
+            <div id="player2-area" class="player2 player2-area">
+                <!-- Automatically generate components here. -->
+            </div>
+
+            <!-- Game Board (4x5 grid) -->
+            <div class="game-board" id="game-board">
+                <!-- Adaptively render elements-->
+            </div>
+            
+            <!-- Player 1's Crystal Zone and Hand -->
+            <div id="player1-area" class="player1 player1-area">
+                <!-- Automatically generate components here. -->
+            </div>
         </div>
 
-        <!-- Game Board (4x5 grid) -->
-        <div class="game-board" id="game-board">
-            <!-- Adaptively render elements-->
-        </div>
+        <div class="decks-area">
+            <!-- Deck and Count for Player 2 (left side) -->
+            <div class="deck-area deck-player2">
+                <div class="deck-count" id="deck-count-player2">30</div>
+                <div class="deck" id="deck-player2"></div>
+            </div>
 
-        <!-- Deck and Count for Player 1 (right side) -->
-        <div class="deck-area deck-player1">
-            <div class="deck" id="deck-player1"></div>
-            <div class="deck-count" id="deck-count-player1">30</div>
-        </div>
-
-        <!-- Player 1's Crystal Zone and Hand -->
-        <div id="player1-area" class="player1-area">
-            <!-- Automatically generate components here. -->
+            <!-- Deck and Count for Player 1 (right side) -->
+            <div class="deck-area deck-player1">
+                <div class="deck" id="deck-player1"></div>
+                <div class="deck-count" id="deck-count-player1">30</div>
+            </div>
         </div>
 
        <!-- Turn Indicator, Action Buttons, and Game Stats -->

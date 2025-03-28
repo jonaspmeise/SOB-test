@@ -16,12 +16,20 @@ body {
     background-position: center;
     background-repeat: no-repeat;
     height: 90vh;
+    max-height: 90vh;
     width: 70vw;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
     justify-content: center;
     position: relative;
+}
+
+.game-center {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10%;
 }
 
 .player-1-area, .player-2-area {
@@ -67,31 +75,33 @@ body {
 }
 
 .player1-crystalzone {
-    background-image: url('assets/crystalzone-bottom.png');
+    background-image: url('assets/crystal-zone-bottom.png');
 }
 
 .player2-crystalzone {
-    background-image: url('assets/crystalzone-top.png');
+    background-image: url('assets/crystal-zone-top.png');
 }
 
 .game-board {
     display: grid;
     grid-template-columns: repeat(5, 80px);
     grid-template-rows: repeat(4, 112px);
-    gap: 2px;
     background-image: url('assets/gameboard-grid.png');
     background-size: cover;
     background-position: center;
     width: 410px;
     height: 456px;
-    padding: 0;
     margin: 5px auto;
     position: relative;
+    flex-grow: 100;
+}
+
+.game-board > * {
+    gap: 2px;
 }
 
 .lane {
     position: absolute;
-    pointer-events: none;
     border: 2px solid transparent;
     box-sizing: border-box;
     display: flex;
@@ -226,36 +236,23 @@ button {
     margin: 0;
 }
 
-.deck-area {
-    position: absolute;
+.decks-area {
     display: flex;
     flex-direction: column;
-    align-items: center;
-}
-
-.deck-player1 {
-    right: -20px;
-    top: 360px;
-}
-
-.deck-player2 {
-    right: -20px;
-    top: 100px;
+    justify-content: center;
+    gap: 15%;
+    min-height: 50vh;
+    height: 50vh;
 }
 
 .deck {
     width: 100px;
     height: 140px;
     background-image: url('assets/cardback.png');
-    background-size: cover;
+    background-size: contain;
     background-position: center;
     border: 2px solid #666;
     border-radius: 5px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    position: relative;
 }
 
 .deck-count {
@@ -360,14 +357,8 @@ button {
     color: #4dabf7;
 }
 
-/* Add rotation for Player 2's deck */
-.deck-player2 .deck {
+.player2 .card {
     transform: rotate(180deg);
-}
-
-/* Explicitly keep Player 1's deck normal */
-.deck-player1 .deck {
-    transform: rotate(0deg);
 }
 
 /* Add highlight styles */
@@ -409,4 +400,16 @@ button {
 .log-entry-fancy {
     opacity: 0.6;
     font-style: italic;
+}
+
+.player2-area {
+    flex-direction: column-reverse;
+}
+
+.player1-area, .player2-area {
+    display: flex;
+}
+
+.player1-area {
+    flex-direction: column;
 }
