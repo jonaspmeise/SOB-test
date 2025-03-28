@@ -444,3 +444,8 @@ button:hover {
 .highlight-controls button:hover {
     background-color: #888;
 }
+
+.log-entry-fancy {
+    opacity: 0.6;
+    font-style: italic;
+}

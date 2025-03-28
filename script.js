@@ -40,7 +40,10 @@ const log = (text, fancy = false) => {
 
     const entry = document.createElement('div');
     entry.classList.add('log-entry');
-    entry.innerHTML = fancy ? `<i>${text}</i>` : text;
+    if(fancy) {
+        entry.classList.add('log-entry-fancy');
+    }
+    entry.innerHTML = text;
 
     log.firstElementChild.insertAdjacentHTML("beforebegin", entry.outerHTML);
 };
@@ -106,6 +109,8 @@ const render = (model) => {
         const deckId = `deck-player${i + 1}`;
         const deckElement = document.getElementById(deckId);
         console.log(player);
+
+        console.log(player.deck);
 
         deckElement.addEventListener('click', () => handleInteraction(player.deck.id));
     });
