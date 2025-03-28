@@ -484,3 +484,40 @@ button.crystalborn-btn:hover {
     50% { box-shadow: 0 0 15px rgba(138, 43, 226, 0.9); }
     100% { box-shadow: 0 0 5px rgba(138, 43, 226, 0.7); }
 }
+
+/* Power display on cards */
+.power-display {
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-size: 18px;
+    font-weight: bold;
+    z-index: 2;
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    line-height: 1;
+    padding: 0;
+}
+
+/* Player-specific power display styling */
+.power-display.player1 {
+    border: 2px solid red;
+}
+
+.power-display.player2 {
+    border: 2px solid blue;
+    transform: translateX(-50%) rotate(180deg);
+}
+
+/* Ensure the power display stays at the bottom even when the card is rotated */
+.slot .card[style*="transform: rotate(180deg)"] .power-display {
+    transform: translateX(-50%) rotate(180deg);
+}

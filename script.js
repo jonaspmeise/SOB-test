@@ -438,12 +438,29 @@ function renderBoard() {
                     
                     cardElement.style.width = "80px";
                     cardElement.style.height = "112px";
+                    cardElement.style.position = "relative"; // Ensure position is relative for absolute children
 
                     // Apply rotation for Player 2's cards
                     if (card.player === 2) {
                         cardElement.style.transform = 'rotate(180deg)';
                         cardElement.style.webkitTransform = 'rotate(180deg)';
                         cardElement.style.mozTransform = 'rotate(180deg)';
+                    }
+
+                    // Add power display in the center of the card
+                    if (!card.isBuried) {
+                        const powerDisplay = document.createElement("div");
+                        powerDisplay.classList.add("power-display");
+                        powerDisplay.textContent = card.power;
+                        
+                        // Add player-specific class
+                        if (card.player === 1) {
+                            powerDisplay.classList.add("player1");
+                        } else if (card.player === 2) {
+                            powerDisplay.classList.add("player2");
+                        }
+                        
+                        cardElement.appendChild(powerDisplay);
                     }
 
                     // Apply highlighting
@@ -915,6 +932,79 @@ function summonCard(player, cardIndex, row, col) {
                 crystallizeCardFromBoard(player, card, index);
             });
             menu.appendChild(crystallizeBtn);
+            
+            // Power modification options (only for cards on the board that aren't buried)
+            if (!card.isBuried) {
+                // Add a separator
+                const separator = document.createElement("hr");
+                separator.style.margin = "5px 0";
+                separator.style.border = "none";
+                separator.style.borderTop = "1px solid #666";
+                menu.appendChild(separator);
+                
+                // Buff +1
+                const buffBtn = document.createElement("button");
+                buffBtn.textContent = "Buff +1";
+                buffBtn.addEventListener("click", () => {
+                    console.log("Buff +1 clicked for:", card.name, "at", index);
+                    menu.remove(); // Remove menu first
+                    
+                    // Parse the position
+                    const parts = index.split('-');
+                    if (parts.length === 3) {
+                        const row = parseInt(parts[1]);
+                        const col = parseInt(parts[2]);
+                        applyPowerBuff(row, col, 1);
+                    }
+                });
+                menu.appendChild(buffBtn);
+                
+                // Debuff -1
+                const debuffBtn = document.createElement("button");
+                debuffBtn.textContent = "Debuff -1";
+                debuffBtn.addEventListener("click", () => {
+                    console.log("Debuff -1 clicked for:", card.name, "at", index);
+                    menu.remove(); // Remove menu first
+                    
+                    // Parse the position
+                    const parts = index.split('-');
+                    if (parts.length === 3) {
+                        const row = parseInt(parts[1]);
+                        const col = parseInt(parts[2]);
+                        applyPowerBuff(row, col, -1);
+                    }
+                });
+                menu.appendChild(debuffBtn);
+                
+                // Set Power
+                const setPowerBtn = document.createElement("button");
+                setPowerBtn.textContent = "Set Power...";
+                setPowerBtn.addEventListener("click", () => {
+                    console.log("Set Power clicked for:", card.name, "at", index);
+                    menu.remove(); // Remove menu first
+                    
+                    // Parse the position
+                    const parts = index.split('-');
+                    if (parts.length === 3) {
+                        const row = parseInt(parts[1]);
+                        const col = parseInt(parts[2]);
+                        
+                        // Prompt for new power value
+                        const newPower = prompt(`Enter new power for ${card.name}:`, card.power);
+                        if (newPower !== null) {
+                            const powerValue = parseInt(newPower);
+                            if (!isNaN(powerValue)) {
+                                updateCardPower(row, col, powerValue);
+                                
+                                // Log the change
+                                const position = slotToChessNotation(index);
+                                addLogEntry(`Power of card at ${position} set to ${powerValue}`, player);
+                            }
+                        }
+                    }
+                });
+                menu.appendChild(setPowerBtn);
+            }
         }
 
         // Bury/Unearth Option (for both crystal zone and board)
@@ -957,7 +1047,8 @@ function summonCard(player, cardIndex, row, col) {
             moveToDeck(player, card, location, index, "bottom");
         });
         menu.appendChild(moveToBottomBtn);
-
+        
+        // Add the menu to the DOM
         document.body.appendChild(menu);
         menu.style.display = "block";
         console.log("Action menu displayed for:", card.name);
@@ -2016,4 +2107,201 @@ function moveCardToSlot(player, fromRow, fromCol, toRow, toCol) {
     addLogEntry(`Player ${player} moved a card from ${fromPosition} to ${toPosition}`, player);
     
     console.log(`Successfully moved card from ${fromPosition} to ${toPosition}`);
+}
+
+// Function to update a card's power
+function updateCardPower(row, col, newPower) {
+    const card = gameState.board[row][col];
+    if (!card) {
+        console.error(`No card found at position (${row}, ${col})`);
+        return;
+    }
+    
+    // Update the power in the game state
+    card.power = newPower;
+    
+    // Update the power display on the DOM
+    const slot = document.getElementById(`slot-${row}-${col}`);
+    if (slot) {
+        const powerDisplay = slot.querySelector('.power-display');
+        if (powerDisplay) {
+            powerDisplay.textContent = newPower;
+        } else {
+            console.warn(`Power display not found for card at (${row}, ${col})`);
+        }
+    } else {
+        console.error(`Slot not found for position (${row}, ${col})`);
+    }
+    
+    // Recalculate lane control since power has changed
+    calculateLaneControl();
+}
+
+// Function to apply a power buff to a card
+function applyPowerBuff(row, col, buffAmount) {
+    const card = gameState.board[row][col];
+    if (!card) {
+        console.error(`No card found at position (${row}, ${col})`);
+        return;
+    }
+
+    const newPower = card.power + buffAmount;
+    updateCardPower(row, col, newPower);
+
+    // Get the card's name
+    const cardName = card.name;
+
+    // Log the action with improved message format
+    const logMessage = `${gameState.currentPlayer === 1 ? 'P1' : 'P2'} ${buffAmount > 0 ? 'increased' : 'decreased'} ${cardName}'s Power by ${Math.abs(buffAmount)}`;
+    addLogEntry(logMessage, gameState.currentPlayer);
+}
+
+// Update the buryCard function to handle power change
+function buryCard(player, card, location, index) {
+    if (location === "crystalZone") {
+        // Get the card from the crystal zone
+        const crystalCard = gameState.crystalZones[player][index];
+        
+        if (!crystalCard) {
+            console.error("Card not found in crystal zone:", index);
+            return;
+        }
+        
+        // Before burying, remove the current realm counts
+        crystalCard.realms.forEach(realm => {
+            gameState.realmCounts[player][realm]--;
+        });
+        
+        // Save original realms if not already saved
+        if (!crystalCard.originalRealms) {
+            crystalCard.originalRealms = [...crystalCard.realms];
+        }
+        
+        // Set to buried state
+        crystalCard.isBuried = true;
+        crystalCard.realms = ["Colorless"]; // Buried crystals are considered Colorless
+        
+        // Add to colorless count
+        gameState.realmCounts[player].Colorless++;
+        
+        // Update UI
+        renderCrystalZone(player);
+        
+        // Log the action
+        addLogEntry(`Player ${player} buried a crystal card (${card.name})`, player);
+    } 
+    else if (location === "board") {
+        // Parse board position
+        const parts = index.split('-');
+        if (parts.length !== 3) {
+            console.error("Invalid board position format:", index);
+            return;
+        }
+        
+        const row = parseInt(parts[1]);
+        const col = parseInt(parts[2]);
+        
+        // Get chess notation before modification
+        const position = slotToChessNotation(index);
+        
+        // Get the card from the board
+        const boardCard = gameState.board[row][col];
+        
+        if (!boardCard) {
+            console.error("Card not found on board:", index);
+            return;
+        }
+        
+        // Store original power if not already stored
+        if (boardCard.originalPower === undefined) {
+            boardCard.originalPower = boardCard.power;
+        }
+        
+        // Set to buried state
+        boardCard.isBuried = true;
+        boardCard.power = 0; // Buried cards on board have 0 power
+        
+        // Update UI
+        renderBoard();
+        
+        // Recalculate lane control after burying
+        calculateLaneControl();
+        
+        // Log the action
+        addLogEntry(`Player ${player} buried a card at ${position} (${card.name})`, player);
+    }
+}
+
+// Update the unearthCard function to handle power restoration
+function unearthCard(player, card, location, index) {
+    if (location === "crystalZone") {
+        // Get the card from the crystal zone
+        const crystalCard = gameState.crystalZones[player][index];
+        
+        if (!crystalCard) {
+            console.error("Card not found in crystal zone:", index);
+            return;
+        }
+        
+        // Remove colorless count
+        gameState.realmCounts[player].Colorless--;
+        
+        // Restore original realms
+        if (crystalCard.originalRealms) {
+            crystalCard.realms = [...crystalCard.originalRealms];
+            
+            // Add back original realm counts
+            crystalCard.realms.forEach(realm => {
+                gameState.realmCounts[player][realm]++;
+            });
+        }
+        
+        // Set to unearthed state
+        crystalCard.isBuried = false;
+        
+        // Update UI
+        renderCrystalZone(player);
+        
+        // Log the action
+        addLogEntry(`Player ${player} unearthed a crystal card (${card.name})`, player);
+    } 
+    else if (location === "board") {
+        // Parse board position
+        const parts = index.split('-');
+        if (parts.length !== 3) {
+            console.error("Invalid board position format:", index);
+            return;
+        }
+        
+        const row = parseInt(parts[1]);
+        const col = parseInt(parts[2]);
+        
+        // Get chess notation before modification
+        const position = slotToChessNotation(index);
+        
+        // Get the card from the board
+        const boardCard = gameState.board[row][col];
+        
+        if (!boardCard) {
+            console.error("Card not found on board:", index);
+            return;
+        }
+        
+        // Restore original power
+        if (boardCard.originalPower !== undefined) {
+            boardCard.power = boardCard.originalPower;
+        }
+        
+        // Set to unearthed state
+        boardCard.isBuried = false;
+        
+        // Update UI
+        renderBoard();
+        
+        // Recalculate lane control after unearthing
+        calculateLaneControl();
+        
+        // Log the action
+        addLogEntry(`Player ${player} unearthed a card at ${position} (${card.name})`, player);
+    }
 }
