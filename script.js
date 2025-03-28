@@ -1,3 +1,6 @@
+// $[VAR] = lazy/callable property
+// [VAR]$ = component/id reference
+
 // CONSTANTS
 const cardFile = './cards.json';
 const resolveCardArt = (name) => `https://cdn.shardsofbeyond.com/rashid-test/${name.toLowerCase().replaceAll(/\W/g, '')}.png`;
@@ -6,20 +9,22 @@ const resolveCardArt = (name) => `https://cdn.shardsofbeyond.com/rashid-test/${n
 const componentMap = new Map();
 
 let counter = 0;
-const identify = (obj, type) => {
-    console.log(`Registering component of type "${type}" with ID ${counter}...`);
-    obj.id = counter++;
-    obj.type = type;
+const identify = (obj, types) => {
+    console.debug(`Registering component of types "${types}" with ID ${counter}...`);
+    obj.id = counter;
+    obj.types = types;
     componentMap.set(counter, obj);
 
+    counter++;
+    
     return obj;
 };
 
 const createPlayerDefaultSettings = (name) => {
-    return {
+    return identify({
         name: name,
-        deck: identify([], 'deck'),
-        hand: identify([], 'hand'),
+        deck: identify([], ['deck']),
+        hand: identify([], ['hand']),
         crystalZone: identify({
             cards: [],
             realmCounts: {
@@ -30,8 +35,8 @@ const createPlayerDefaultSettings = (name) => {
                 Void: 0
             },
             total: 0
-        }, 'crystalzone')
-    };
+        }, ['crystalzone'])
+    }, ['player']);
 };
 
 // Create a new log entry.
@@ -51,6 +56,7 @@ const log = (text, fancy = false) => {
 // Do an entire tick of the game state - update the view, actions, ...
 const tick = () => {
     console.log('...tack');
+    render(state);
 };
 
 const preview = document.getElementById('card-preview');
@@ -66,53 +72,145 @@ const hideCardPreview = () => {
 
 const handleInteraction = (id) => {
     const component = componentMap.get(id);
-    log(`${state.currentPlayer.name} interacted with ${component.type} #${id}`, true);
+    log(`${state.currentPlayer.name} interacted with ${component.types} #${id}`, true);
 };
+
+const initializeLane = ($slots) => (() => {
+    const lane = {
+        orientation: 'horizontal',
+        $slots: $slots,
+        $power: state.players.map(player => {
+            return {
+                player$: player.id,
+                power: $slots()
+                    .map(slot => slot.card)
+                    .filter(card => card !== undefined)
+                    .filter(card => card.owner == player)
+                    .reduce((prev, curr) => prev + curr.Power, 0)
+            };
+        })
+    };
+
+    return lane;
+});
 
 // TODO: Make either idempotent or only render diff!
 const render = (model) => {
-    // Cards in Hand.
-    model.players.forEach((player, i) => {
-        const handId = `player${i + 1}-hand`;
-        const hand = document.getElementById(handId);
-
-        player.hand.forEach(card => {
-            const imageUrl = `url('${resolveCardArt(card.Name)}')`;
-
-            const cardElement = document.createElement('div');
-            cardElement.classList.add('card');
-            cardElement.style.backgroundImage = imageUrl;
-
-            cardElement.addEventListener('mouseover', () => showCardPreview(imageUrl));
-            cardElement.addEventListener('mouseout', hideCardPreview);
-            cardElement.addEventListener('click', () => handleInteraction(card.id));
-
-            hand.appendChild(cardElement);
-        });
-    });
-
     // Cards on Board.
-    state.board.slots.forEach(slot => {
+    model.board.slots.forEach(slot => {
+        // TODO: Only render when element doesn't yet exist.
+        if(document.getElementById(slot.id) != null) {
+            return;
+        }
+
         const slotElement = document.createElement('div');
         slotElement.classList.add('slot');
-        slotElement.id = `slot-${slot.x}-${slot.y}`;
+        slotElement.id = slot.id;
 
         slotElement.addEventListener('click', () => handleInteraction(slot.id));
         slotElement.addEventListener('mouseover', () => slot.card === undefined ? null : showCardPreview(imageUrl));
-        slotElement.addEventListener('mouseout', () => slot.card === undefined ? null : hideCardPreview);
 
         document.getElementById('game-board').appendChild(slotElement);
     });
 
     // Deck.
-    state.players.forEach((player, i) => {
-        const deckId = `deck-player${i + 1}`;
-        const deckElement = document.getElementById(deckId);
-        console.log(player);
+    model.players.forEach((player, i) => {
+        const deckId = player.deck.id;
+        // TODO: Only render when element doesn't yet exist.
+        if(document.getElementById(deckId) != null) {
+            return;
+        }
 
-        console.log(player.deck);
+        const deckElement = document.createElement('div');
+        deckElement.classList.add(`deck-player${i + 1}`);
+        deckElement.id = deckId;
 
-        deckElement.addEventListener('click', () => handleInteraction(player.deck.id));
+        deckElement.addEventListener('click', () => handleInteraction(deckId));
+    });
+
+    // Lanes.
+    model.board.lanes.forEach((lane, i) => {
+        // Render single Lane.
+        // TODO: Only render when element doesn't yet exist.
+        if(document.getElementById(lane.id) != null) {
+            return;
+        }
+
+        const cssClass = `lane lane-${i} lane-${lane.orientation}`;
+
+        const laneElement = document.createElement('div');
+        laneElement.classList.add(...cssClass.split(' '));
+        laneElement.id = lane.id;
+
+        // Render Power indicator for this lane.
+        const powerPlayerEntries = lane.$properties().$power;
+
+        const powerIndicator = document.createElement('div');
+        powerIndicator.innerHTML = powerPlayerEntries.map(
+                (e, i) => `<span class="player${i + 1}">${e.power}</span>`
+            ).join(' / ');
+        powerIndicator.classList.add('power-indicator');
+        laneElement.appendChild(powerIndicator);
+
+        const board = document.getElementById('game-board');
+        board.appendChild(laneElement);
+    });
+
+    // Crystal Zones.
+    model.players.forEach((player, i) => {
+        // Render Crystal Zones
+        const crystalZoneId = player.crystalZone.id;
+
+        if(document.getElementById(crystalZoneId) != null) {
+            return;
+        }
+
+        const crystalZoneElement = document.createElement('div');
+        crystalZoneElement.id = crystalZoneId;
+        crystalZoneElement.classList.add('crystalzone', `player${i + 1}-crystalzone`);
+
+        const playerArea = document.getElementById(`player${i + 1}-area`);
+        playerArea.appendChild(crystalZoneElement);
+    });
+
+    // Hand.
+    model.players.forEach((player, i) => {
+        const handId = player.hand.id;
+
+        if(document.getElementById(handId) != null) {
+            return;
+        }
+
+        const handElement = document.createElement('div');
+        handElement.id = handId;
+        handElement.classList.add('hand', `player${i + 1}-hand`);
+
+        const playerArea = document.getElementById(`player${i + 1}-area`);
+        playerArea.appendChild(handElement);
+    });
+    
+    // Cards in Hand.
+    model.players.forEach((player, i) => {
+        const hand = document.getElementById(player.hand.id);
+
+        player.hand.forEach(card => {
+            const imageUrl = `url('${resolveCardArt(card.Name)}')`;
+
+            // TODO: Only render when element doesn't yet exist.
+            if(document.getElementById(card.id) != null) {
+                return;
+            }
+
+            const cardElement = document.createElement('div');
+            cardElement.classList.add('card');
+            cardElement.style.backgroundImage = imageUrl;
+            cardElement.id = card.id;
+
+            cardElement.addEventListener('mouseover', () => showCardPreview(imageUrl));
+            cardElement.addEventListener('click', () => handleInteraction(card.id));
+
+            hand.appendChild(cardElement);
+        });
     });
 };
 
@@ -121,35 +219,31 @@ let state = {
     wonBy: undefined,
     currentPlayer: 0,
     board: {
-        slots: Array(4).fill().map((_, x) => Array(5).fill().map((_, y) => {
+        slots: Array(5).fill().map((_, x) => Array(4).fill().map((_, y) => {
             const slot = {
                 card: undefined,
                 x: x,
                 y: y
             };
 
-            return identify(slot, 'slot');
+            return identify(slot, ['slot']);
         })).flat(),
         lanes: [
             // 4 Horizontal Lanes
             ...Array(4).fill().map((_, i) => {
                 // Each Lane definition
-                const lane = {
-                    type: 'horizontal',
-                    slots: () => state.board.slots.filter(slot => slot.x === i)
-                };
+                const $slots = () => state.board.slots.filter(slot => slot.y === i);
+                const lane = {$properties: initializeLane($slots), orientation: 'horizontal'};
 
-                return identify(lane, 'lane');
+                return identify(lane, ['lane', 'horizontal-lane']);
             }),
             // 5 Vertical Lanes
             ...Array(5).fill().map((_, i) => {
                 // Each Lane definition
-                const lane = {
-                    type: 'vertical',
-                    slots: () => state.board.slots.filter(slot => slot.y === i)
-                };
+                const $slots = () => state.board.slots.filter(slot => slot.x === i);
+                const lane = {$properties: initializeLane($slots), orientation: 'vertical'};
 
-                return identify(lane, 'lane');
+                return identify(lane, ['lane', 'vertical-lane']);
             })
         ]
     },
@@ -175,9 +269,9 @@ const actions = new Proxy({
         return new Proxy(response.execute, {
             apply: (target, thisArg, argArray) => {
                 log(response.log(...argArray));
-                tick();
 
                 target.apply(thisArg, argArray);
+                tick();
             }
         });
     }
@@ -196,9 +290,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         Array(30).fill().forEach(() => {
             const randomCard = cards[Math.floor(Math.random() * cards.length)];
 
-            player.deck.push(identify(randomCard, 'card'));
+            // Add ownership to cards.
+            player.deck.push({...identify(randomCard, ['card']), owner: player.id});
         });
     });
+
+    // Randomize starting player.
+    state.currentPlayer = state.players[Math.floor(Math.random() * state.players.length)];
 
     // Each Player draws 5 cards from their Deck.
     state.players.forEach(player => {
@@ -207,11 +305,5 @@ document.addEventListener('DOMContentLoaded', async () => {
         })
     });
 
-    // Randomize starting player.
-    state.currentPlayer = state.players[Math.floor(Math.random() * state.players.length)];
-
-    // Render initial model.
-    render(state);
     console.log('State after initialization:', state);
-    console.log('ID -> Component', componentMap);
 });

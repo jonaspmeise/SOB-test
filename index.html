@@ -9,13 +9,8 @@
 <body>
     <div class="game-container">
         <!-- Player 2's Crystal Zone and Hand -->
-        <div class="player-2-area">
-            <div class="hand" id="player2-hand">
-                <!-- Cards will be added here dynamically -->
-            </div>
-            <div class="crystal-zone" id="player2-crystal-zone">
-                <!-- No turn icon here anymore -->
-            </div>
+        <div id="player2-area" class="player2-area">
+            <!-- Automatically generate components here. -->
         </div>
         
         <!-- Add this inside the game-container, before the deck-player2 -->
@@ -29,17 +24,7 @@
 
         <!-- Game Board (4x5 grid) -->
         <div class="game-board" id="game-board">
-            <!-- Horizontal Lanes (Rows) -->
-            <div class="lane lane-horizontal" id="lane-row-0"></div>
-            <div class="lane lane-horizontal" id="lane-row-1"></div>
-            <div class="lane lane-horizontal" id="lane-row-2"></div>
-            <div class="lane lane-horizontal" id="lane-row-3"></div>
-            <!-- Vertical Lanes (Columns) -->
-            <div class="lane lane-vertical" id="lane-col-0"></div>
-            <div class="lane lane-vertical" id="lane-col-1"></div>
-            <div class="lane lane-vertical" id="lane-col-2"></div>
-            <div class="lane lane-vertical" id="lane-col-3"></div>
-            <div class="lane lane-vertical" id="lane-col-4"></div>
+            <!-- Adaptively render elements-->
         </div>
 
         <!-- Deck and Count for Player 1 (right side) -->
@@ -49,13 +34,8 @@
         </div>
 
         <!-- Player 1's Crystal Zone and Hand -->
-        <div class="player-1-area">
-            <div class="crystal-zone" id="player1-crystal-zone">
-                <!-- No turn icon here anymore -->
-            </div>
-            <div class="hand" id="player1-hand">
-                <!-- Cards will be added here dynamically -->
-            </div>
+        <div id="player1-area" class="player1-area">
+            <!-- Automatically generate components here. -->
         </div>
 
        <!-- Turn Indicator, Action Buttons, and Game Stats -->
@@ -64,8 +44,8 @@
             <div class="turn-indicator" id="turn-indicator"></div>
             <button id="end-turn-btn">End Turn</button>
             <div class="game-stats" id="game-stats">
-                <div id="player1-stats">Player 1: 0</div>
-                <div id="player2-stats">Player 2: 0</div>
+                <div id="player1-stats" class="player1">Player 1: 0</div>
+                <div id="player2-stats" class="player2">Player 2: 0</div>
 
             </div>
         </div>

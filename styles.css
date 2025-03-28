@@ -15,8 +15,8 @@ body {
     background-size: contain;
     background-position: center;
     background-repeat: no-repeat;
-    width: 800px;
-    height: 600px;
+    height: 90vh;
+    width: 70vw;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -30,7 +30,7 @@ body {
     margin: 10px 0;
 }
 
-.hand, .crystal-zone {
+.hand, .crystalzone {
     border: 1px solid #666;
     border-radius: 4px;
     padding: 5px;
@@ -51,11 +51,11 @@ body {
     overflow-x: auto;
     min-height: 160px;
     white-space: nowrap;
-    align-items: center;
+    justify-content: center;
     flex-direction: row;
 }
 
-.crystal-zone {
+.crystalzone {
     background-size: cover;
     background-position: center;
     height: 80px;
@@ -66,12 +66,12 @@ body {
     align-items: center;
 }
 
-#player1-crystal-zone {
-    background-image: url('assets/crystal-zone-bottom.png');
+.player1-crystalzone {
+    background-image: url('assets/crystalzone-bottom.png');
 }
 
-#player2-crystal-zone {
-    background-image: url('assets/crystal-zone-top.png');
+.player2-crystalzone {
+    background-image: url('assets/crystalzone-top.png');
 }
 
 .game-board {
@@ -94,38 +94,62 @@ body {
     pointer-events: none;
     border: 2px solid transparent;
     box-sizing: border-box;
+    display: flex;
 }
 
 .lane-horizontal {
     width: 100%;
     height: 112px;
+    flex-direction: column;
+    justify-content: center;
 }
-
-#lane-row-0 { top: 0; }
-#lane-row-1 { top: 114px; } /* 112px + 2px gap */
-#lane-row-2 { top: 228px; } /* 2*(112px + 2px gap) */
-#lane-row-3 { top: 342px; } /* 3*(112px + 2px gap) */
 
 .lane-vertical {
     height: 100%;
-    width: 80px; /* Width of one column */
+    width: 80px;
+    flex-direction: row;
+    justify-content: center;
 }
 
-#lane-col-0 { left: 0; }
-#lane-col-1 { left: 82px; } /* 80px + 2px gap */
-#lane-col-2 { left: 164px; } /* 2*(80px + 2px gap) */
-#lane-col-3 { left: 246px; } /* 3*(80px + 2px gap) */
-#lane-col-4 { left: 328px; } /* 4*(80px + 2px gap) */
+.lane-horizontal > .power-indicator {
+    text-align: left;
+    margin-left: -10%;
+}
+
+.lane-vertical > .power-indicator {
+    text-align: top;
+    margin-top: -30%;
+}
+
+.lane-0 { top: 0; }
+.lane-1 { top: 114px; } /* 112px + 2px gap */
+.lane-2 { top: 228px; } /* 2*(112px + 2px gap) */
+.lane-3 { top: 342px; } /* 3*(112px + 2px gap) */
+.lane-4 { left: 0; }
+.lane-5 { left: 82px; } /* 80px + 2px gap */
+.lane-6 { left: 164px; } /* 2*(80px + 2px gap) */
+.lane-7 { left: 246px; } /* 3*(80px + 2px gap) */
+.lane-8 { left: 328px; } /* 4*(80px + 2px gap) */
+
 
 .slot {
     background-color: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 1px;
+    border-color: rgba(255, 255, 255, 0.2);
+    border-style: solid;
     border-radius: 3px;
     display: flex;
     justify-content: center;
     align-items: center;
     font-size: 10px;
     color: #fff;
+}
+
+.slot:hover, .deck:hover, .card:hover {
+    border-width: 3px;
+    border-color: goldenrod;
+    border-style: solid;
+    cursor: pointer;
 }
 
 .action-buttons {
@@ -172,23 +196,15 @@ button {
     cursor: pointer;
 }
 
-button:hover {
-    background-color: #888;
-}
-
 .card {
     width: 100px;
     height: 120px;
     background-size: contain;
     background-position: center;
     border: 1px solid #666;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.card:hover {
-    border: 2px solid #ffd700;
-    transform: scale(1.05);
+    border-radius: 1px;
+    border-color: gray;
+    border-radius: 8px;
 }
 
 .hand .card {
@@ -198,7 +214,7 @@ button:hover {
     flex-shrink: 0;
 }
 
-.crystal-zone .card {
+.crystalzone .card {
     width: 100px;
     height: 140px;
     margin-right: 5px;
@@ -208,32 +224,6 @@ button:hover {
     width: 80px;
     height: 112px;
     margin: 0;
-}
-
-.action-menu {
-    position: absolute;
-    background-color: #333;
-    border: 1px solid #666;
-    border-radius: 5px;
-    padding: 5px;
-    display: none;
-    z-index: 10;
-}
-
-.action-menu button {
-    display: block;
-    width: 100%;
-    padding: 5px;
-    margin: 2px 0;
-    background-color: #666;
-    color: #fff;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-}
-
-.action-menu button:hover {
-    background-color: #888;
 }
 
 .deck-area {
@@ -249,7 +239,7 @@ button:hover {
 }
 
 .deck-player2 {
-    left: -20px;
+    right: -20px;
     top: 100px;
 }
 
@@ -266,10 +256,6 @@ button:hover {
     align-items: center;
     cursor: pointer;
     position: relative;
-}
-
-.deck:hover {
-    border: 2px solid #ffd700;
 }
 
 .deck-count {
@@ -314,11 +300,11 @@ button:hover {
     color: #fff;
 }
 
-#player1-stats {
+.player1 {
     color: red; /* Match Player 1's lane control color */
 }
 
-#player2-stats {
+.player2 {
     color: blue; /* Match Player 2's lane control color */
 }
 
@@ -331,10 +317,6 @@ button:hover {
     border: none;
     border-radius: 5px;
     cursor: pointer;
-}
-
-.game-stats button:hover {
-    background-color: #888;
 }
 
 .card.highlight-player1 {
@@ -422,27 +404,6 @@ button:hover {
 .card.highlight-player2 {
     border: 3px solid blue;
     box-shadow: 0 0 5px blue;
-}
-
-/* Style the highlight controls for better visibility */
-.highlight-controls {
-    margin-top: 10px;
-    display: flex;
-    gap: 5px;
-}
-
-.highlight-controls button {
-    padding: 5px 10px;
-    font-size: 12px;
-    background-color: #666;
-    color: #fff;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.highlight-controls button:hover {
-    background-color: #888;
 }
 
 .log-entry-fancy {
