@@ -2,8 +2,6 @@ body {
     font-family: Arial, sans-serif;
     background-color: #1a1a1a;
     color: #fff;
-    margin: 0;
-    padding: 0;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -29,6 +27,7 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: center;
+    align-items: center;
     gap: 10%;
 }
 
@@ -46,11 +45,6 @@ body {
     background-color: #333;
     width: 635px;
     box-sizing: border-box;
-}
-
-.hand h3 {
-    margin: 0 0 5px 0;
-    font-size: 14px;
 }
 
 .hand {
@@ -83,21 +77,12 @@ body {
 }
 
 .game-board {
-    display: grid;
-    grid-template-columns: repeat(5, 80px);
-    grid-template-rows: repeat(4, 112px);
     background-image: url('assets/gameboard-grid.png');
-    background-size: cover;
+    background-size: contain;
     background-position: center;
-    width: 410px;
-    height: 456px;
-    margin: 5px auto;
+    width: 500px;
+    height: 540px;
     position: relative;
-    flex-grow: 100;
-}
-
-.game-board > * {
-    gap: 2px;
 }
 
 .lane {
@@ -105,6 +90,13 @@ body {
     border: 2px solid transparent;
     box-sizing: border-box;
     display: flex;
+    pointer-events: none;
+}
+
+.lane * {
+    pointer-events: all;
+    width: fit-content;
+    height: fit-content;
 }
 
 .lane-horizontal {
@@ -127,9 +119,19 @@ body {
 }
 
 .lane-vertical > .power-indicator {
-    text-align: top;
+    text-align: start;
     margin-top: -30%;
 }
+
+.power-indicator {
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/*
+TODO
+*/
 
 .lane-0 { top: 0; }
 .lane-1 { top: 114px; } /* 112px + 2px gap */
@@ -156,17 +158,9 @@ body {
 }
 
 .slot:hover, .deck:hover, .card:hover {
-    border-width: 3px;
     border-color: goldenrod;
     border-style: solid;
     cursor: pointer;
-}
-
-.action-buttons {
-    position: absolute;
-    right: -120px;
-    top: 50%;
-    transform: translateY(-50%);
 }
 
 .turn-status {
@@ -182,18 +176,6 @@ body {
     box-shadow: 0 0 15px #ffd700;
     position: absolute;
     z-index: 10;
-}
-
-.player-1-area .turn-indicator {
-    right: -100px;
-    top: 0;
-    background-image: url('assets/player1-icon.png');
-}
-
-.player-2-area .turn-indicator {
-    right: -100px;
-    bottom: 0;
-    background-image: url('assets/player2-icon.png');
 }
 
 button {
@@ -279,22 +261,7 @@ button {
     border-radius: 5px;
     display: none;
     z-index: 10;
-}
-
-.lane-controlled-player1 {
-    border: 3px solid red !important;
-    box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
-}
-
-.lane-controlled-player2 {
-    border: 3px solid blue !important;
-    box-shadow: 0 0 10px rgba(0, 0, 255, 0.5);
-}
-
-.game-stats {
-    margin-top: 10px;
-    font-size: 14px;
-    color: #fff;
+    pointer-events: none;
 }
 
 .player1 {
@@ -303,27 +270,6 @@ button {
 
 .player2 {
     color: blue; /* Match Player 2's lane control color */
-}
-
-.game-stats button {
-    margin: 5px;
-    padding: 5px 10px;
-    font-size: 12px;
-    background-color: #666;
-    color: #fff;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.card.highlight-player1 {
-    border: 3px solid red;
-    box-shadow: 0 0 5px red;
-}
-
-.card.highlight-player2 {
-    border: 3px solid blue;
-    box-shadow: 0 0 5px blue;
 }
 
 /* Add just the game log styles */
@@ -361,42 +307,6 @@ button {
     transform: rotate(180deg);
 }
 
-/* Add highlight styles */
-.highlight-player1 {
-    box-shadow: 0 0 15px rgba(255, 0, 0, 0.7) !important;
-    border: 2px solid red !important;
-}
-
-.highlight-player2 {
-    box-shadow: 0 0 15px rgba(0, 0, 255, 0.7) !important;
-    border: 2px solid blue !important;
-}
-
-/* Style the highlight control buttons */
-.highlight-controls {
-    position: fixed;
-    right: 20px;
-    bottom: 240px; /* Position above the game log */
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-
-.highlight-controls button {
-    padding: 5px 10px;
-    cursor: pointer;
-}
-
-.card.highlight-player1 {
-    border: 3px solid red;
-    box-shadow: 0 0 5px red;
-}
-
-.card.highlight-player2 {
-    border: 3px solid blue;
-    box-shadow: 0 0 5px blue;
-}
-
 .log-entry-fancy {
     opacity: 0.6;
     font-style: italic;
@@ -412,4 +322,18 @@ button {
 
 .player1-area {
     flex-direction: column;
+}
+
+.neutral {
+    opacity: 0.6;
+}
+
+.game-content {
+    display: grid;
+    grid-template-columns: repeat(5, 90px);
+    grid-template-rows: repeat(4, 130px);
+    column-gap: 11px;
+    row-gap: 5px;
+    margin-left: 5px;
+    margin-top: 5px;
 }

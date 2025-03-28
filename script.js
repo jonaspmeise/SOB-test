@@ -9,10 +9,12 @@ const resolveCardArt = (name) => `https://cdn.shardsofbeyond.com/rashid-test/${n
 const componentMap = new Map();
 
 let counter = 0;
-const identify = (obj, types) => {
+const identify = (obj, types, name) => {
     console.debug(`Registering component of types "${types}" with ID ${counter}...`);
     obj.id = counter;
     obj.types = types;
+    obj.name = name;
+    obj.toString = () => name;
     componentMap.set(counter, obj);
 
     counter++;
@@ -21,10 +23,20 @@ const identify = (obj, types) => {
 };
 
 const createPlayerDefaultSettings = (name) => {
-    return identify({
+    const createOwnedContainer = (id, name, type) => {
+        const container = [];
+        container.owner$ = id;
+        container.name = `${name}'s ${type}`;
+
+        return container;
+    }
+
+    let player = identify({}, ['player']);
+    player = {...player, 
         name: name,
-        deck: identify([], ['deck']),
-        hand: identify([], ['hand']),
+        toString: () => name,
+        deck: identify(createOwnedContainer(player.id), ['deck'], `${name}'s Deck`),
+        hand: identify(createOwnedContainer(player.id), ['hand'], `${name}'s Deck`),
         crystalZone: identify({
             cards: [],
             realmCounts: {
@@ -34,9 +46,13 @@ const createPlayerDefaultSettings = (name) => {
                 Nature: 0,
                 Void: 0
             },
-            total: 0
-        }, ['crystalzone'])
-    }, ['player']);
+            total: 0,
+            owner$: player.id
+        }, ['crystalzone'], `${name}'s Crystal Zone`)
+    };
+    componentMap.set(player.id, player);
+
+    return player;
 };
 
 // Create a new log entry.
@@ -56,7 +72,23 @@ const log = (text, fancy = false) => {
 // Do an entire tick of the game state - update the view, actions, ...
 const tick = () => {
     console.log('...tack');
+
+    // Render state.
     render(state);
+
+    // Calculate action space for both players.
+    state.actions = [
+        // If an action like that is "found", update the UI for it, too.
+        {actor: 32, type: 'draw', args: [32]},
+        {actor: 66, type: 'summon', args: [32, 66, 15]},
+        {actor: 66, type: 'summon', args: [32, 66, 16]},
+        {actor: 66, type: 'summon', args: [32, 66, 17]},
+        {actor: 66, type: 'summon', args: [32, 66, 18]},
+        {actor: 66, type: 'summon', args: [32, 66, 19]},
+        {actor: 66, type: 'summon', args: [32, 66, 20]}
+    ];
+
+    console.info('Current action space:', state.actions);
 };
 
 const preview = document.getElementById('card-preview');
@@ -70,9 +102,41 @@ const hideCardPreview = () => {
     preview.style.display = 'none';
 };
 
+// TODO: AI should simply do a random action from its action space, whenever feasible.
 const handleInteraction = (id) => {
     const component = componentMap.get(id);
-    log(`${state.currentPlayer.name} interacted with ${component.types} #${id}`, true);
+    log(`${state.currentPlayer} interacted with ${component} (#${id})`, true);
+
+    console.debug('Before filtering actions:', component.types, state.actions);
+    const possibleActions = state.actions
+        // filter out actions that are not accessible through this interaction.
+        .filter(action => {
+            console.debug('Action debug: ', RAW_ACTION_DICTIONARY[action.type]);
+            return component.types.includes(RAW_ACTION_DICTIONARY[action.type].target);
+        })
+        // filter out actions where the current component is not part of its targets.
+        .filter(action => {
+            console.debug('Action debug #2: ', id, action.args);
+            return action.args.includes(id);
+        });
+        // TODO: Filter only one's own actions!
+
+    console.debug('After filtering actions:', possibleActions);
+
+    if(possibleActions.length == 1) {
+        const action = possibleActions[0];
+
+        // Execute chosen action.
+        actions[action.type](...action.args);
+    } else {
+        if(possibleActions.length == 0) {
+            console.warn(`No actions for ${id} available!`);
+        } else {
+            console.debug('Possible actions for selected Component:', possibleActions);
+            // Find "spread" of components to calculate the possible selection from.
+            
+        }
+    }
 };
 
 const initializeLane = ($slots) => (() => {
@@ -85,7 +149,7 @@ const initializeLane = ($slots) => (() => {
                 power: $slots()
                     .map(slot => slot.card)
                     .filter(card => card !== undefined)
-                    .filter(card => card.owner == player)
+                    .filter(card => card.owner$ == player.id)
                     .reduce((prev, curr) => prev + curr.Power, 0)
             };
         })
@@ -109,6 +173,20 @@ const render = (model) => {
 
         slotElement.addEventListener('click', () => handleInteraction(slot.id));
         slotElement.addEventListener('mouseover', () => slot.card === undefined ? null : showCardPreview(imageUrl));
+        slotElement.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const draggedId = e.dataTransfer.getData('text/plain');
+            // TODO: Handle interaction
+            console.info(`${componentMap.get(draggedId)} was dragged onto ${slot}`);
+        });
+        slotElement.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            slotElement.classList.add('drag-over');
+        });
+        slotElement.addEventListener('dragleave', (e) => {
+            slotElement.classList.remove('drag-over');
+        });
 
         document.getElementById('game-board').appendChild(slotElement);
     });
@@ -131,29 +209,35 @@ const render = (model) => {
     // Lanes.
     model.board.lanes.forEach((lane, i) => {
         // Render single Lane.
-        // TODO: Only render when element doesn't yet exist.
-        if(document.getElementById(lane.id) != null) {
-            return;
+        let laneElement = document.getElementById(lane.id);
+        if(laneElement == null) {
+            const cssClass = `lane lane-${i} lane-${lane.orientation}`;
+
+            laneElement = document.createElement('div');
+            laneElement.classList.add(...cssClass.split(' '));
+            laneElement.id = lane.id;
+            laneElement.addEventListener('click', () => handleInteraction(lane.id));
         }
 
-        const cssClass = `lane lane-${i} lane-${lane.orientation}`;
-
-        const laneElement = document.createElement('div');
-        laneElement.classList.add(...cssClass.split(' '));
-        laneElement.id = lane.id;
-
         // Render Power indicator for this lane.
+        const powerIndicatorId = `power-indicator-${i}`;
+
+        let powerIndicator = document.getElementById(powerIndicatorId);
+        if(powerIndicator == null) {
+            powerIndicator = document.createElement('div');
+            
+            powerIndicator.classList.add('power-indicator');
+            powerIndicator.id = powerIndicatorId;
+            laneElement.appendChild(powerIndicator);
+
+            const board = document.getElementById('game-board');
+            board.appendChild(laneElement);
+        }
+        // Always update Power per Player per Lane!
         const powerPlayerEntries = lane.$properties().$power;
+        const powerDisparity = powerPlayerEntries[0].power - powerPlayerEntries[1].power;
+        powerIndicator.innerHTML = `<span class="neutral${powerDisparity == 0 ? '' : powerDisparity > 0 ? `player1` : 'player2'}">${powerDisparity}</span>`;
 
-        const powerIndicator = document.createElement('div');
-        powerIndicator.innerHTML = powerPlayerEntries.map(
-                (e, i) => `<span class="player${i + 1}">${e.power}</span>`
-            ).join(' / ');
-        powerIndicator.classList.add('power-indicator');
-        laneElement.appendChild(powerIndicator);
-
-        const board = document.getElementById('game-board');
-        board.appendChild(laneElement);
     });
 
     // Crystal Zones.
@@ -168,6 +252,21 @@ const render = (model) => {
         const crystalZoneElement = document.createElement('div');
         crystalZoneElement.id = crystalZoneId;
         crystalZoneElement.classList.add('crystalzone', `player${i + 1}-crystalzone`);
+        crystalZoneElement.addEventListener('click', () => handleInteraction(crystalZoneId));
+        crystalZoneElement.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const draggedId = e.dataTransfer.getData('text/plain');
+            // TODO: Handle interaction
+            console.info(`${componentMap.get(draggedId)} was dragged onto ${slot}`);
+        });
+        crystalZoneElement.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            crystalZoneElement.classList.add('drag-over');
+        });
+        crystalZoneElement.addEventListener('dragleave', (e) => {
+            crystalZoneElement.classList.remove('drag-over');
+        });
 
         const playerArea = document.getElementById(`player${i + 1}-area`);
         playerArea.appendChild(crystalZoneElement);
@@ -190,7 +289,7 @@ const render = (model) => {
     });
     
     // Cards in Hand.
-    model.players.forEach((player, i) => {
+    model.players.forEach(player => {
         const hand = document.getElementById(player.hand.id);
 
         player.hand.forEach(card => {
@@ -208,10 +307,44 @@ const render = (model) => {
 
             cardElement.addEventListener('mouseover', () => showCardPreview(imageUrl));
             cardElement.addEventListener('click', () => handleInteraction(card.id));
+            cardElement.addEventListener('dragstart', (e) => {
+                console.log(`Starting to drag ${card}`);
+                // TODO: Highlight possible target DOM elements.
+                e.dataTransfer.setData('text/plain', card.id);
+                e.dataTransfer.effectAllowed = 'move';
+            });
 
             hand.appendChild(cardElement);
         });
     });
+
+    model.players.forEach((player, i) => {       
+        const deckArea = document.getElementById(`deck-area-player${i + 1}`)
+
+        const deckId = player.deck.id;
+        if(document.getElementById(deckId) == null) {
+            const deckElement = document.createElement('div');
+            deckElement.classList.add('deck');
+            deckElement.id = deckId;
+            deckElement.addEventListener('click', () => handleInteraction(deckId));
+
+            deckArea.appendChild(deckElement);
+        }
+
+        // Deck Count - render once, update always.
+        const deckCounterId = `counter-player${i + 1}`;
+        let deckCounterElement = document.getElementById(deckCounterId);
+        if(deckCounterElement == null) {
+            deckCounterElement = document.createElement('div');
+            deckCounterElement.classList.add('deck-count');
+            deckCounterElement.id = deckCounterId;
+
+            deckArea.appendChild(deckCounterElement);
+        }
+        // Always update this value!
+        deckCounterElement.textContent = player.deck.length;
+    });
+
 };
 
 // MODEL.
@@ -226,7 +359,7 @@ let state = {
                 y: y
             };
 
-            return identify(slot, ['slot']);
+            return identify(slot, ['slot'], `Slot ${x}/${y}`);
         })).flat(),
         lanes: [
             // 4 Horizontal Lanes
@@ -235,7 +368,7 @@ let state = {
                 const $slots = () => state.board.slots.filter(slot => slot.y === i);
                 const lane = {$properties: initializeLane($slots), orientation: 'horizontal'};
 
-                return identify(lane, ['lane', 'horizontal-lane']);
+                return identify(lane, ['lane', 'horizontal-lane'], `Horizontal Lane ${i + 1}`);
             }),
             // 5 Vertical Lanes
             ...Array(5).fill().map((_, i) => {
@@ -243,34 +376,81 @@ let state = {
                 const $slots = () => state.board.slots.filter(slot => slot.x === i);
                 const lane = {$properties: initializeLane($slots), orientation: 'vertical'};
 
-                return identify(lane, ['lane', 'vertical-lane']);
+                return identify(lane, ['lane', 'vertical-lane'], `Vertical Lane ${i + 1}`);
             })
         ]
     },
     players: [
         createPlayerDefaultSettings('Shrenrin'),
         createPlayerDefaultSettings('Drassi')
-    ]
+    ],
+    actions: []
 };
 
 // ACTION DICTIONARY
-const actions = new Proxy({
+const RAW_ACTION_DICTIONARY = {
     draw: {
-        execute: (player) => {
-            player.hand.push(player.deck.pop());
+        execute: (player = null, deck) => {
+            // Default to Player's Deck.
+            if(player == null) {
+                player = componentMap.get(deck.owner$);
+            }
+
+            const card = deck.pop();
+            player.hand.push(card);
+            card.location$ = player.hand.id;
+            
+            return [player, deck];
         },
-        log: (player) => `Player ${player.name} drew a card.`
-    }
-}, {
+        log: (player, deck) => `Player ${player} drew a card from ${deck}.`,
+        target: 'deck'
+    },
+    summon: {
+        execute: (player, card, slot) => {
+            slot.card = card; // Move card to slot.
+
+            // Remove card from previous location.
+            const previousLocation = componentMap.get(card.location$);
+
+            let newReference;
+            if(Array.isArray(previousLocation)) {
+                newReference = previousLocation.filter(c => c.id != card.id);
+            } else {
+                newReference = undefined;
+            }
+            // Modify the existing container by rewriting the reference.
+            componentMap.set(card.location$, newReference);
+            
+            card.location$ = slot.id; // Reference card to slot.
+
+            return [player, card, slot];
+        },
+        log: (player, card, slot) => `Player ${player} summoned a ${card} into Slot ${slot}.`,
+        target: 'card'
+    },
+};
+const actions = new Proxy(RAW_ACTION_DICTIONARY, {
     get: (target, prop, _receiver) => {
+        console.info(target, prop);
         const response = target[prop];
 
         // Automatically execute logging on action execution.
         return new Proxy(response.execute, {
             apply: (target, thisArg, argArray) => {
-                log(response.log(...argArray));
 
-                target.apply(thisArg, argArray);
+                // References inside the arguments need to be translated to real components!
+                console.debug(`Executing action ${prop} with components ${argArray}`);
+                const mappedArray = argArray.map(arg => {
+                    if(typeof arg != "number") {
+                        return arg;
+                    }
+
+                    return componentMap.get(arg);
+                });
+
+                const usedParameters = target.apply(thisArg, mappedArray);
+
+                log(response.log(...usedParameters));
                 tick();
             }
         });
@@ -281,7 +461,8 @@ const actions = new Proxy({
 document.addEventListener('DOMContentLoaded', async () => {
     const request = await fetch(cardFile);
     const cards = (await request.json())
-        .filter(card => card.Set == 1); // Only valid cards from Set 1 should be made into decks.
+        .filter(card => card.Set == 1) // Only valid cards from Set 1 should be made into decks.
+        .filter(card => card.Cardtype === 'Unit'); // Only play with Units.
 
     log(`Loaded a total of ${cards.length} cards!`, true);
 
@@ -291,18 +472,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             const randomCard = cards[Math.floor(Math.random() * cards.length)];
 
             // Add ownership to cards.
-            player.deck.push({...identify(randomCard, ['card']), owner: player.id});
+            player.deck.push({...identify(randomCard, ['card'], randomCard.Name), owner$: player.id, location$: player.deck.id});
         });
     });
 
     // Randomize starting player.
-    state.currentPlayer = state.players[Math.floor(Math.random() * state.players.length)];
+    state.currentPlayer = state.players[0];
 
     // Each Player draws 5 cards from their Deck.
     state.players.forEach(player => {
         Array(5).fill().forEach(() => {
-            actions.draw(player);
-        })
+            console.log(player);
+            actions.draw(null, player.deck);
+        });
     });
 
     console.log('State after initialization:', state);
