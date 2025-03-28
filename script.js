@@ -1808,7 +1808,7 @@ function calculateLaneControl() {
             if (newOwner !== previousOwner) {
                 const laneName = ['4', '3', '2', '1'][row]; // Chess notation for rows
                 if (newOwner) {
-                    addLogEntry(`Player ${newOwner} gained control of lane ${laneName}`, newOwner);
+                    addLogEntry(`Player ${newOwner} conquered Lane ${laneName}`, newOwner);
                 } else if (previousOwner) {
                     addLogEntry(`Lane ${laneName} is no longer controlled`, 0);
                 }
@@ -1870,7 +1870,7 @@ function calculateLaneControl() {
             if (newOwner !== previousOwner) {
                 const laneName = ['a', 'b', 'c', 'd', 'e'][col]; // Chess notation for columns
                 if (newOwner) {
-                    addLogEntry(`Player ${newOwner} gained control of lane ${laneName}`, newOwner);
+                    addLogEntry(`Player ${newOwner} conquered Lane ${laneName}`, newOwner);
                 } else if (previousOwner) {
                     addLogEntry(`Lane ${laneName} is no longer controlled`, 0);
                 }
@@ -1890,17 +1890,21 @@ function calculateLaneControl() {
     document.getElementById("player1-stats").textContent = `Player 1: ${player1Lanes}`;
     document.getElementById("player2-stats").textContent = `Player 2: ${player2Lanes}`;
 
-    // Remove the generic "Lane control update" message since we now have specific messages
+    // Log total lane control
+    console.log(`Lane Control - Player 1: ${player1Lanes}, Player 2: ${player2Lanes}`);
+
     return { player1: player1Lanes, player2: player2Lanes };
 }
 
 // Check win condition
 function checkWinCondition() {
-    const { player1Lanes, player2Lanes } = calculateLaneControl();
-    if (player1Lanes >= 4) {
+    const { player1, player2 } = calculateLaneControl();
+    if (player1 >= 4) {
+        addLogEntry(`Player 1 has won the game by controlling 4 lanes!`, 1);
         alert("Player 1 Wins!");
         return true;
-    } else if (player2Lanes >= 4) {
+    } else if (player2 >= 4) {
+        addLogEntry(`Player 2 has won the game by controlling 4 lanes!`, 2);
         alert("Player 2 Wins!");
         return true;
     }
@@ -2304,4 +2308,40 @@ function unearthCard(player, card, location, index) {
         // Log the action
         addLogEntry(`Player ${player} unearthed a card at ${position} (${card.name})`, player);
     }
+}
+
+// Function to unearth a card
+function unearthCard(row, col) {
+    const card = gameState.board[row][col];
+    if (!card || !card.buried) {
+        console.error('No buried card found at position:', row, col);
+        return;
+    }
+
+    // Get the card's base power from cardDataList
+    const cardData = cardDataList.find(c => c.id === card.cardId);
+    if (!cardData) {
+        console.error('Card data not found for:', card.cardId);
+        return;
+    }
+
+    // Restore the card's original state
+    card.buried = false;
+    card.realms = card.originalRealms || [];
+    card.power = cardData.power; // Restore base power
+
+    // Update realm counts
+    card.realms.forEach(realm => {
+        if (gameState.realmCounts[realm]) {
+            gameState.realmCounts[realm]++;
+        }
+    });
+
+    // Log the action
+    const position = slotToChessNotation(`slot-${row}-${col}`);
+    addLogEntry(`Player ${gameState.currentPlayer} unearthed a card at ${position} (${card.name})`, gameState.currentPlayer);
+
+    // Recalculate lane control
+    calculateLaneControl();
+    renderBoard();
 }
