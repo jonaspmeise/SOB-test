@@ -1,4 +1,4 @@
-import { componentMap } from './model.js';
+import { components } from './state.js';
 import { resetHandleContext } from './interaction-handler.js';
 import { log } from './utility.js';
 import { tick } from './tick.js';
@@ -8,9 +8,9 @@ export const RAW_ACTION_DICTIONARY = {
         execute: (player = null, deck$) => {
             // Default to Player's Deck.
             if(player == null) {
-                player = componentMap.get(deck$.owner$);
+                player = components.get(deck$.owner$);
             }
-            const card = componentMap.get(deck$.pop());
+            const card = components.get(deck$.pop());
             player.hand$.push(card.id);
             card.location$ = player.hand$.id;
             
@@ -24,7 +24,7 @@ export const RAW_ACTION_DICTIONARY = {
             slot.card$ = card.id; // Move card to slot.
 
             // Remove card from previous location.
-            const previousLocation = componentMap.get(card.location$);
+            const previousLocation = components.get(card.location$);
 
             // Modify the existing container by rewriting the reference.
             if(Array.isArray(previousLocation)) {
@@ -44,7 +44,7 @@ export const RAW_ACTION_DICTIONARY = {
         execute: (player, card, crystalzone$) => {
             crystalzone$.push(card.id);
             // Remove card from previous location.
-            const previousLocation = componentMap.get(card.location$);
+            const previousLocation = components.get(card.location$);
 
             // Modify the existing container by rewriting the reference.
             if(Array.isArray(previousLocation)) {
@@ -76,7 +76,7 @@ export const actions = new Proxy(RAW_ACTION_DICTIONARY, {
                         return arg;
                     }
 
-                    return componentMap.get(arg);
+                    return components.get(arg);
                 });
 
                 const usedParameters = target.apply(thisArg, mappedArray);

@@ -2,7 +2,7 @@
 // [VAR]$ = component/id reference
 
 import { log } from './scripts/utility.js';
-import { state, identify } from './scripts/model.js';
+import { state, identify } from './scripts/state.js';
 import { actions } from './scripts/actions.js';
 import { resetHandleContext } from './scripts/interaction-handler.js';
 

@@ -1,4 +1,4 @@
-import { componentMap, state } from "./model.js";
+import { components, state } from "./state.js";
 import { log } from './utility.js';
 import { RAW_ACTION_DICTIONARY, actions } from "./actions.js";
 
@@ -43,10 +43,13 @@ export const resetHandleContext = () => {
     console.debug('Resetting all highlights');
     document.querySelectorAll('.highlight').forEach(e => e.classList.remove('highlight'));
 };
+
+// TODO: An essentially empty handlecontext can just be filled with all actions from the action space (that are applicable).
+// From there on, it's easy going! If Choice space is empty => Reload with action space.
 export const handleInteraction = (id) => {
     console.log('Context handler', handleContextArguments);
 
-    const component = componentMap.get(id);
+    const component = components.get(id);
     log(`${state.currentPlayer} interacted with ${component} (#${id})`, true);
 
     // Does this interaction narrow down the choice space enough that we can execute a single action?

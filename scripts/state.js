@@ -1,7 +1,8 @@
 // $[VAR] = lazy/callable property
 // [VAR]$ = component/id reference
 
-export const componentMap = new Map();
+// TODO: We probably need a Map<Type, Component[]> too!
+export const components = new Map();
 
 let counter = 0;
 export const identify = (obj, types, name) => {
@@ -10,7 +11,7 @@ export const identify = (obj, types, name) => {
     obj.types = types;
     obj.name = name;
     obj.toString = () => name;
-    componentMap.set(counter, obj);
+    components.set(counter, obj);
 
     counter++;
     
@@ -29,7 +30,7 @@ const createPlayerDefaultSettings = (name) => {
     let crystalzone = identify(createOwnedContainer(player.id), ['crystalzone'], `${name}'s Crystal Zone`);
     // Calculate all Realm Counts.
     crystalzone.$realmCounts = () => crystalzone
-        .map(cardId => componentMap.get(cardId))
+        .map(cardId => components.get(cardId))
         .reduce((prev, card) => {
             Object.keys(prev)
                 .filter(realm => card.Costs.includes(realm))
@@ -51,7 +52,7 @@ const createPlayerDefaultSettings = (name) => {
         hand$: identify(createOwnedContainer(player.id), ['hand'], `${name}'s Hand`),
         crystalzone$: crystalzone
     };
-    componentMap.set(player.id, player);
+    components.set(player.id, player);
 
     return player;
 };
@@ -66,7 +67,7 @@ const initializeLane = ($slots) => (() => {
                 power: $slots()
                     .map(slot => slot.card$)
                     .filter(id => id !== undefined)
-                    .map(id => componentMap.get(id))
+                    .map(id => components.get(id))
                     .filter(card => card.owner$ == player.id)
                     .reduce((prev, curr) => prev + curr.Power, 0)
             };

@@ -1,8 +1,42 @@
-import { componentMap } from './model.js';
+import { components } from './state.js';
 import { getCardArtUrl, showCardPreview, getRawCardArtUrl } from './utility.js';
 import { handleInteraction } from './interaction-handler.js';
 
+// Private Utility functions.
 const gameBoardElement = document.getElementById('game-board');
+const createCardElement = (card, rawArt = false) => {
+    let element = document.createElement('div');
+    element.id = card.id;
+    element.classList.add('card');
+    if(card !== undefined && card.Realms !== undefined) {
+        element.classList.add(`realm-${card.Realms.trim().split(/\s/).join('-').toLowerCase()}`);
+    }
+    element.style.backgroundImage = rawArt
+        ? getRawCardArtUrl(card)
+        : getCardArtUrl(card);
+
+    element.addEventListener('mouseover', () => showCardPreview(card));
+    element.addEventListener('click', e => {
+        handleInteraction(card.id);
+        e.stopPropagation();
+    });
+
+    return element;
+};
+const removeDanglingNodes = (parent, nodeFilterFunction, name) => {
+    [
+        ...parent
+        .childNodes
+        .values()
+    ]
+    .filter(node => nodeFilterFunction(+node.id))
+    .forEach(node => {
+        console.debug(`Removing node ${node.id} from ${name} #${parent.id} because it no longer exists there!`);
+        node.remove();
+    });
+}
+
+// Main function.
 export const render = (model) => {
     // Slots on Board.
     model.board.slots.forEach(slot => {
@@ -25,39 +59,12 @@ export const render = (model) => {
         const cardId = slot.card$
         if(cardId !== undefined) {
             let cardElement = slotElement.querySelector(`[id="${cardId}"]`);
-            const card = componentMap.get(cardId);
+            const card = components.get(cardId);
 
             if(cardElement == null) {
-                const imageUrl = getCardArtUrl(card);
-
-                cardElement = document.createElement('div');
-                cardElement.id = cardId;
-                cardElement.classList.add('card');
-                if(card !== undefined && card.Realms !== undefined) {
-                    cardElement.classList.add(`realm-${card.Realms.trim().split(/\s/).join('-').toLowerCase()}`);
-                }
-                cardElement.style.backgroundImage = imageUrl;
-                
-                cardElement.addEventListener('mouseover', () => showCardPreview(card));
-                cardElement.addEventListener('click', e => {
-                    handleInteraction(cardId);
-                    e.stopPropagation();
-                });
-
-                slotElement.appendChild(cardElement);
+                slotElement.appendChild(createCardElement(card));
             }
-
-            // Remove no longer referenced nodes in the DOM, if the model doesn't reference the card anymore.
-            [
-                ...slotElement
-                .childNodes
-                .values()
-            ]
-            .filter(node => cardId != +node.id)
-            .forEach(node => {
-                console.debug(`Removing node ${node.id} from Slot #${slot.id} because the referenced Card no longer exists there!`);
-                node.remove();
-            });
+            removeDanglingNodes(slotElement, (node) => cardId != node, 'Slot');
         }
     });
     
@@ -136,39 +143,17 @@ export const render = (model) => {
 
         // Render cards in crystal zone.
         player.crystalzone$.forEach(cardId => {
-            const card = componentMap.get(cardId);            
+            const card = components.get(cardId);            
             let cardElement = crystalzoneElement.querySelector(`[id="${cardId}"]`);
 
             if(cardElement == null) {
-                cardElement = document.createElement('div');
-                cardElement.id = cardId;
-                cardElement.classList.add('card');
-                if(card !== undefined && card.Realms !== undefined) {
-                    cardElement.classList.add(`realm-${card.Realms.trim().split(/\s/).join('-').toLowerCase()}`);
-                }
-                cardElement.style.backgroundImage = getRawCardArtUrl(card);
-
-                cardElement.addEventListener('mouseover', () => showCardPreview(card));
-                cardElement.addEventListener('click', e => {
-                    handleInteraction(cardId);
-                    e.stopPropagation();
-                });
-                
-                crystalzoneElement.appendChild(cardElement);
+                crystalzoneElement.appendChild(createCardElement(card, true));
             }
         });
 
         // Clean up dangling DOM nodes of cards that are no longer in this zone.
-        [
-            ...crystalzoneElement
-            .childNodes
-            .values()
-        ]
-        .filter(node => !player.crystalzone$.includes(+node.id))
-        .forEach(node => {
-            console.debug(`Removing node ${node.id} from Crystal Zone #${crystalzoneElement.id} because the referenced Card no longer exists there!`);
-            node.remove();
-        });
+        
+        removeDanglingNodes(crystalzoneElement, (nodeId) => !player.crystalzone$.includes(nodeId), 'Crystal Zone');
     });
 
     // Hand.
@@ -192,38 +177,14 @@ export const render = (model) => {
         const handElement = document.getElementById(player.hand$.id);
 
         // Remove no longer referenced nodes in the DOM, if the model doesn't hold the card anymore.
-        [
-            ...document.getElementById(player.hand$.id)
-            .childNodes
-            .values()
-        ]
-        .filter(node => !player.hand$.includes(+node.id))
-        .forEach(node => {
-            console.debug(`Removing node ${node.id} from Hand #${handElement.id} because the referenced Card no longer exists there!`);
-            node.remove();
-        });
+        removeDanglingNodes(handElement, (nodeId) => !player.hand$.includes(nodeId), 'Hand');
 
         player.hand$.forEach(cardId => {
-            const card = componentMap.get(cardId);
+            const card = components.get(cardId);
             let cardElement = document.getElementById(cardId);
             
             if(cardElement == null) {
-                cardElement = document.createElement('div');
-                cardElement.classList.add('card');
-                if(card !== undefined && card.Realms !== undefined) {
-                    cardElement.classList.add(`realm-${card.Realms.trim().split(/\s/).join('-').toLowerCase()}`);
-                }
-
-                cardElement.id = cardId;
-                cardElement.style.backgroundImage = getCardArtUrl(card);
-
-                cardElement.addEventListener('mouseover', () => showCardPreview(card));
-                cardElement.addEventListener('click', e => {
-                    handleInteraction(cardId);
-                    e.stopPropagation();
-                });
-                
-                handElement.appendChild(cardElement);
+                handElement.appendChild(createCardElement(card));
             }
         });
     });

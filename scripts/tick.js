@@ -1,4 +1,4 @@
-import { state } from './model.js';
+import { state } from './state.js';
 import { render } from './render.js';
 
 // Do an entire tick of the game state - update the view, actions, ...
@@ -11,6 +11,7 @@ export const tick = () => {
     // Calculate action space for both players.
     state.actions = [
         // If an action like that is "found", update the UI for it, too.
+        // TODO: Have a do() function, that simply executes this action!
         {actor: 32, type: 'draw', args: [null, 31]},
         {actor: 66, type: 'summon', args: [32, 66, 15]},
         {actor: 66, type: 'summon', args: [32, 66, 16]},
