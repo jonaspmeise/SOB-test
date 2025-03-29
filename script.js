@@ -3,7 +3,6 @@
 
 // CONSTANTS
 const cardFile = './cards.json';
-const resolveCardArt = (name) => `https://cdn.shardsofbeyond.com/rashid-test/${name.toLowerCase().replaceAll(/\W/g, '')}.png`;
 
 // HELPER FUNCTIONS
 const componentMap = new Map();
@@ -27,26 +26,25 @@ const createPlayerDefaultSettings = (name) => {
         const container = [];
         container.owner$ = id;
 
-        console.error(`CONTAINER`, container);
         return container;
     };
 
     let player = identify({}, ['player'], name);
+    let crystalzone = identify(createOwnedContainer(player.id), ['crystalzone'], `${name}'s Crystal Zone`);
+    crystalzone.realmCounts = {
+        Divine: 0,
+        Elemental: 0,
+        Mortal: 0,
+        Nature: 0,
+        Void: 0
+    };
+    crystalzone.total = 0;
+    crystalzone.owner$ = player.id;
+
     player = {...player,
         deck$: identify(createOwnedContainer(player.id), ['deck'], `${name}'s Deck`),
         hand$: identify(createOwnedContainer(player.id), ['hand'], `${name}'s Hand`),
-        crystalZone: identify({
-            cards: [],
-            realmCounts: {
-                Divine: 0,
-                Elemental: 0,
-                Mortal: 0,
-                Nature: 0,
-                Void: 0
-            },
-            total: 0,
-            owner$: player.id
-        }, ['crystalzone'], `${name}'s Crystal Zone`)
+        crystalzone$: crystalzone
     };
     componentMap.set(player.id, player);
 
@@ -77,13 +75,13 @@ const tick = () => {
     // Calculate action space for both players.
     state.actions = [
         // If an action like that is "found", update the UI for it, too.
-        {actor: 32, type: 'draw', args: [null, 30]},
+        {actor: 32, type: 'draw', args: [null, 31]},
         {actor: 66, type: 'summon', args: [32, 66, 15]},
         {actor: 66, type: 'summon', args: [32, 66, 16]},
         {actor: 66, type: 'summon', args: [32, 66, 17]},
         {actor: 66, type: 'summon', args: [32, 66, 18]},
         {actor: 66, type: 'summon', args: [32, 66, 19]},
-        {actor: 66, type: 'crystallize', args: [32, 66, 32]}
+        {actor: 66, type: 'crystallize', args: [32, 66, 30]}
     ];
 
     console.info('Current action space:', state.actions);
@@ -91,8 +89,8 @@ const tick = () => {
 
 const preview = document.getElementById('card-preview');
 
-const showCardPreview = (imageUrl) => {
-    preview.style.backgroundImage = imageUrl;
+const showCardPreview = (card$) => {
+    preview.style.backgroundImage = getCardArtUrl(card$);
     preview.style.display = 'block';
 };
 
@@ -102,37 +100,48 @@ const hideCardPreview = () => {
 
 // TODO: AI should simply do a random action from its action space, whenever feasible.
 // TODO: This should be an Object with Type -> Args, but for now we only accept single types.
-let handleContextArguments = null;
+let handleContextArguments = {};
+const resetHandleContext = () => {
+    // Reset context and disable highlight!
+    handleContextArguments = {};
+    console.debug('Resetting all highlights');
+    document.querySelectorAll('.highlight').forEach(e => e.classList.remove('highlight'));
+};
 const handleInteraction = (id) => {
     const component = componentMap.get(id);
     log(`${state.currentPlayer} interacted with ${component} (#${id})`, true);
 
-    // We check whether this interaction has finalized a choice of previous action suggestions.
-    if(handleContextArguments != null) {
-        if(handleContextArguments.resolving.includes(id)) {
-            console.info('Finalized choice!');
+    // Is there a discerning action that triggers if we interact with this component?
+    if(id in handleContextArguments) {
+        const info = handleContextArguments[id];
 
-            const parameters = handleContextArguments.choices
-                .map(p => {
-                    if(!Array.isArray(p)) {
-                        return p;
-                    }
+        console.error('INFO', info);
+        // Try and deduct the true arguments for this action call, if feasible.
+        // If there are still choices left, we need to repeat the process.
 
-                    if(p.includes(id)) {
-                        return id;
-                    }
+        let resolved = true;
+        const appliedChoiceParameters = info.choices.map(parameter => {
+            // If there is no choice, we just accept this parameter.
+            if(!Array.isArray(parameter)) {
+                return parameter;
+            }
 
-                    console.error(`WTF?? Context Choice was ${id}, but couldn't resolve! Context:`, handleContextArguments);
-                    throw new Error('????');
-                });
+            // If our interaction narrows down a choice, we accept this as our parameter.
+            if(parameter.includes(id)) {
+                return id;
+            }
 
-            actions[handleContextArguments.type](...parameters);
-            handleContextArguments = null;
+            // We had a choice, but couldn't narrow it down - this action can't be resolved yet!
+            resolved = false;
+            return parameter;
+        });
+
+        if(resolved) {
+            console.info(`Narrowed down interaction for ${info.type}: ${appliedChoiceParameters}!`);
+            actions[info.type](...appliedChoiceParameters);
             return;
         } else {
-            // Reset context and disable highlight!
-            handleContextArguments = null;
-            document.querySelectorAll('.highlight').forEach(e => e.classList.remove('highlight'));
+            resetHandleContext();
         }
     }
 
@@ -155,30 +164,19 @@ const handleInteraction = (id) => {
     if(possibleActions.length == 1) {
         const action = possibleActions[0];
 
-        // Reset handle context.
-        handleContextArguments = null;
         // Execute chosen action.
         actions[action.type](...action.args);
     } else {
-        if(possibleActions.length == 0) {
-            console.warn(`No actions for ${id} available!`);
-        } else {
-            console.debug('Possible actions for selected Component:', possibleActions);
+        console.debug('Possible actions for selected Component:', possibleActions);
 
-            const possibleActionTypes = [...new Set(possibleActions.map(action => action.type))];
-            console.info('Possible action types:', possibleActionTypes);
+        const possibleActionTypes = [...new Set(possibleActions.map(action => action.type))];
+        console.info('Possible action types:', possibleActionTypes);
 
-            if(possibleActionTypes > 1) {
-                logger.error(`Not implemented selecting different action types!`);
-                return;
-            }
-
-            const targetAction = possibleActionTypes[0];
-
-            // TODO: Filter out for different action types.
-            // TODO: SAVE CONSTANT VALUES IN CONTEXT.
+        // TODO: Calculate the discerning information between all action types.
+        possibleActionTypes.forEach(targetAction => {
             // Find "spread" of components to calculate the possible selection from.
             const context = possibleActions
+                .filter(action => action.type === targetAction)
                 .map(action => action.args)
                 .reduce((prev, current) => {
                     if(prev.length === 0) {
@@ -198,18 +196,45 @@ const handleInteraction = (id) => {
                 });
 
             const choices = context
-                .filter(parameter => Array.isArray(parameter))
+                // .filter(parameter => Array.isArray(parameter))
                 .flat();
             // Update all "chooseable" elements in the UI.
             choices
                 .forEach(id => {
-                    const element = document.getElementById(id);
-                    element.classList.add('highlight');
+                    if(id in handleContextArguments) {
+                        console.warn(`Interaction with ${componentMap.get(id)} would not have an unique result. Clash between "${handleContextArguments[id].type}" and "${targetAction}".`)
+                        handleContextArguments[id] = null;
+                        return;
+                    }
+
+                    // We already found out that interactions with this component don't help - we skip it!
+                    if(handleContextArguments[id] === null) {
+                        return;
+                    }
+
+                    handleContextArguments = {
+                        ...handleContextArguments,
+                        [id]: {type: targetAction, choices: context}
+                    };
                 });
-            handleContextArguments = {type: targetAction, choices: context, resolving: choices};
-        }
+        });
+        
+        // Add highlights to all discerning information
+        Object.entries(handleContextArguments)
+            .filter(([k, v]) => v != null)
+            .forEach(([k, _]) => {
+                console.log('Highlighting ', k);
+                const element = document.getElementById(k);
+                element.classList.add('highlight');
+            });
+        console.debug('Action context is: ', handleContextArguments);
     }
 };
+
+// Events: When clicking "anywhere else", reset the handleContext.
+document.body.addEventListener('click', () => {
+    resetHandleContext();
+});
 
 const initializeLane = ($slots) => (() => {
     const lane = {
@@ -219,7 +244,7 @@ const initializeLane = ($slots) => (() => {
             return {
                 player$: player.id,
                 power: $slots()
-                    .map(slot => slot.card)
+                    .map(slot => slot.card$)
                     .filter(card => card !== undefined)
                     .filter(card => card.owner$ == player.id)
                     .reduce((prev, curr) => prev + curr.Power, 0)
@@ -231,28 +256,64 @@ const initializeLane = ($slots) => (() => {
 });
 
 // TODO: Make either idempotent or only render diff!
+const resolveCardArt = (name) => `https://cdn.shardsofbeyond.com/rashid-test/${name.toLowerCase().replaceAll(/\W/g, '')}.png`;
+const getCardArtUrl = (card$) => card$ === undefined ? null : `url('${resolveCardArt(componentMap.get(card$).Name)}')`;
+const gameBoardElement = document.getElementById('game-board');
+
 const render = (model) => {
-    // Cards on Board.
+    // Slots on Board.
     model.board.slots.forEach(slot => {
-        // TODO: Only render when element doesn't yet exist.
         let slotElement = document.getElementById(slot.id);
 
-        const renderCardArtFunction = () => slot.card === undefined ? null : `url('${resolveCardArt(slot.card.Name)}')`;
         if(slotElement == null) {
             slotElement = document.createElement('div');
             slotElement.classList.add('slot');
             slotElement.id = slot.id;
 
-            slotElement.addEventListener('click', () => handleInteraction(slot.id));
-            slotElement.addEventListener('mouseover', renderCardArtFunction);
+            slotElement.addEventListener('click', e => {
+                handleInteraction(slot.id);
+                e.stopPropagation();
+            });
     
-            document.getElementById('game-board').appendChild(slotElement);
+            gameBoardElement.appendChild(slotElement);
         }
 
-        console.log(slot.card);
-        slotElement.style.backgroundImage = renderCardArtFunction();
-    });
+        // Cards in Slots.
+        const cardId = slot.card$
+        if(cardId !== undefined) {
+            let cardElement = slotElement.querySelector(`[id="${cardId}"]`);
 
+            if(cardElement == null) {
+                const imageUrl = getCardArtUrl(cardId);
+
+                cardElement = document.createElement('div');
+                cardElement.id = cardId;
+                cardElement.classList.add('card');
+                cardElement.style.backgroundImage = imageUrl;
+                
+                cardElement.addEventListener('mouseover', () => showCardPreview(cardId));
+                cardElement.addEventListener('click', e => {
+                    handleInteraction(cardId);
+                    e.stopPropagation();
+                });
+
+                slotElement.appendChild(cardElement);
+            }
+
+            // Remove no longer referenced nodes in the DOM, if the model doesn't reference the card anymore.
+            [
+                ...slotElement
+                .childNodes
+                .values()
+            ]
+            .filter(node => cardId != +node.id)
+            .forEach(node => {
+                console.debug(`Removing node ${node.id} from Slot #${slot.id} because the referenced Card no longer exists there!`);
+                node.remove();
+            });
+        }
+    });
+    
     // Deck.
     model.players.forEach((player, i) => {
         const deckId = player.deck$.id;
@@ -265,7 +326,10 @@ const render = (model) => {
         deckElement.classList.add(`deck-player${i + 1}`);
         deckElement.id = deckId;
 
-        deckElement.addEventListener('click', () => handleInteraction(deckId));
+        deckElement.addEventListener('click', e => {
+            handleInteraction(deckId);
+            e.stopPropagation();
+        });
     });
 
     // Lanes.
@@ -278,7 +342,10 @@ const render = (model) => {
             laneElement = document.createElement('div');
             laneElement.classList.add(...cssClass.split(' '));
             laneElement.id = lane.id;
-            laneElement.addEventListener('click', () => handleInteraction(lane.id));
+            laneElement.addEventListener('click', e => {
+                handleInteraction(lane.id);
+                e.stopPropagation();
+            });
         }
 
         // Render Power indicator for this lane.
@@ -292,8 +359,7 @@ const render = (model) => {
             powerIndicator.id = powerIndicatorId;
             laneElement.appendChild(powerIndicator);
 
-            const board = document.getElementById('game-board');
-            board.appendChild(laneElement);
+            gameBoardElement.appendChild(laneElement);
         }
         // Always update Power per Player per Lane!
         const powerPlayerEntries = lane.$properties().$power;
@@ -305,19 +371,55 @@ const render = (model) => {
     // Crystal Zones.
     model.players.forEach((player, i) => {
         // Render Crystal Zones
-        const crystalZoneId = player.crystalZone.id;
+        const crystalzoneId = player.crystalzone$.id;
 
-        if(document.getElementById(crystalZoneId) != null) {
-            return;
+        let crystalzoneElement = document.getElementById(crystalzoneId);
+        if(crystalzoneElement == null) {
+            crystalzoneElement = document.createElement('div');
+            crystalzoneElement.id = crystalzoneId;
+            crystalzoneElement.classList.add('crystalzone', `player${i + 1}-crystalzone`);
+
+            crystalzoneElement.addEventListener('click', e => {
+                handleInteraction(crystalzoneId);
+                e.stopPropagation();
+            });
+            
+            const playerArea = document.getElementById(`player${i + 1}-area`);
+            playerArea.appendChild(crystalzoneElement);
         }
 
-        const crystalZoneElement = document.createElement('div');
-        crystalZoneElement.id = crystalZoneId;
-        crystalZoneElement.classList.add('crystalzone', `player${i + 1}-crystalzone`);
-        crystalZoneElement.addEventListener('click', () => handleInteraction(crystalZoneId));
+        // Render cards in crystal zone.
+        player.crystalzone$.forEach(card => {
+            const cardId = card;
 
-        const playerArea = document.getElementById(`player${i + 1}-area`);
-        playerArea.appendChild(crystalZoneElement);
+            let cardElement = crystalzoneElement.querySelector(`[id="${cardId}"]`);
+            if(cardElement == null) {
+                cardElement = document.createElement('div');
+                cardElement.id = cardId;
+                cardElement.classList.add('card');
+                cardElement.style.backgroundImage = getCardArtUrl(cardId);
+
+                cardElement.addEventListener('mouseover', () => showCardPreview(cardId));
+                cardElement.addEventListener('click', e => {
+                    handleInteraction(cardId);
+                    e.stopPropagation();
+                });
+                
+                crystalzoneElement.appendChild(cardElement);
+            }
+        });
+
+        // Clean up dangling DOM nodes of cards that are no longer in this zone.
+        [
+            ...crystalzoneElement
+            .childNodes
+            .values()
+        ]
+        .filter(node => !player.crystalzone$.includes(+node.id))
+        .forEach(node => {
+            console.debug(`Removing node ${node.id} from Crystal Zone #${crystalzoneElement.id} because the referenced Card no longer exists there!`);
+            node.remove();
+        });
     });
 
     // Hand.
@@ -341,32 +443,33 @@ const render = (model) => {
         const handElement = document.getElementById(player.hand$.id);
 
         // Remove no longer referenced nodes in the DOM, if the model doesn't hold the card anymore.
-        const handCardElementsToRemove = [
-                ...document.getElementById(player.hand$.id)
-                .childNodes
-                .values()
-            ]
-            .filter(node => !player.hand$.includes(+node.id));
-        console.log(handCardElementsToRemove, player.hand$);
+        [
+            ...document.getElementById(player.hand$.id)
+            .childNodes
+            .values()
+        ]
+        .filter(node => !player.hand$.includes(+node.id))
+        .forEach(node => {
+            console.debug(`Removing node ${node.id} from Hand #${handElement.id} because the referenced Card no longer exists there!`);
+            node.remove();
+        });
 
         player.hand$.forEach(cardId => {
-            const card = componentMap.get(cardId);
-            const imageUrl = `url('${resolveCardArt(card.Name)}')`;
-
-            // TODO: Only render when element doesn't yet exist.
             let cardElement = document.getElementById(cardId);
             if(cardElement == null) {
                 cardElement = document.createElement('div');
                 cardElement.classList.add('card');
                 cardElement.id = cardId;
+                cardElement.style.backgroundImage = getCardArtUrl(cardId);
 
-                cardElement.addEventListener('mouseover', () => showCardPreview(imageUrl));
-                cardElement.addEventListener('click', () => handleInteraction(cardId));
+                cardElement.addEventListener('mouseover', () => showCardPreview(cardId));
+                cardElement.addEventListener('click', e => {
+                    handleInteraction(cardId);
+                    e.stopPropagation();
+                });
                 
                 handElement.appendChild(cardElement);
             }
-
-            cardElement.style.backgroundImage = imageUrl;
         });
     });
 
@@ -378,7 +481,10 @@ const render = (model) => {
             const deckElement = document.createElement('div');
             deckElement.classList.add('deck');
             deckElement.id = deckId;
-            deckElement.addEventListener('click', () => handleInteraction(deckId));
+            deckElement.addEventListener('click', e => {
+                handleInteraction(deckId);
+                e.stopPropagation();
+            });
 
             deckArea.appendChild(deckElement);
         }
@@ -439,43 +545,36 @@ let state = {
     actions: []
 };
 
-console.error('STATE', state);
-
 // ACTION DICTIONARY
 const RAW_ACTION_DICTIONARY = {
     draw: {
-        execute: (player = null, deck) => {
+        execute: (player = null, deck$) => {
             // Default to Player's Deck.
             if(player == null) {
-                player = componentMap.get(deck.owner$);
+                player = componentMap.get(deck$.owner$);
             }
-
-            console.error(`DRAW`, player, deck);
-            const card = deck.pop();
+            const card = componentMap.get(deck$.pop());
             player.hand$.push(card.id);
             card.location$ = player.hand$.id;
             
-            return [player, deck];
+            return [player, deck$];
         },
-        log: (player, deck) => `Player ${player} drew a card from ${deck}.`,
+        log: (player, deck$) => `Player ${player} drew a card from ${deck$}.`,
         target: 'deck'
     },
     summon: {
         execute: (player, card, slot) => {
-            slot.card = card; // Move card to slot.
+            slot.card$ = card.id; // Move card to slot.
 
             // Remove card from previous location.
             const previousLocation = componentMap.get(card.location$);
 
-            let newReference;
-            console.info(`Removing ${card} from ${previousLocation}`);
-            if(Array.isArray(previousLocation)) {
-                newReference = previousLocation.filter(c => c.id != card.id);
-            } else {
-                newReference = undefined;
-            }
             // Modify the existing container by rewriting the reference.
-            componentMap.set(card.location$, newReference);
+            if(Array.isArray(previousLocation)) {
+                previousLocation.splice(previousLocation.indexOf(card.id), 1);
+            } else {
+                console.error('WHAT DOES THIS MEAN? WHERE IS THE COMPONENT REFERENCED? Previous location was', previousLocation);
+            }
             
             card.location$ = slot.id; // Reference card to slot.
 
@@ -485,31 +584,28 @@ const RAW_ACTION_DICTIONARY = {
         target: 'card'
     },
     crystallize: {
-        execute: (player, card) => {
-
+        execute: (player, card, crystalzone$) => {
+            crystalzone$.push(card.id);
             // Remove card from previous location.
             const previousLocation = componentMap.get(card.location$);
 
-            let newReference;
-            if(Array.isArray(previousLocation)) {
-                newReference = previousLocation.filter(c => c.id != card.id);
-            } else {
-                newReference = undefined;
-            }
             // Modify the existing container by rewriting the reference.
-            componentMap.set(card.location$, newReference);
+            if(Array.isArray(previousLocation)) {
+                previousLocation.splice(previousLocation.indexOf(card.id), 1);
+            } else {
+                console.error('WHAT DOES THIS MEAN? WHERE IS THE COMPONENT REFERENCED? Previous location was', previousLocation);
+            }
             
-            card.location$ = player.crystalzone.id;
+            card.location$ = crystalzone$.id; // Reference card to slot.
 
-            return [player, card];
+            return [player, card, crystalzone$];
         },
-        log: (player, card) => `Player ${player} crystallized ${card}.`,
+        log: (player, card, crystalzone$) => `Player ${player} crystallized ${card}.`,
         target: 'card'
     },
 };
 const actions = new Proxy(RAW_ACTION_DICTIONARY, {
     get: (target, prop, _receiver) => {
-        console.info(target, prop);
         const response = target[prop];
 
         // Automatically execute logging on action execution.
@@ -528,6 +624,8 @@ const actions = new Proxy(RAW_ACTION_DICTIONARY, {
 
                 const usedParameters = target.apply(thisArg, mappedArray);
 
+                // Reset handle context after action has been executed.
+                resetHandleContext();
                 log(response.log(...usedParameters));
                 tick();
             }
@@ -567,7 +665,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Each Player draws 5 cards from their Deck.
     state.players.forEach(player => {
         Array(5).fill().forEach(() => {
-            console.log(player);
             actions.draw(null, player.deck$);
         });
     });
