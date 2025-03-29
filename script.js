@@ -100,48 +100,73 @@ const hideCardPreview = () => {
 
 // TODO: AI should simply do a random action from its action space, whenever feasible.
 // TODO: This should be an Object with Type -> Args, but for now we only accept single types.
-let handleContextArguments = {};
+let handleContextArguments = {
+    context: new Set(),
+    choices: []
+};
+const highlight = (actions, alreadySeenContext) => {
+    [...actions
+        .map(action => action.args)
+        .flat()
+        // Filter out duplicate entries.
+        .reduce((prev, current) => {
+            if(prev.has(current)) {
+                prev.set(current, undefined);
+                return prev;
+            }
+
+            prev.set(current, 'yay');
+            return prev;
+        }, new Map())
+        .entries()]
+        .filter(([_, value]) => value !== undefined)
+        .map(([key, _]) => key)
+        // Highlight all remaining elements.
+        .filter(id => !alreadySeenContext.has(id))
+        .forEach(id => {
+            console.log('Highlighting ', id);
+
+            const element = document.getElementById(id);
+            element.classList.add('highlight');
+        });
+};
 const resetHandleContext = () => {
     // Reset context and disable highlight!
-    handleContextArguments = {};
+    handleContextArguments = {
+        context: new Set(),
+        choices: []
+    };
     console.debug('Resetting all highlights');
     document.querySelectorAll('.highlight').forEach(e => e.classList.remove('highlight'));
 };
 const handleInteraction = (id) => {
+    console.log('Context handler', handleContextArguments);
+
     const component = componentMap.get(id);
     log(`${state.currentPlayer} interacted with ${component} (#${id})`, true);
 
-    // Is there a discerning action that triggers if we interact with this component?
-    if(id in handleContextArguments) {
-        const info = handleContextArguments[id];
+    // Does this interaction narrow down the choice space enough that we can execute a single action?
+    if(handleContextArguments.choices.length > 0) {
+        const narrowedDownChoices = handleContextArguments.choices
+            .filter(choice => choice.args.includes(id));
 
-        // Try and deduct the true arguments for this action call, if feasible.
-        // If there are still choices left, we need to repeat the process.
-
-        let resolved = true;
-        const appliedChoiceParameters = info.choices.map(parameter => {
-            // If there is no choice, we just accept this parameter.
-            if(!Array.isArray(parameter)) {
-                return parameter;
-            }
-
-            // If our interaction narrows down a choice, we accept this as our parameter.
-            if(parameter.includes(id)) {
-                return id;
-            }
-
-            // We had a choice, but couldn't narrow it down - this action can't be resolved yet!
-            resolved = false;
-            return parameter;
-        });
-
-        if(resolved) {
-            console.info(`Narrowed down interaction for ${info.type}: ${appliedChoiceParameters}!`);
-            actions[info.type](...appliedChoiceParameters);
-            return;
-        } else {
+        if(narrowedDownChoices.length == 1) {
+            const action = narrowedDownChoices[0];
+            console.log(`Narrowed down interaction for ${action.type}: ${action.args}!`);
+            actions[action.type](...action.args);
+        } else if(narrowedDownChoices.length == 0) {
+            console.log('Resetting context, because this interaction doesnt do anything with the choice space.');
             resetHandleContext();
+        } else {
+            // We just continue with these choices!
+            handleContextArguments.choices = narrowedDownChoices;
+            handleContextArguments.context.add(id);
+
+            // Add highlights to all elements that are not shared across _all_ possible actions.
+            highlight(handleContextArguments.choices, handleContextArguments.context);
         }
+
+        return;
     }
 
     console.debug('Before filtering actions:', component.types, state.actions);
@@ -165,70 +190,17 @@ const handleInteraction = (id) => {
 
         // Execute chosen action.
         actions[action.type](...action.args);
-    } else {
-        console.debug('Possible actions for selected Component:', possibleActions);
+        return;
+    } 
 
-        const possibleActionTypes = [...new Set(possibleActions.map(action => action.type))];
-        console.info('Possible action types:', possibleActionTypes);
+    // There are many possible choices for choosing an action - we narrow it down
+    // and then save the filtered combinations.
+    console.debug('Possible actions for selected Component:', possibleActions);
+    handleContextArguments.context.add(id);
+    handleContextArguments.choices = possibleActions;
 
-        // TODO: Calculate the discerning information between all action types.
-        possibleActionTypes.forEach(targetAction => {
-            // Find "spread" of components to calculate the possible selection from.
-            const context = possibleActions
-                .filter(action => action.type === targetAction)
-                .map(action => action.args)
-                .reduce((prev, current) => {
-                    if(prev.length === 0) {
-                        return current.map(v => [v]);
-                    }
-
-                    return prev.map((v, i) => [...v, current[i]]);
-                } ,[])
-                // If there is no "real" choice for a certain parameter, that is good!
-                // Otherwise we map all choices into an array.
-                .map(choice => {
-                    if(new Set(choice).size === 1) {
-                        return choice[0];
-                    }
-
-                    return choice;
-                });
-            console.debug('Context is', context);
-
-            const choices = context
-                // .filter(parameter => Array.isArray(parameter))
-                .flat();
-            // Update all "chooseable" elements in the UI.
-            choices
-                .forEach(id => {
-                    if(id in handleContextArguments) {
-                        console.warn(`Interaction with ${componentMap.get(id)} would not have an unique result. Clash between "${handleContextArguments[id].type}" and "${targetAction}".`)
-                        handleContextArguments[id] = null;
-                        return;
-                    }
-
-                    // We already found out that interactions with this component don't help - we skip it!
-                    if(handleContextArguments[id] === null) {
-                        return;
-                    }
-
-                    handleContextArguments = {
-                        ...handleContextArguments,
-                        [id]: {type: targetAction, choices: context}
-                    };
-                });
-        });
-        
-        // Add highlights to all discerning information
-        Object.entries(handleContextArguments)
-            .filter(([k, v]) => v != null)
-            .forEach(([k, _]) => {
-                console.log('Highlighting ', k);
-                const element = document.getElementById(k);
-                element.classList.add('highlight');
-            });
-        console.debug('Action context is: ', handleContextArguments);
-    }
+    // Add highlights to all elements that are not shared across _all_ possible actions.
+    highlight(handleContextArguments.choices, handleContextArguments.context);
 };
 
 // Events: When clicking "anywhere else", reset the handleContext.
