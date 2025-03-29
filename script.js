@@ -115,7 +115,6 @@ const handleInteraction = (id) => {
     if(id in handleContextArguments) {
         const info = handleContextArguments[id];
 
-        console.error('INFO', info);
         // Try and deduct the true arguments for this action call, if feasible.
         // If there are still choices left, we need to repeat the process.
 
@@ -240,12 +239,13 @@ const initializeLane = ($slots) => (() => {
     const lane = {
         orientation: 'horizontal',
         $slots: $slots,
-        $power: state.players.map(player => {
+        $power: () => state.players.map(player => {
             return {
                 player$: player.id,
                 power: $slots()
                     .map(slot => slot.card$)
-                    .filter(card => card !== undefined)
+                    .filter(id => id !== undefined)
+                    .map(id => componentMap.get(id))
                     .filter(card => card.owner$ == player.id)
                     .reduce((prev, curr) => prev + curr.Power, 0)
             };
@@ -258,6 +258,7 @@ const initializeLane = ($slots) => (() => {
 // TODO: Make either idempotent or only render diff!
 const resolveCardArt = (name) => `https://cdn.shardsofbeyond.com/rashid-test/${name.toLowerCase().replaceAll(/\W/g, '')}.png`;
 const getCardArtUrl = (card$) => card$ === undefined ? null : `url('${resolveCardArt(componentMap.get(card$).Name)}')`;
+const getRawCardArtUrl = (card$) => card$ === undefined ? null : `url('https://cdn.shardsofbeyond.com/rashid-test/${componentMap.get(card$)['Artwork-default']}.png')`;
 const gameBoardElement = document.getElementById('game-board');
 
 const render = (model) => {
@@ -323,7 +324,6 @@ const render = (model) => {
         }
 
         const deckElement = document.createElement('div');
-        deckElement.classList.add(`deck-player${i + 1}`);
         deckElement.id = deckId;
 
         deckElement.addEventListener('click', e => {
@@ -362,9 +362,9 @@ const render = (model) => {
             gameBoardElement.appendChild(laneElement);
         }
         // Always update Power per Player per Lane!
-        const powerPlayerEntries = lane.$properties().$power;
+        const powerPlayerEntries = lane.$properties().$power();
         const powerDisparity = powerPlayerEntries[0].power - powerPlayerEntries[1].power;
-        powerIndicator.innerHTML = `<span class="neutral${powerDisparity == 0 ? '' : powerDisparity > 0 ? `player1` : 'player2'}">${powerDisparity}</span>`;
+        powerIndicator.innerHTML = `<span class="${powerDisparity == 0 ? 'neutral' : powerDisparity > 0 ? `player1` : 'player2'}">${powerDisparity}</span>`;
 
     });
 
@@ -397,7 +397,7 @@ const render = (model) => {
                 cardElement = document.createElement('div');
                 cardElement.id = cardId;
                 cardElement.classList.add('card');
-                cardElement.style.backgroundImage = getCardArtUrl(cardId);
+                cardElement.style.backgroundImage = getRawCardArtUrl(cardId);
 
                 cardElement.addEventListener('mouseover', () => showCardPreview(cardId));
                 cardElement.addEventListener('click', e => {
@@ -510,14 +510,12 @@ let state = {
     wonBy: undefined,
     currentPlayer: 0,
     board: {
-        slots: Array(5).fill().map((_, x) => Array(4).fill().map((_, y) => {
-            const slot = {
-                card: undefined,
+        slots: Array(4).fill().map((_, y) => Array(5).fill().map((_, x) => {
+            return identify({
+                card$: undefined,
                 x: x,
                 y: y
-            };
-
-            return identify(slot, ['slot'], `Slot ${x + 1}/${y + 1}`);
+            }, ['slot'], `Slot ${x + 1}/${y + 1}`);
         })).flat(),
         lanes: [
             // 4 Horizontal Lanes
@@ -638,14 +636,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const request = await fetch(cardFile);
     const cards = (await request.json())
         .filter(card => card.Set == 1) // Only valid cards from Set 1 should be made into decks.
-        .filter(card => card.Cardtype === 'Unit')
-        // FIXME: Remove!
-        .map(card => {
-            return {
-                ...card,
-                Name: 'Ambrosia Bee'
-            }
-        }); // Only play with Units.
+        .filter(card => card.Cardtype === 'Unit'); // Only play with Units.
 
     log(`Loaded a total of ${cards.length} cards!`, true);
 
