@@ -355,8 +355,27 @@ button {
     content: '';
     width: 100%;
     height: 100%;
-    background: linear-gradient(to right, darkgreen, darkgreen);
     pointer-events: none;
     display: block;
     opacity: 0.4;
+}
+
+.crystalzone .realm-divine::before {
+    background: linear-gradient(to right, gold, gold);
+}
+
+.crystalzone .realm-nature::before {
+    background: linear-gradient(to right, darkgreen, darkgreen);
+}
+
+.crystalzone .realm-mortal::before {
+    background: linear-gradient(to right, steelblue, steelblue);
+}
+
+.crystalzone .realm-elemental::before {
+    background: linear-gradient(to right, crimson, crimson);
+}
+
+.crystalzone .realm-void::before {
+    background: linear-gradient(to right, purple, purple);
 }

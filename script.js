@@ -31,13 +31,22 @@ const createPlayerDefaultSettings = (name) => {
 
     let player = identify({}, ['player'], name);
     let crystalzone = identify(createOwnedContainer(player.id), ['crystalzone'], `${name}'s Crystal Zone`);
-    crystalzone.realmCounts = {
-        Divine: 0,
-        Elemental: 0,
-        Mortal: 0,
-        Nature: 0,
-        Void: 0
-    };
+    // Calculate all Realm Counts.
+    crystalzone.$realmCounts = () => crystalzone
+        .map(cardId => componentMap.get(cardId))
+        .reduce((prev, card) => {
+            Object.keys(prev)
+                .filter(realm => card.Costs.includes(realm))
+                .forEach(realm => prev[realm] = prev[realm] + 1);
+                
+            return prev;
+        }, {
+            'D': 0,
+            'M': 0,
+            'E': 0,
+            'N': 0,
+            'V': 0
+        });
     crystalzone.total = 0;
     crystalzone.owner$ = player.id;
 
@@ -256,13 +265,14 @@ const render = (model) => {
         const cardId = slot.card$
         if(cardId !== undefined) {
             let cardElement = slotElement.querySelector(`[id="${cardId}"]`);
+            const card = componentMap.get(cardId);
 
             if(cardElement == null) {
                 const imageUrl = getCardArtUrl(cardId);
 
                 cardElement = document.createElement('div');
                 cardElement.id = cardId;
-                cardElement.classList.add('card');
+                cardElement.classList.add('card', `realm-${card.Realms.trim().split(/\s/).join('-').toLowerCase()}`);
                 cardElement.style.backgroundImage = imageUrl;
                 
                 cardElement.addEventListener('mouseover', () => showCardPreview(cardId));
@@ -362,14 +372,14 @@ const render = (model) => {
         }
 
         // Render cards in crystal zone.
-        player.crystalzone$.forEach(card => {
-            const cardId = card;
-
+        player.crystalzone$.forEach(cardId => {
+            const card = componentMap.get(cardId);            
             let cardElement = crystalzoneElement.querySelector(`[id="${cardId}"]`);
+            
             if(cardElement == null) {
                 cardElement = document.createElement('div');
                 cardElement.id = cardId;
-                cardElement.classList.add('card');
+                cardElement.classList.add('card', `realm-${card.Realms.trim().split(/\s/).join('-').toLowerCase()}`);
                 cardElement.style.backgroundImage = getRawCardArtUrl(cardId);
 
                 cardElement.addEventListener('mouseover', () => showCardPreview(cardId));
@@ -428,10 +438,12 @@ const render = (model) => {
         });
 
         player.hand$.forEach(cardId => {
+            const card = componentMap.get(cardId);
             let cardElement = document.getElementById(cardId);
+            
             if(cardElement == null) {
                 cardElement = document.createElement('div');
-                cardElement.classList.add('card');
+                cardElement.classList.add('card', `realm-${card.Realms.trim().split(/\s/).join('-').toLowerCase()}`);
                 cardElement.id = cardId;
                 cardElement.style.backgroundImage = getCardArtUrl(cardId);
 
