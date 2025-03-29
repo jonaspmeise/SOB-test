@@ -193,6 +193,7 @@ const handleInteraction = (id) => {
 
                     return choice;
                 });
+            console.debug('Context is', context);
 
             const choices = context
                 // .filter(parameter => Array.isArray(parameter))
@@ -258,7 +259,7 @@ const initializeLane = ($slots) => (() => {
 // TODO: Make either idempotent or only render diff!
 const resolveCardArt = (name) => `https://cdn.shardsofbeyond.com/rashid-test/${name.toLowerCase().replaceAll(/\W/g, '')}.png`;
 const getCardArtUrl = (card$) => card$ === undefined ? null : `url('${resolveCardArt(componentMap.get(card$).Name)}')`;
-const getRawCardArtUrl = (card$) => card$ === undefined ? null : `url('https://cdn.shardsofbeyond.com/rashid-test/${componentMap.get(card$)['Artwork-default']}.png')`;
+const getRawCardArtUrl = (card$) => card$ === undefined ? null : `url('https://cdn.shardsofbeyond.com/rashid-test-artworks/${componentMap.get(card$).Artworks.default}')`;
 const gameBoardElement = document.getElementById('game-board');
 
 const render = (model) => {
@@ -513,6 +514,10 @@ let state = {
         slots: Array(4).fill().map((_, y) => Array(5).fill().map((_, x) => {
             return identify({
                 card$: undefined,
+                $lanes: () => state.board.lanes
+                    .filter(lane => lane.$properties().$slots()
+                        .find(slot => slot.x === x && slot.y === y) !== undefined
+                    ),
                 x: x,
                 y: y
             }, ['slot'], `Slot ${x + 1}/${y + 1}`);
@@ -521,7 +526,8 @@ let state = {
             // 4 Horizontal Lanes
             ...Array(4).fill().map((_, i) => {
                 // Each Lane definition
-                const $slots = () => state.board.slots.filter(slot => slot.y === i);
+                const $slots = () => state.board.slots
+                    .filter(slot => slot.y === i);
                 const lane = {$properties: initializeLane($slots), orientation: 'horizontal'};
 
                 return identify(lane, ['lane', 'horizontal-lane'], `Horizontal Lane ${i + 1}`);
