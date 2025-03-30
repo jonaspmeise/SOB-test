@@ -8,6 +8,10 @@ import { resetHandleContext } from './scripts/interaction-handler.js';
 
 // CONSTANTS
 const cardFile = './cards.json';
+window._model = {
+    actions: actions,
+    state: state
+};
 
 // Events: When clicking "anywhere else", reset the handleContext.
 document.body.addEventListener('click', () => {

@@ -1,3 +1,11 @@
+:root {
+    --realm-mortal: steelblue;
+    --realm-elemental: crimson;
+    --realm-void: purple;
+    --realm-nature: darkgreen;
+    --realm-divine: gold;
+}
+
 body {
     font-family: Arial, sans-serif;
     background-color: #1a1a1a;
@@ -64,9 +72,8 @@ body {
     height: 80px;
     display: flex;
     gap: 10px;
-    overflow-x: auto;
     white-space: nowrap;
-    align-items: center;
+    align-items: flex-start;
 }
 
 .player1-crystalzone {
@@ -361,21 +368,57 @@ button {
 }
 
 .crystalzone .realm-divine::before {
-    background: linear-gradient(to right, gold, gold);
+    background: linear-gradient(to right, var(--realm-divine), var(--realm-divine));
 }
 
 .crystalzone .realm-nature::before {
-    background: linear-gradient(to right, darkgreen, darkgreen);
+    background: linear-gradient(to right, var(--realm-nature), var(--realm-nature));
 }
 
 .crystalzone .realm-mortal::before {
-    background: linear-gradient(to right, steelblue, steelblue);
+    background: linear-gradient(to right, var(--realm-mortal), var(--realm-mortal));
 }
 
 .crystalzone .realm-elemental::before {
-    background: linear-gradient(to right, crimson, crimson);
+    background: linear-gradient(to right, var(--realm-elemental), var(--realm-elemental));
 }
 
 .crystalzone .realm-void::before {
-    background: linear-gradient(to right, purple, purple);
+    background: linear-gradient(to right, var(--realm-purple), var(--realm-purple));
+}
+
+.crystalzone .realm-divine-elemental::before {
+    background: linear-gradient(to right, var(--realm-divine), var(--realm-elemental));
+}
+
+.crystalzone .realm-divine-mortal::before {
+    background: linear-gradient(to right, var(--realm-divine), var(--realm-mortal));
+}
+
+.crystalzone .realm-divine-nature::before {
+    background: linear-gradient(to right, var(--realm-divine), var(--realm-nature));
+}
+
+.crystalzone .realm-divine-void::before {
+    background: linear-gradient(to right, var(--realm-divine), var(--realm-void));
+}
+
+.crystalzone .realm-elemental-nature::before {
+    background: linear-gradient(to right, var(--realm-elemental), var(--realm-nature));
+}
+
+.crystalzone .realm-elemental-mortal::before {
+    background: linear-gradient(to right, var(--realm-elemental), var(--realm-mortal));
+}
+
+.crystalzone .realm-elemental-void::before {
+    background: linear-gradient(to right, var(--realm-elemental), var(--realm-void));
+}
+
+.crystalzone .realm-mortal-nature::before {
+    background: linear-gradient(to right, var(--realm-morta), var(--realm-void));
+}
+
+.crystalzone .realm-mortal-void::before {
+    background: linear-gradient(to right, var(--realm-mortal), var(--realm-void));
 }
