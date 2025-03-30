@@ -10,6 +10,14 @@ export const tick = () => {
     // Render state.
     render(state);
 
+    // Work off triggers.
+    const trigger = state.triggerQueue.pop();
+    if(trigger !== undefined) {
+        console.error('Resolving trigger', trigger);
+        trigger();
+        return; // TODO: MAYBE?????
+    }
+
     // Calculate action space for both players.
     // TODO: Right now, the action space is re-calculated greedily.
     state.actions = rules

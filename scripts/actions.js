@@ -2,12 +2,14 @@ import { components, state } from './state.js';
 import { resetHandleContext } from './interaction-handler.js';
 import { log } from './utility.js';
 import { tick } from './tick.js';
+import { triggers } from './triggers.js';
 
 export const RAW_ACTION_DICTIONARY = {
     draw: {
         execute: (deck, _model) => {
             const player = components.get(deck.owner$);
             
+            console.error(deck, player);
             const card = components.get(deck.pop());
             player.hand$.push(card.id);
             card.location$ = player.hand$.id;
@@ -69,7 +71,6 @@ export const RAW_ACTION_DICTIONARY = {
             const nextPlayer = model.players
                 .filter(player => player.id !== oldPlayerId)[0];
                 
-            console.error(oldPlayerId, nextPlayer);
             turn.currentPlayer$ = nextPlayer.id;
 
             return [components.get(oldPlayerId), nextPlayer];
@@ -102,6 +103,15 @@ export const actions = new Proxy(RAW_ACTION_DICTIONARY, {
                 // Reset handle context after action has been executed.
                 resetHandleContext();
                 log(response.log(...usedParameters), usedParameters[0]);
+
+                // Add trigger for this action to trigger list.
+                const triggerToExecute = triggers
+                    .filter(trigger => trigger.check(prop, usedParameters))
+                    .map(trigger => (() => trigger.effect(prop, usedParameters)));
+
+                console.debug(`Creating ${triggerToExecute.length} triggers.`, triggerToExecute);
+                state.triggerQueue.push(...triggerToExecute);
+
                 tick();
             }
         });
