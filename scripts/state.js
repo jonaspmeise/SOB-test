@@ -150,6 +150,6 @@ export const state = {
     triggerQueue: [],
     // Reference to the concept "Turn", which is interactable through the Turn button.
     turn: identify({
-        currentPlayer: undefined
+        currentPlayer$: undefined
     }, ['turn'], 'Turn')
 };

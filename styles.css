@@ -423,4 +423,7 @@ button {
     background: linear-gradient(to right, var(--realm-mortal), var(--realm-void));
 }
 
+.crystalzone .realm-nature-void::before {
+    background: linear-gradient(to right, var(--realm-nature), var(--realm-void));
+}
 /* TODO: Add lightning effect when a card is played, crystal-zone should glow up in these colors. */

@@ -1,8 +1,11 @@
-export const log = (text, fancy = false) => {
+export const log = (text, player = undefined, fancy = false) => {
     const log = document.getElementById('log');
 
     const entry = document.createElement('div');
     entry.classList.add('log-entry');
+    if(player !== undefined) {
+        entry.classList.add(`player${player.index + 1}`);
+    }
     if(fancy) {
         entry.classList.add('log-entry-fancy');
     }

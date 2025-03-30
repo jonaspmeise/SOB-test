@@ -5,6 +5,7 @@ import { log } from './scripts/utility.js';
 import { state, identify, components, types } from './scripts/state.js';
 import { actions } from './scripts/actions.js';
 import { resetHandleContext } from './scripts/interaction-handler.js';
+import { rules } from './scripts/rules.js';
 
 // CONSTANTS
 const cardFile = './cards.json';
@@ -12,7 +13,8 @@ window._model = {
     actions: actions,
     state: state,
     components: components,
-    types: types
+    types: types,
+    rules: rules
 };
 
 // Events: When clicking "anywhere else", reset the handleContext.
@@ -27,7 +29,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         .filter(card => card.Set == 1) // Only valid cards from Set 1 should be made into decks.
         .filter(card => card.Cardtype === 'Unit'); // Only play with Units.
 
-    log(`Loaded a total of ${cards.length} cards!`, true);
+    log(`Loaded a total of ${cards.length} cards!`, undefined, true);
 
     // Fill each Players deck with 30 random cards.
     state.players.forEach(player => {
@@ -40,7 +42,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // Randomize starting player.
-    state.turn.currentPlayer = state.players[0].id;
+    state.turn.currentPlayer$ = state.players[0].id;
 
     // Each Player draws 5 cards from their Deck.
     state.players.forEach(player => {

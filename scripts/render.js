@@ -223,16 +223,19 @@ export const render = (model) => {
     // Render Stats.
     const gameStatElement = document.getElementById('game-stats');
 
-    let endTurnElement = document.getElementById('end-turn');
+    const turnId = model.turn.id;
+    let endTurnElement = document.getElementById(turnId);
     if(endTurnElement == null) {
-        endTurnElement = document.createElement('div');
-        endTurnElement.id = 'end-turn';
+        endTurnElement = document.createElement('button');
+        endTurnElement.id = turnId;
+        endTurnElement.type = 'button';
+        endTurnElement.textContent = 'Pass Turn';
         endTurnElement.addEventListener('click', e => {
-            handleInteraction(id);
+            handleInteraction(turnId);
             e.stopPropagation();
         });
-
-        gameStatElement.insertAdjacentElement('beforebegin', endTurnElement);
+        
+        gameStatElement.appendChild(endTurnElement);
     }
 
     model.players.forEach((player, i) => {

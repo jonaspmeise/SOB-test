@@ -50,7 +50,8 @@ export const handleInteraction = (id) => {
     console.log('Context handler', handleContextArguments);
 
     const component = components.get(id);
-    log(`${state.turn.currentPlayer} interacted with ${component} (#${id})`, true);
+    const player = components.get(state.turn.currentPlayer$);
+    log(`${player} interacted with ${component} (#${id})`, player, true);
 
     // Does this interaction narrow down the choice space enough that we can execute a single action?
     if(handleContextArguments.choices.length > 0) {
@@ -58,9 +59,12 @@ export const handleInteraction = (id) => {
             .filter(choice => choice.args.includes(id));
 
         if(narrowedDownChoices.length == 1) {
-            const action = narrowedDownChoices[0];
-            console.log(`Narrowed down interaction for ${action.type}: ${action.args}!`);
-            actions[action.type](...action.args);
+            const choice = narrowedDownChoices[0];
+            console.log(`Narrowed down interaction for ${choice.type}: ${choice.args}!`);
+
+            //actions[choice.type](...choice.args);
+            choice.execute();
+
         } else if(narrowedDownChoices.length == 0) {
             console.log('Resetting context, because this interaction doesnt do anything with the choice space.');
             resetHandleContext();
@@ -77,7 +81,7 @@ export const handleInteraction = (id) => {
     }
 
     console.debug('Before filtering actions:', component.types, state.actions);
-    const possibleActions = state.actions
+    const possibleChoices = state.actions
         // filter out actions where the current component is not part of its targets.
         .filter(action => {
             console.debug('Action debug: ', id, action.args);
@@ -85,21 +89,21 @@ export const handleInteraction = (id) => {
         });
         // TODO: Filter only one's own actions (player)!
 
-    console.debug('After filtering actions:', possibleActions);
+    console.debug('After filtering actions:', possibleChoices);
 
-    if(possibleActions.length == 1) {
-        const action = possibleActions[0];
+    // Execute chosen action if there is only a single one available.
+    if(possibleChoices.length == 1) {
+        console.info(possibleChoices);
+        possibleChoices[0].execute();
 
-        // Execute chosen action.
-        actions[action.type](...action.args);
         return;
     } 
 
     // There are many possible choices for choosing an action - we narrow it down
     // and then save the filtered combinations.
-    console.debug('Possible actions for selected Component:', possibleActions);
+    console.debug('Possible choices for selected Component:', possibleChoices);
     handleContextArguments.context.add(id);
-    handleContextArguments.choices = possibleActions;
+    handleContextArguments.choices = possibleChoices;
 
     // Add highlights to all elements that are not shared across _all_ possible actions.
     highlight(handleContextArguments.choices, handleContextArguments.context);
