@@ -3,21 +3,28 @@
 
 // TODO: We probably need a Map<Type, Component[]> too!
 export const components = new Map();
+export const types = new Map();
 
 let counter = 0;
-export const identify = (obj, types, name) => {
-    console.debug(`Registering component of types "${types}" with ID ${counter}...`);
+export const identify = (obj, objTypes, name) => {
+    console.debug(`Registering component of types "${objTypes}" with ID ${counter}...`);
     obj.id = counter;
-    obj.types = types;
+    obj.types = objTypes;
     obj.name = name;
     obj.toString = () => name;
+
+    // Update reference maps.
     components.set(counter, obj);
+    objTypes.forEach(type => {
+        types.set(type, [...(types.get(type) ?? []), obj.id]);
+    });
 
     counter++;
     
     return obj;
 };
 
+let playerCount = 0;
 const createPlayerDefaultSettings = (name) => {
     const createOwnedContainer = (id) => {
         const container = [];
@@ -50,7 +57,9 @@ const createPlayerDefaultSettings = (name) => {
     player = {...player,
         deck$: identify(createOwnedContainer(player.id), ['deck'], `${name}'s Deck`),
         hand$: identify(createOwnedContainer(player.id), ['hand'], `${name}'s Hand`),
-        crystalzone$: crystalzone
+        crystalzone$: crystalzone,
+        $wonLanes: () => state.board.lanes.filter(lane => lane.$properties().$wonBy$() == player.id).length,
+        index: playerCount++
     };
     components.set(player.id, player);
 
@@ -58,20 +67,38 @@ const createPlayerDefaultSettings = (name) => {
 };
 
 const initializeLane = ($slots) => (() => {
+    const $power = () => state.players.map(player => {
+        return {
+            player$: player.id,
+            power: $slots()
+                .map(slot => slot.card$)
+                .filter(id => id !== undefined)
+                .map(id => components.get(id))
+                .filter(card => card.owner$ == player.id)
+                .reduce((prev, curr) => prev + curr.Power, 0)
+        };
+    });
+
     const lane = {
         orientation: 'horizontal',
         $slots: $slots,
-        $power: () => state.players.map(player => {
-            return {
-                player$: player.id,
-                power: $slots()
-                    .map(slot => slot.card$)
-                    .filter(id => id !== undefined)
-                    .map(id => components.get(id))
-                    .filter(card => card.owner$ == player.id)
-                    .reduce((prev, curr) => prev + curr.Power, 0)
-            };
-        })
+        $power: $power,
+        $wonBy$: () => {
+            // If a single slot inside this Lane is empty, the Lane is considered to be not won.
+            if($slots().find(slot => slot.card$ === undefined) !== undefined) {
+                return undefined;
+            }
+
+            const power = $power();
+            if(power[0].power === power[1].power) {
+                // Draw!
+                return undefined;
+            } else if(power[0].power > power[1].power) {
+                return power[0].player$;
+            } else {
+                return power[1].player$;
+            }
+        }
     };
 
     return lane;
@@ -79,7 +106,6 @@ const initializeLane = ($slots) => (() => {
 
 export const state = {
     wonBy: undefined,
-    currentPlayer: 0,
     board: {
         slots: Array(4).fill().map((_, y) => Array(5).fill().map((_, x) => {
             return identify({
@@ -98,6 +124,8 @@ export const state = {
                 // Each Lane definition
                 const $slots = () => state.board.slots
                     .filter(slot => slot.y === i);
+
+                // TODO: $properties() probably is not needed here...
                 const lane = {$properties: initializeLane($slots), orientation: 'horizontal'};
 
                 return identify(lane, ['lane', 'horizontal-lane'], `Horizontal Lane ${i + 1}`);
@@ -116,5 +144,12 @@ export const state = {
         createPlayerDefaultSettings('Shrenrin'),
         createPlayerDefaultSettings('Drassi')
     ],
-    actions: []
+    // References all actions that can be done in a single game-state. Player-agnostic.
+    actions: [],
+    // References all triggers that need to be automatically resolved prior to interactions.
+    triggerQueue: [],
+    // Reference to the concept "Turn", which is interactable through the Turn button.
+    turn: identify({
+        currentPlayer: undefined
+    }, ['turn'], 'Turn')
 };

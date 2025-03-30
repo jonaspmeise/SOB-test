@@ -7,7 +7,7 @@ const gameBoardElement = document.getElementById('game-board');
 const createCardElement = (card, rawArt = false) => {
     let element = document.createElement('div');
     element.id = card.id;
-    element.classList.add('card');
+    element.classList.add('card', `player${components.get(card.owner$).index + 1}`);
     if(card !== undefined && card.Realms !== undefined) {
         element.classList.add(`realm-${card.Realms.trim().split(/\s/).join('-').toLowerCase()}`);
     }
@@ -218,5 +218,35 @@ export const render = (model) => {
         }
         // Always update this value!
         deckCounterElement.textContent = player.deck$.length;
+    });
+
+    // Render Stats.
+    const gameStatElement = document.getElementById('game-stats');
+
+    let endTurnElement = document.getElementById('end-turn');
+    if(endTurnElement == null) {
+        endTurnElement = document.createElement('div');
+        endTurnElement.id = 'end-turn';
+        endTurnElement.addEventListener('click', e => {
+            handleInteraction(id);
+            e.stopPropagation();
+        });
+
+        gameStatElement.insertAdjacentElement('beforebegin', endTurnElement);
+    }
+
+    model.players.forEach((player, i) => {
+        const statElementId = `player${i + 1}-stats`;
+        let statElement = document.getElementById(statElementId);
+
+        if(statElement == null) {
+            statElement = document.createElement('div');
+            statElement.id = statElementId;
+            statElement.classList.add(`player${i + 1}`);
+            
+            gameStatElement.appendChild(statElement);
+        }
+
+        statElement.textContent = `Won Lanes: ${player.$wonLanes()}`;
     });
 };

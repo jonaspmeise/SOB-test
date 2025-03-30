@@ -2,7 +2,7 @@
 // [VAR]$ = component/id reference
 
 import { log } from './scripts/utility.js';
-import { state, identify } from './scripts/state.js';
+import { state, identify, components, types } from './scripts/state.js';
 import { actions } from './scripts/actions.js';
 import { resetHandleContext } from './scripts/interaction-handler.js';
 
@@ -10,7 +10,9 @@ import { resetHandleContext } from './scripts/interaction-handler.js';
 const cardFile = './cards.json';
 window._model = {
     actions: actions,
-    state: state
+    state: state,
+    components: components,
+    types: types
 };
 
 // Events: When clicking "anywhere else", reset the handleContext.
@@ -38,12 +40,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // Randomize starting player.
-    state.currentPlayer = state.players[0];
+    state.turn.currentPlayer = state.players[0].id;
 
     // Each Player draws 5 cards from their Deck.
     state.players.forEach(player => {
         Array(5).fill().forEach(() => {
-            actions.draw(null, player.deck$);
+            actions.draw(player.deck$);
         });
     });
 

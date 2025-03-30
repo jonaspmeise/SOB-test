@@ -50,7 +50,7 @@ export const handleInteraction = (id) => {
     console.log('Context handler', handleContextArguments);
 
     const component = components.get(id);
-    log(`${state.currentPlayer} interacted with ${component} (#${id})`, true);
+    log(`${state.turn.currentPlayer} interacted with ${component} (#${id})`, true);
 
     // Does this interaction narrow down the choice space enough that we can execute a single action?
     if(handleContextArguments.choices.length > 0) {
@@ -78,14 +78,9 @@ export const handleInteraction = (id) => {
 
     console.debug('Before filtering actions:', component.types, state.actions);
     const possibleActions = state.actions
-        // filter out actions that are not accessible through this interaction.
-        .filter(action => {
-            console.debug('Action debug: ', RAW_ACTION_DICTIONARY[action.type]);
-            return component.types.includes(RAW_ACTION_DICTIONARY[action.type].target);
-        })
         // filter out actions where the current component is not part of its targets.
         .filter(action => {
-            console.debug('Action debug #2: ', id, action.args);
+            console.debug('Action debug: ', id, action.args);
             return action.args.includes(id);
         });
         // TODO: Filter only one's own actions (player)!

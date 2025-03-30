@@ -5,22 +5,20 @@ import { tick } from './tick.js';
 
 export const RAW_ACTION_DICTIONARY = {
     draw: {
-        execute: (player = null, deck$) => {
-            // Default to Player's Deck.
-            if(player == null) {
-                player = components.get(deck$.owner$);
-            }
-            const card = components.get(deck$.pop());
+        execute: (deck) => {
+            const player = components.get(deck.owner$);
+            
+            const card = components.get(deck.pop());
             player.hand$.push(card.id);
             card.location$ = player.hand$.id;
             
-            return [player, deck$];
+            return [player, deck];
         },
-        log: (player, deck$) => `Player ${player} drew a card from ${deck$}.`,
-        target: 'deck'
+        log: (player, deck) => `Player ${player} drew a card from ${deck}.`
     },
     summon: {
-        execute: (player, card, slot) => {
+        execute: (card, slot) => {
+            const player = card.owner$;
             slot.card$ = card.id; // Move card to slot.
 
             // Remove card from previous location.
@@ -37,11 +35,13 @@ export const RAW_ACTION_DICTIONARY = {
 
             return [player, card, slot];
         },
-        log: (player, card, slot) => `Player ${player} summoned a ${card} into Slot ${slot}.`,
-        target: 'card'
+        log: (player, card, slot) => `Player ${player} summoned a ${card} into Slot ${slot}.`
     },
     crystallize: {
-        execute: (player, card, crystalzone$) => {
+        execute: (card) => {
+            const player = card.owner$;
+            const crystalzone$ = components.get(player).crystalzone$;
+
             crystalzone$.push(card.id);
             // Remove card from previous location.
             const previousLocation = components.get(card.location$);
@@ -55,12 +55,12 @@ export const RAW_ACTION_DICTIONARY = {
             
             card.location$ = crystalzone$.id; // Reference card to slot.
 
-            return [player, card, crystalzone$];
+            return [player, card];
         },
-        log: (player, card, crystalzone$) => `Player ${player} crystallized ${card}.`,
-        target: 'card'
-    },
+        log: (player, card) => `Player ${player} crystallized ${card}.`
+    }
 };
+
 export const actions = new Proxy(RAW_ACTION_DICTIONARY, {
     get: (target, prop, _receiver) => {
         const response = target[prop];
