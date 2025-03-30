@@ -27,3 +27,18 @@ export const hideCardPreview = () => {
 export const resolveCardArt = (name) => `https://cdn.shardsofbeyond.com/rashid-test/${name.toLowerCase().replaceAll(/\W/g, '')}.png`;
 export const getCardArtUrl = (card) => card === undefined ? null : `url('${resolveCardArt(card.Name)}')`;
 export const getRawCardArtUrl = (card) => card === undefined ? null : `url('https://cdn.shardsofbeyond.com/rashid-test-artworks/${card.Artworks.default}')`;
+
+export const shuffle = (array) => {
+    let currentIndex = array.length;
+
+    while (currentIndex != 0) {
+
+        let randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex--;
+
+        [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+    }
+
+    return array;
+};
+  

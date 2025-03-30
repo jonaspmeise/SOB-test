@@ -117,7 +117,7 @@ export const render = (model) => {
         // Always update Power per Player per Lane!
         const powerPlayerEntries = lane.$properties().$power();
         const powerDisparity = powerPlayerEntries[0].power - powerPlayerEntries[1].power;
-        powerIndicator.innerHTML = `<span class="${powerDisparity == 0 ? 'neutral' : powerDisparity > 0 ? `player1` : 'player2'}">${powerDisparity}</span>`;
+        powerIndicator.innerHTML = `<span class="${powerDisparity == 0 ? 'neutral' : powerDisparity > 0 ? `player1` : 'player2'}">${Math.abs(powerDisparity)}</span>`;
 
     });
 
@@ -230,6 +230,8 @@ export const render = (model) => {
         endTurnElement.id = turnId;
         endTurnElement.type = 'button';
         endTurnElement.textContent = 'Pass Turn';
+        endTurnElement.classList.add('end-turn-button');
+
         endTurnElement.addEventListener('click', e => {
             handleInteraction(turnId);
             e.stopPropagation();

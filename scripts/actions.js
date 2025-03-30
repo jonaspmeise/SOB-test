@@ -9,7 +9,6 @@ export const RAW_ACTION_DICTIONARY = {
         execute: (deck, _model) => {
             const player = components.get(deck.owner$);
             
-            console.error(deck, player);
             const card = components.get(deck.pop());
             player.hand$.push(card.id);
             card.location$ = player.hand$.id;
@@ -17,7 +16,8 @@ export const RAW_ACTION_DICTIONARY = {
             // Important: First parameter is always the player!
             return [player, deck];
         },
-        log: (player, deck) => `Player ${player} drew a card from ${deck}.`
+        log: (player, deck) => `Player ${player} drew a card from ${deck}.`,
+        color: 'blue'
     },
     summon: {
         execute: (card, slot, _model) => {
@@ -39,7 +39,8 @@ export const RAW_ACTION_DICTIONARY = {
             // Important: First parameter is always the player!
             return [player, card, slot];
         },
-        log: (player, card, slot) => `Player ${player} summoned a ${card} into Slot ${slot}.`
+        log: (player, card, slot) => `Player ${player} summoned a ${card} into Slot ${slot}.`,
+        color: 'orangered'
     },
     crystallize: {
         execute: (card, _model) => {
@@ -62,7 +63,8 @@ export const RAW_ACTION_DICTIONARY = {
             // Important: First parameter is always the player!
             return [player, card];
         },
-        log: (player, card) => `Player ${player} crystallized ${card}.`
+        log: (player, card) => `Player ${player} crystallized ${card}.`,
+        color: 'darkgoldenrod'
     },
     pass: {
         execute: (turn, model) => {
@@ -75,7 +77,8 @@ export const RAW_ACTION_DICTIONARY = {
 
             return [components.get(oldPlayerId), nextPlayer];
         },
-        log: (oldPlayer, newPlayer) => `Player ${oldPlayer} passed their Turn to ${newPlayer}.`
+        log: (oldPlayer, newPlayer) => `Player ${oldPlayer} passed their Turn to ${newPlayer}.`,
+        color: 'green'
     }
 };
 
@@ -106,11 +109,11 @@ export const actions = new Proxy(RAW_ACTION_DICTIONARY, {
 
                 // Add trigger for this action to trigger list.
                 const triggerToExecute = triggers
-                    .filter(trigger => trigger.check(prop, usedParameters))
-                    .map(trigger => (() => trigger.effect(prop, usedParameters)));
+                    .filter(trigger => trigger.check(prop, usedParameters, state));
+                console.debug(`Creating ${triggerToExecute.length} triggers.`, triggerToExecute.map(trigger => trigger.name));
 
-                console.debug(`Creating ${triggerToExecute.length} triggers.`, triggerToExecute);
-                state.triggerQueue.push(...triggerToExecute);
+                // Make the trigger an executable
+                state.triggerQueue.push(...triggerToExecute.map(trigger => (() => trigger.effect(prop, usedParameters, state))));
 
                 tick();
             }

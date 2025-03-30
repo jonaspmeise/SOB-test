@@ -93,6 +93,10 @@ body {
     position: relative;
 }
 
+.game-board .player2 {
+    transform: rotate(180deg)
+}
+
 .lane {
     position: absolute;
     border: 2px solid transparent;
@@ -276,14 +280,13 @@ button {
 }
 
 .player1 {
-    color: red; /* Match Player 1's lane control color */
+    color: red;
 }
 
 .player2 {
-    color: blue; /* Match Player 2's lane control color */
+    color: yellow;
 }
 
-/* Add just the game log styles */
 .game-log {
     position: fixed;
     bottom: 20px;
@@ -314,7 +317,7 @@ button {
     color: #4dabf7;
 }
 
-.player2 .card {
+.hand .player2 {
     transform: rotate(180deg);
 }
 
@@ -427,3 +430,7 @@ button {
     background: linear-gradient(to right, var(--realm-nature), var(--realm-void));
 }
 /* TODO: Add lightning effect when a card is played, crystal-zone should glow up in these colors. */
+
+.end-turn-button {
+    border-style: solid;
+}
