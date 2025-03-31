@@ -39,6 +39,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                     .reduce((prev, curr) => {
                         if(curr !== '?') {
                             prev[curr] = prev[curr] + 1;
+                        }
+
+                        prev['total'] = prev['total'] + 1;
+
+                        return prev;
+                    }, {
+                        'D': 0,
+                        'M': 0,
+                        'E': 0,
+                        'N': 0,
+                        'V': 0,
+                        'total': 0
+                    }) 
+            };
         });
 
     log(`Loaded a total of ${cards.length} cards!`, undefined, true);
