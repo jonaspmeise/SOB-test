@@ -8,79 +8,55 @@
 </head>
 <body>
     <div class="game-container">
-        <!-- Player 2's Crystal Zone and Hand -->
-        <div class="player-2-area">
-            <div class="hand" id="player2-hand">
-                <!-- Cards will be added here dynamically -->
-            </div>
-            <div class="crystal-zone" id="player2-crystal-zone">
-                <!-- No turn icon here anymore -->
-            </div>
-        </div>
-        
         <!-- Add this inside the game-container, before the deck-player2 -->
         <div class="card-preview" id="card-preview"></div>
 
-        <!-- Deck and Count for Player 2 (right side) -->
-        <div class="deck-area deck-player2">
-            <div class="deck" id="deck-player2"></div>
-            <div class="deck-count" id="deck-count-player2">30</div>
-        </div>
-
-        <!-- Game Board (4x5 grid) -->
-        <div class="game-board" id="game-board">
-                <!-- Horizontal Lanes (Rows) -->
-                <div class="lane lane-horizontal" id="lane-row-0"></div>
-                <div class="lane lane-horizontal" id="lane-row-1"></div>
-                <div class="lane lane-horizontal" id="lane-row-2"></div>
-                <div class="lane lane-horizontal" id="lane-row-3"></div>
-                <!-- Vertical Lanes (Columns) -->
-                <div class="lane lane-vertical" id="lane-col-0"></div>
-                <div class="lane lane-vertical" id="lane-col-1"></div>
-                <div class="lane lane-vertical" id="lane-col-2"></div>
-                <div class="lane lane-vertical" id="lane-col-3"></div>
-                <div class="lane lane-vertical" id="lane-col-4"></div>
-        </div>
-
-        <!-- Deck and Count for Player 1 (right side) -->
-        <div class="deck-area deck-player1">
-            <div class="deck" id="deck-player1"></div>
-            <div class="deck-count" id="deck-count-player1">30</div>
-        </div>
-
-        <!-- Player 1's Crystal Zone and Hand -->
-        <div class="player-1-area">
-            <div class="crystal-zone" id="player1-crystal-zone">
-                <!-- No turn icon here anymore -->
+        <div class="game-center">
+            <!-- Player 2's Crystal Zone and Hand -->
+            <div id="player2-area" class="player2 player2-area">
+                <!-- Automatically generate components here. -->
             </div>
-            <div class="hand" id="player1-hand">
-                <!-- Cards will be added here dynamically -->
+
+            <!-- Game Board (4x5 grid) -->
+            <div class="game-board">
+                <div id="game-board" class="game-content">
+                    <!-- Adaptively render elements-->
+                </div>
+            </div>
+            
+            <!-- Player 1's Crystal Zone and Hand -->
+            <div id="player1-area" class="player1 player1-area">
+                <!-- Automatically generate components here. -->
             </div>
         </div>
 
-       <!-- Turn Indicator, Action Buttons, and Game Stats -->
-        <div class="action-buttons">
-            <div class="turn-status" id="turn-status">Player 1's Turn</div>
-            <div class="turn-indicator" id="turn-indicator"></div>
-            <button id="end-turn-btn">End Turn</button>
+        <div class="decks-area">
+            <!-- Deck and Count for Player 2 (left side) -->
+            <div id="deck-area-player2" class="deck-area-player2">
+                <!-- Automatically generate components here. -->
+            </div>
+
+            <!-- Deck and Count for Player 1 (right side) -->
+            <div id="deck-area-player1" class="deck-area-player1">
+                <!-- Automatically generate components here. -->
+            </div>
+        </div>
+
+       <!-- End Turn Button & Game Stats -->
+        <div class="meta">
+            <!-- Button is generated here. -->
             <div class="game-stats" id="game-stats">
-                <div id="player1-stats">Player 1: 0</div>
-                <div id="player2-stats">Player 2: 0</div>
-             
+                <!-- Generated automatically. -->
             </div>
         </div>
 
-        <!-- Add this somewhere appropriate in your game container -->
-        <div class="highlight-controls">
-            <button id="highlight-player1">Highlight P1 Cards</button>
-            <button id="highlight-player2">Highlight P2 Cards</button>
-            <button id="clear-highlight">Clear Highlight</button>
-        </div>
-
-    <script src="script.js"></script>
+        <!-- Game Log -->
+         <div id="log" class="game-log">
+            <!-- Log entries are generated here! -->
+            <div class="log-entry">Welcome to <b>Shards of Beyond</b></div>
+         </div>
+    
+    <!-- Load all scripts -->
+    <script type="module" src="script.js"></script>
 </body>
 </html>
-
-        <!--https://cdn.shardsofbeyond.com/rashid-test/FILENAME.png -->
-        <!-- Falls Karte nicht existiert: Http Response Status 403; Response Status 200 falls Bild existiert -->
-    
