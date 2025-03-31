@@ -31,6 +31,10 @@ export const triggers = [
 
       console.log(`AI: I have ${possibleActions.length} Actions available:`, possibleActions);
 
+      if(possibleActions.length === 0) {
+        console.error('HELLO?', model);
+      }
+
       // Try do this the following way:
       // 1. Play Units
       // 2. Crystallize
@@ -62,7 +66,6 @@ export const triggers = [
       // The Lane is won by the player who has most power in it.
       model.board.lanes.forEach(lane => {
         const wonByPower = lane.$properties().wonByPower$();
-        console.error('WONBYPOWER', wonByPower);
         if(wonByPower === undefined) {
           return;
         }
@@ -84,5 +87,30 @@ export const triggers = [
 
       return [actionType, args, model];
     }
-  }
+  },
+  {
+    name: 'When a Player has conquered four or more Lanes and controls more Lanes than their Opponent, they win the Game. If they both have more than four columns, it\'s a draw.!',
+    // Always check this, regardless of Action! (technically needed for: Summon, Move, Return, Bury, Gain Power, ...)
+    check: (actionType, args, model) => actionType === 'pass' && model.players.filter(player => player.wonLanes >= 4).length > 0,
+    effect: (actionType, args, model) => {
+      model.players.forEach(player => {
+        const otherPlayer = model.players.filter(p => p.id !== player.id)[0];
+
+        console.error('WON?', player, otherPlayer);
+  
+        if(player.wonLanes > otherPlayer.wonLanes) {
+          alert(`${player} wins the Game!!!`);
+        } else if(player.wonLanes === otherPlayer.wonLanes) {
+          // TODO: This freezes and prevents rendering -> add a pipeline callback to the end? Like return [() => alert(....)] from here and call it from their after collecting all triggers.
+          // TODO: (You can resolve the trigger order then!)
+          alert('It\'s a draw!');
+        } else {
+          console.error('WWWWWWWWWWWWWWTF');
+        }
+  
+        return [actionType, args, model];
+      });
+    }
+  },
+
 ];
