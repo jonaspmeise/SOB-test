@@ -1,5 +1,5 @@
 :root {
-    --realm-mortal: steelblue;
+    --realm-mortal: skyblue;
     --realm-elemental: crimson;
     --realm-void: purple;
     --realm-nature: darkgreen;
@@ -13,7 +13,6 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
 }
 
 .game-container {
@@ -21,59 +20,73 @@ body {
     background-size: contain;
     background-position: center;
     background-repeat: no-repeat;
-    height: 90vh;
-    max-height: 90vh;
-    width: 70vw;
+    height: 98vh;
+    max-height: 98vh;
+    width: 100vw;
+    gap: 10%;
     display: flex;
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    position: relative;
+}
+
+.game-container > * {
+    flex-grow: 0;
 }
 
 .game-center {
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: space-evenly;
     align-items: center;
-    gap: 10%;
-}
-
-.player-1-area, .player-2-area {
-    width: 635px;
-    position: relative;
-    margin: 10px 0;
+    gap: 2%;
+    height: 100%;
 }
 
 .hand, .crystalzone {
-    border: 1px solid #666;
+    border: 2px solid black;
     border-radius: 4px;
-    padding: 5px;
-    margin: 5px 0;
     background-color: #333;
-    width: 635px;
     box-sizing: border-box;
     overflow-y: hidden;
-}
-
-.hand {
     display: flex;
-    gap: 10px;
-    overflow-x: auto;
-    min-height: 160px;
-    white-space: nowrap;
-    justify-content: center;
-    flex-direction: row;
 }
 
 .crystalzone {
+    margin-top: 5px;
+    margin-bottom: 5px;
+    height: 5vh;
     background-size: cover;
     background-position: center;
-    height: 80px;
-    display: flex;
+    background-repeat: no-repeat;
     gap: 10px;
-    white-space: nowrap;
+    justify-content: baseline;
     align-items: flex-start;
+    height: 20%;
+    flex-shrink: 0;
+}
+
+.player1 .crystalzone {
+    background-position-y: -95px;
+}
+
+.player2 .crystalzone {
+    background-position-y: -65px;
+}
+
+.hand {
+    gap: 10px;
+    overflow-x: scroll;
+    height: 100%;
+    padding-bottom: 15px;
+    justify-content: center;
+    flex-direction: row;
+    flex-grow: 0;
+}
+
+.hand .card {
+    margin: 5px;
+    flex-shrink: 0;
 }
 
 .player1-crystalzone {
@@ -88,8 +101,6 @@ body {
     background-image: url('assets/gameboard-grid.png');
     background-size: contain;
     background-position: center;
-    width: 500px;
-    height: 540px;
     position: relative;
 }
 
@@ -161,7 +172,7 @@ TODO
     border-radius: 1px;
     border-color: rgba(255, 255, 255, 0.2);
     border-style: solid;
-    border-radius: 3px;
+    border-radius: 8px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -201,52 +212,41 @@ button {
 }
 
 .card {
-    width: 100px;
-    height: 120px;
+    height: 100%;
+    width: auto;
+    min-width: auto;
+    aspect-ratio: 5 / 7;
     background-size: contain;
     background-position: center;
-    border: 1px solid #666;
-    border-radius: 1px;
+    background-repeat: no-repeat;
+    border-style: solid;
+    border-width: 3px;
     border-color: gray;
     border-radius: 8px;
     overflow: hidden;
 }
 
-.hand .card {
-    min-width: 100px;
-    width: 100px;
-    height: 140px;
-    flex-shrink: 0;
-}
-
 .crystalzone .card {
-    width: 100px;
-    height: 140px;
-    margin-right: 5px;
-}
-
-.slot, .card {
-    width: 80px;
-    height: 115px;
-    margin: 0;
-    background-size: cover;
-    background-position: center;
+    height: 200%;
+    border-width: 1px;
+    border-color: black;
 }
 
 .decks-area {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 15%;
+    gap: 8%;
     min-height: 50vh;
     height: 50vh;
 }
 
 .deck {
-    width: 100px;
-    height: 140px;
+    width: 100%;
+    aspect-ratio: 0.75;
     background-image: url('assets/cardback.png');
     background-size: contain;
+    background-repeat: no-repeat;
     background-position: center;
     border: 2px solid #666;
     border-radius: 5px;
@@ -258,25 +258,22 @@ button {
     color: #fff;
 }
 
-.card.can-summon {
-    border: 2px solid #00ff00;
-    box-shadow: 0 0 10px #00ff00; /* Increased glow effect */
-}
-
 .card-preview {
-    position: fixed;
-    left: 100px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 300px;
-    height: 420px;
+    width: 100%;
+    aspect-ratio: 5 / 7;
     background-size: cover;
     background-position: center;
-    border: 2px solid #ffd700;
-    border-radius: 5px;
     display: none;
     z-index: 10;
-    pointer-events: none;
+}
+
+.left-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5%;
+    width: 20vw;
+    height: 100%;
 }
 
 .player1 {
@@ -288,19 +285,15 @@ button {
 }
 
 .game-log {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 300px;
-    height: 200px;
     background-color: rgba(0, 0, 0, 0.8);
     border: 1px solid #666;
-    border-radius: 5px;
-    padding: 10px;
     overflow-y: auto;
     color: #fff;
     font-size: 14px;
-    z-index: 10;
+    min-height: 20vh;
+    max-height: 20vh;
+    width: 100%;
+    max-width: 100%;
 }
 
 .log-entry {
@@ -336,6 +329,9 @@ button {
 
 .player1-area, .player2-area {
     display: flex;
+    min-width: 150%;
+    max-width: 150%;
+    flex-grow: 10;
 }
 
 .player1-area {
@@ -348,9 +344,9 @@ button {
 
 .game-content {
     display: grid;
-    grid-template-columns: repeat(5, 90px);
-    grid-template-rows: repeat(4, 130px);
-    column-gap: 11px;
+    grid-template-columns: repeat(5, 94px);
+    grid-template-rows: repeat(4, 126px);
+    column-gap: 6px;
     row-gap: 5px;
     margin-left: 5px;
     margin-top: 5px;
@@ -358,7 +354,6 @@ button {
 
 .highlight {
     border-color: aqua;
-    border-width: 4px;
 }
 
 .crystalzone .card::before {
@@ -367,7 +362,7 @@ button {
     height: 100%;
     pointer-events: none;
     display: block;
-    opacity: 0.4;
+    opacity: 0.5;
 }
 
 .crystalzone .realm-divine::before {

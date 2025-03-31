@@ -9,7 +9,14 @@
 <body>
     <div class="game-container">
         <!-- Add this inside the game-container, before the deck-player2 -->
-        <div class="card-preview" id="card-preview"></div>
+         <div class="left-container">
+            <div class="card-preview" id="card-preview"></div>
+            <!-- Game Log -->
+            <div id="log" class="game-log">
+                <!-- Log entries are generated here! -->
+                <div class="log-entry">Welcome to <b>Shards of Beyond</b></div>
+            </div>
+         </div>
 
         <div class="game-center">
             <!-- Player 2's Crystal Zone and Hand -->
@@ -36,26 +43,19 @@
                 <!-- Automatically generate components here. -->
             </div>
 
+            <!-- End Turn Button & Game Stats -->
+            <div class="meta">
+                <!-- Button is generated here. -->
+                <div class="game-stats" id="game-stats">
+                    <!-- Generated automatically. -->
+                </div>
+            </div>
+
             <!-- Deck and Count for Player 1 (right side) -->
             <div id="deck-area-player1" class="deck-area-player1">
                 <!-- Automatically generate components here. -->
             </div>
         </div>
-
-       <!-- End Turn Button & Game Stats -->
-        <div class="meta">
-            <!-- Button is generated here. -->
-            <div class="game-stats" id="game-stats">
-                <!-- Generated automatically. -->
-            </div>
-        </div>
-
-        <!-- Game Log -->
-         <div id="log" class="game-log">
-            <!-- Log entries are generated here! -->
-            <div class="log-entry">Welcome to <b>Shards of Beyond</b></div>
-         </div>
-    
     <!-- Load all scripts -->
     <script type="module" src="script.js"></script>
 </body>
