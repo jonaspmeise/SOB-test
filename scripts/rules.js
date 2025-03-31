@@ -19,11 +19,11 @@ export const rules = [
           return undefined;
         }
 
-        return player.hand$.map(card => {
+        return player.hand$.map(card$ => {
           return {
             actor: player.id,
             type: 'crystallize',
-            args: [card],
+            args: [card$, player.crystalzone$.id],
             // !!!
             callback: () => properties.alreadyCrystallized[player.index]++
           };

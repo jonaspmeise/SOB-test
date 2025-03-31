@@ -58,7 +58,7 @@ const createPlayerDefaultSettings = (name) => {
         deck$: identify(createOwnedContainer(player.id), ['deck'], `${name}'s Deck`),
         hand$: identify(createOwnedContainer(player.id), ['hand'], `${name}'s Hand`),
         crystalzone$: crystalzone,
-        $wonLanes: () => state.board.lanes.filter(lane => lane.$properties().$wonBy$() == player.id).length,
+        wonLanes: 0,
         index: playerCount++
     };
     components.set(player.id, player);
@@ -83,7 +83,7 @@ const initializeLane = ($slots) => (() => {
         orientation: 'horizontal',
         $slots: $slots,
         $power: $power,
-        $wonBy$: () => {
+        wonByPower$: () => {
             // If a single slot inside this Lane is empty, the Lane is considered to be not won.
             if($slots().find(slot => slot.card$ === undefined) !== undefined) {
                 return undefined;

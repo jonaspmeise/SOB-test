@@ -135,9 +135,11 @@ export const handleInteraction = (id) => {
     // There are many possible choices for choosing an action - we narrow it down
     // and then save the filtered combinations.
     console.debug('Possible choices for selected Component:', possibleChoices);
-    handleContextArguments.context.add(id);
-    handleContextArguments.choices = possibleChoices;
-
-    // Add highlights to all elements that are not shared across _all_ possible actions.
-    highlight(handleContextArguments.choices, handleContextArguments.context);
+    if(possibleChoices.length > 0) {
+        handleContextArguments.context.add(id);
+        handleContextArguments.choices = possibleChoices;
+    
+        // Add highlights to all elements that are not shared across _all_ possible actions.
+        highlight(handleContextArguments.choices, handleContextArguments.context);
+    }
 };

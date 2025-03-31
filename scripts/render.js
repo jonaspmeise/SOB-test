@@ -37,6 +37,7 @@ const removeDanglingNodes = (parent, nodeFilterFunction, name) => {
 }
 
 // Main function.
+// TODO: Only render a diff model here (subset of model with changed properties.)
 export const render = (model) => {
     // Slots on Board.
     model.board.slots.forEach(slot => {
@@ -252,6 +253,6 @@ export const render = (model) => {
             gameStatElement.appendChild(statElement);
         }
 
-        statElement.textContent = `Won Lanes: ${player.$wonLanes()}`;
+        statElement.textContent = `Won Lanes: ${player.wonLanes}`;
     });
 };

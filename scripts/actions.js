@@ -16,7 +16,7 @@ export const RAW_ACTION_DICTIONARY = {
             // Important: First parameter is always the player!
             return [player, deck];
         },
-        log: (player, deck) => `Player ${player} drew a card from ${deck}.`,
+        log: (player, deck) => `${player} drew a card from ${deck}.`,
         color: 'blue'
     },
     summon: {
@@ -39,15 +39,18 @@ export const RAW_ACTION_DICTIONARY = {
             // Important: First parameter is always the player!
             return [player, card, slot];
         },
-        log: (player, card, slot) => `Player ${player} summoned a ${card} into Slot ${slot}.`,
+        log: (player, card, slot) => `${player} summoned ${card} into Slot ${slot}.`,
         color: 'orangered'
     },
     crystallize: {
-        execute: (card, _model) => {
+        execute: (card, crystalzone, _model) => {
             const player = components.get(card.owner$);
-            const crystalzone$ = player.crystalzone$;
 
-            crystalzone$.push(card.id);
+            if(crystalzone === undefined) {
+                crystalzone = player.crystalzone$;
+            }
+
+            crystalzone.push(card.id);
             // Remove card from previous location.
             const previousLocation = components.get(card.location$);
 
@@ -58,12 +61,12 @@ export const RAW_ACTION_DICTIONARY = {
                 console.error('WHAT DOES THIS MEAN? WHERE IS THE COMPONENT REFERENCED? Previous location was', previousLocation);
             }
             
-            card.location$ = crystalzone$.id; // Reference card to slot.
+            card.location$ = crystalzone.id; // Reference card to slot.
 
             // Important: First parameter is always the player!
             return [player, card];
         },
-        log: (player, card) => `Player ${player} crystallized ${card}.`,
+        log: (player, card) => `${player} crystallized ${card}.`,
         color: 'darkgoldenrod'
     },
     pass: {
@@ -77,8 +80,18 @@ export const RAW_ACTION_DICTIONARY = {
 
             return [components.get(oldPlayerId), nextPlayer];
         },
-        log: (oldPlayer, newPlayer) => `Player ${oldPlayer} passed their Turn to ${newPlayer}.`,
+        log: (oldPlayer, newPlayer) => `${oldPlayer} passed their Turn to ${newPlayer}.`,
         color: 'green'
+    },
+    conquer: {
+        execute: (player, lane, model) => {
+            lane.wonBy$ = player.id;
+            player.wonLanes = player.wonLanes + 1;
+
+            return [player, lane];
+        },
+        log: (player, lane) => `${player} conquers ${lane}.`,
+        color: undefined // This is never an action done by the player.
     }
 };
 
