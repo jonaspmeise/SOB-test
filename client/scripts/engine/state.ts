@@ -5,25 +5,6 @@
 export const components = new Map();
 export const types = new Map();
 
-let counter = 0;
-export const identify = (obj, objTypes, name) => {
-    console.debug(`Registering component of types "${objTypes}" with ID ${counter}...`);
-    obj.id = counter;
-    obj.types = objTypes;
-    obj.name = name;
-    obj.toString = () => name;
-
-    // Update reference maps.
-    components.set(counter, obj);
-    objTypes.forEach(type => {
-        types.set(type, [...(types.get(type) ?? []), obj.id]);
-    });
-
-    counter++;
-    
-    return obj;
-};
-
 let playerCount = 0;
 const createPlayerDefaultSettings = (name) => {
     const createOwnedContainer = (id) => {
