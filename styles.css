@@ -37,10 +37,10 @@ body {
 .game-center {
     display: flex;
     flex-direction: column;
-    justify-content: space-evenly;
+    justify-content: center;
     align-items: center;
     gap: 2%;
-    height: 100%;
+    height: 90%;
 }
 
 .hand, .crystalzone {
@@ -50,6 +50,7 @@ body {
     box-sizing: border-box;
     overflow-y: hidden;
     display: flex;
+    flex-shrink: 0;
 }
 
 .crystalzone {
@@ -62,8 +63,7 @@ body {
     gap: 10px;
     justify-content: baseline;
     align-items: flex-start;
-    height: 20%;
-    flex-shrink: 0;
+    height: 30%;
 }
 
 .player1 .crystalzone {
@@ -75,7 +75,7 @@ body {
 }
 
 .hand {
-    gap: 10px;
+    gap: 5px;
     overflow-x: scroll;
     height: 100%;
     padding-bottom: 15px;
@@ -331,7 +331,7 @@ button {
     display: flex;
     min-width: 150%;
     max-width: 150%;
-    flex-grow: 10;
+    flex-grow: 2;
 }
 
 .player1-area {
