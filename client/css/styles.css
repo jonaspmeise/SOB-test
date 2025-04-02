@@ -90,15 +90,15 @@ body {
 }
 
 .player1-crystalzone {
-    background-image: url('assets/crystal-zone-bottom.png');
+    background-image: url('https://cdn.shardsofbeyond.com/client/assets/crystal-zone-bottom.png');
 }
 
 .player2-crystalzone {
-    background-image: url('assets/crystal-zone-top.png');
+    background-image: url('https://cdn.shardsofbeyond.com/client/assets/crystal-zone-top.png');
 }
 
 .game-board {
-    background-image: url('assets/gameboard-grid.png');
+    background-image: url('https://cdn.shardsofbeyond.com/client/assets/gameboard-grid.png');
     background-size: contain;
     background-position: center;
     position: relative;
@@ -244,7 +244,7 @@ button {
 .deck {
     width: 100%;
     aspect-ratio: 0.75;
-    background-image: url('assets/cardback.png');
+    background-image: url('https://cdn.shardsofbeyond.com/client/assets/cardback.png');
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
@@ -318,7 +318,7 @@ button {
     transform: rotate(180deg);
 }
 
-.log-entry-fancy {
+.log-entry-client {
     opacity: 0.6;
     font-style: italic;
 }

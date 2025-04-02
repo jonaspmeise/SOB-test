@@ -1,8 +1,8 @@
 import { Trigger } from '../engine/types-engine';
-import { ShardsOfBeyondActionType, ShardsOfBeyondState } from './types-game';
+import { BeyondPlayer, Lane, ShardsOfBeyondActionType } from './types-game';
 import { GameEngine } from '../engine/engine';
-import { PassAction } from './actions';
-import { shuffle } from '../engine/utility';
+import { PassAction, ConquerAction } from './actions';
+import { OnlyOneCrystallizePerTurnRule, OnlyOnePlayPerTurnRule } from './rules';
 
 // Triggers consume the type of an Action, the arguments of that action and the model state.
 export const SHARDS_OF_BEYOND_TRIGGERS: Trigger<any, any>[] = [
@@ -10,121 +10,61 @@ export const SHARDS_OF_BEYOND_TRIGGERS: Trigger<any, any>[] = [
     name: 'Start of your Turn, you draw a Card.',
     actions: ['pass'],
     timing: 'after',
-    effect: (engine: GameEngine<ShardsOfBeyondState, ShardsOfBeyondActionType>, actionType, parameters) => {
+    effect: (engine: GameEngine<ShardsOfBeyondActionType>, actionType, parameters) => {
+      // TODO: This is logic for "draw", not for this trigger!!!!
       if(parameters.nextPlayer.deck.length > 0) {
         // TODO: Allow selection here, whether this action should be executed nestedly or afterwards!
         return [() => engine.actions.draw(parameters.nextPlayer.deck.id)];
       }
       
-      return []
+      return [];
     }
-  } as Trigger<typeof PassAction, ReturnType<typeof PassAction['execute']>>,
-  {
-    name: 'During Player 2s Turn, they do a random Action.',
-    actions: [],
-    timing: 'after',
-    effect: (engine: GameEngine<ShardsOfBeyondState, ShardsOfBeyondActionType>, actionType, parameters) => {
-      if(engine.state.currentPlayer)
-      // Randomize the available actions for this player.
-      const possibleActions = shuffle(engine.choices(action => action.actor === model.players[1].id));
-
-      console.log(`AI: I have ${possibleActions.length} Actions available:`, possibleActions);
-
-      if(possibleActions.length === 0) {
-        console.error('HELLO?', model);
-      }
-
-      // Try do this the following way:
-      // 1. Play Units
-      // 2. Crystallize
-      // 3. Do random one
-      let targetAction;
-      targetAction = possibleActions.find(action => action.type === 'summon');
-
-      if(targetAction === undefined) {
-        targetAction = possibleActions.find(action => action.type === 'crystallize');
-      }
-      
-      if(targetAction === undefined) {
-        targetAction = possibleActions[Math.floor(Math.random() * possibleActions.length)];
-      }
-
-      console.log(`AI: ... I will do:`, targetAction);
-
-      // Have a delay of 1s before doing something.
-      targetAction.execute();
-
-      return [actionType, args, model];
-    }
-  } as Trigger<unknown, unknown>,
-  {
-    name: 'During Player 2s Turn, they do a random Action.',
-    check: (actionType, args, model) => {
-      return model.turn.currentPlayer$ === model.players[1].id;
-    },
-    effect: (actionType, args, model) => {
-      // Randomize the available actions for this player.
-      const possibleActions = shuffle(model.actions.filter(action => action.actor === model.players[1].id));
-
-      console.log(`AI: I have ${possibleActions.length} Actions available:`, possibleActions);
-
-      if(possibleActions.length === 0) {
-        console.error('HELLO?', model);
-      }
-
-      // Try do this the following way:
-      // 1. Play Units
-      // 2. Crystallize
-      // 3. Do random one
-      let targetAction;
-      targetAction = possibleActions.find(action => action.type === 'summon');
-
-      if(targetAction === undefined) {
-        targetAction = possibleActions.find(action => action.type === 'crystallize');
-      }
-      
-      if(targetAction === undefined) {
-        targetAction = possibleActions[Math.floor(Math.random() * possibleActions.length)];
-      }
-
-      console.log(`AI: ... I will do:`, targetAction);
-
-      // Have a delay of 1s before doing something.
-      targetAction.execute();
-
-      return [actionType, args, model];
-    }
-  },
+  } as Trigger<typeof PassAction>,
   {
     name: 'When a Lane is full, the Player with Units that have most Power in that Lane conquers that Lane.',
-    // Always check this, regardless of Action! (technically needed for: Summon, Move, Return, Bury, Gain Power, ...)
-    check: (actionType, args, model) => true,
-    effect: (actionType, args, model) => {
-      // The Lane is won by the player who has most power in it.
-      model.board.lanes.forEach(lane => {
-        const wonByPower = lane.$properties().wonByPower$();
-        if(wonByPower === undefined) {
-          return;
-        }
+    actions: [],
+    timing: 'after',
+    effect: (engine: GameEngine<ShardsOfBeyondActionType>, actionType, parameters) => 
+      engine.types.get('lane')!
+        .map(id => engine.components.get(id)! as Lane)
+        .map(lane => {
+          const winningPlayer = lane.wonByPlayer();
 
-        // Mismatch between factual wonBy (who has most power?) and who is the owner of the lane?
-        const wonByState = lane.wonBy$;
+          if(winningPlayer === undefined) {
+            return [];
+          }
 
-        // Decrease count for other player, if this player wins (or balances) this Lane.
-        if(wonByState !== wonByPower && wonByState !== undefined) {
-          const previousLaneOwner = components.get(wonByState);
-          previousLaneOwner.wonLanes = previousLaneOwner.wonLanes - 1;
-        }
+          const player = engine.components.get(winningPlayer)! as BeyondPlayer;
 
-        if(wonByState !== wonByPower) {
-          lane.wonBy$ = wonByPower;
-          actions.conquer(lane.wonBy$, lane);
-        }
-      });
+          if(!player.wonLanes.includes(lane.id)) {
+            // Remove the Lane from the enemy, if they won it.
+            const otherPlayer = engine.components.get(
+              engine.types.get('player')!.find(id => id !== winningPlayer)!
+            ) as BeyondPlayer;
 
-      return [actionType, args, model];
+            if(otherPlayer.wonLanes.includes(lane.id)) {
+              otherPlayer.wonLanes = otherPlayer.wonLanes.filter(l => l !== lane.id);
+            }
+
+            return [() => engine.actions.conquer(winningPlayer, lane.id)];
+          }
+
+          return [];
+        })
+        .flat()
+  } as Trigger<typeof ConquerAction>,
+  {
+    name: 'Start of each Turn: All Crystallize and Play- Limits are reset.',
+    actions: ['pass'],
+    timing: 'after',
+    effect: (engine: GameEngine<ShardsOfBeyondActionType>, actionType, parameters) => {
+      return [() => {
+        OnlyOneCrystallizePerTurnRule.properties!.alreadyCrystallized = [0, 0];
+        OnlyOnePlayPerTurnRule.properties!.alreadyPlayed = [0, 0];
+      }];
     }
-  },
+  } as Trigger<typeof PassAction>
+  /*
   {
     name: 'When a Player has conquered four or more Lanes and controls more Lanes than their Opponent, they win the Game. If they both have more than four columns, it\'s a draw.!',
     // Always check this, regardless of Action! (technically needed for: Summon, Move, Return, Bury, Gain Power, ...)
@@ -148,6 +88,5 @@ export const SHARDS_OF_BEYOND_TRIGGERS: Trigger<any, any>[] = [
         return [actionType, args, model];
       });
     }
-  },
-
+  },*/
 ];

@@ -1,6 +1,7 @@
 import { UUID } from "crypto";
-import { Component, ID } from "../engine/types-engine";
+import { Component, ID, Player } from "../engine/types-engine";
 
+// TODO: Reference via ID needed? Can't just directly take the way around?
 export type GameCard = {
   cardtype: CardType,
   subtypes: Subtype[],
@@ -42,11 +43,14 @@ export type Container = ID[] & Component;
 export type OwnedContainer =  Owned & Container;
 export type Deck = OwnedContainer;
 export type Hand = OwnedContainer
-export type CrystalZone = OwnedContainer
+export type CrystalZone = OwnedContainer & {
+  supports: (costs: Costs) => boolean
+}
 
 export type CardType = 'Unit' | 'Terrain';
 export type Subtype = string;
 export type Realm = 'Divine' | 'Void' | 'Elemental' | 'Mortal' | 'Nature' | 'NO_REALM';
+export type RealmCount = {[key in Realm]: number};
 export type RealmMapping = Map<string, Realm>;
 export type Costs = {
   [key in Realm | 'total']: number
@@ -62,15 +66,21 @@ REALM_MAPPING.set('V', 'Void');
 REALM_MAPPING.set('?', 'NO_REALM');
 
 export type Slot = {
+  x: number,
+  y: number,
+  lanes: () => Lane[]
   card?: ID
 } & Component;
 
 export type BeyondPlayer = {
+  name: Readonly<string>,
   hand: Hand,
   crystalzone: CrystalZone,
   index: number,
   deck: Deck,
-  wonLanes: number
+  wonLanes: ID[],
+  meta: Player,
+  powerPerLane: () => {[id: string]: number}
 } & Component;
 
 export type Turn = {
@@ -78,14 +88,12 @@ export type Turn = {
 } & Component;
 
 export type LaneOrientation = 'horizontal' | 'vertical';
-export type Lane = {
+export type Lane = Container & {
   orientation: LaneOrientation,
   index: number,
-  wonBy?: ID
-} & Container & Component;
+  wonByPlayer: () => ID | undefined
+} & Component;
 
 export type ShardsOfBeyondActionType = ShardsOfBeyondActionArrayType[number];
 export type ShardsOfBeyondActionArrayType = ['summon', 'draw', 'crystallize', 'pass', 'conquer'];
-export type ShardsOfBeyondState = {
-  turn: Turn
-};
+export type ActionColors = {[key in ShardsOfBeyondActionType]: string | undefined};

@@ -1,6 +1,6 @@
-import { state } from './state.js';
-import { render } from './render.js';
-import { rules } from './rules.js';
+import { state } from './state.ts_';
+import { render } from './render.ts_';
+import { rules } from './rules.ts_';
 import { actions } from './actions.js';
 import { highlight } from './interaction-handler.js';
 

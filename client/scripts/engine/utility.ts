@@ -1,16 +1,16 @@
 import { Player } from "./types-engine";
-import { Card } from "../game/types-game";
 
 const logElement = document.getElementById('log')!;
-export const log = (text: string, player?: Player, fancy = false) => {
+// TODO: This mixes Log logic (state) with UI (client)!
+export const log = (text: string, player?: Player, client = false) => {
     const entry = document.createElement('div');
     entry.classList.add('log-entry');
 
     if(player !== undefined) {
         entry.classList.add(`player${player.index + 1}`);
     }
-    if(fancy) {
-        entry.classList.add('log-entry-fancy');
+    if(client) {
+        entry.classList.add('log-entry-client');
     }
 
     entry.innerHTML = text;
@@ -21,28 +21,6 @@ export const log = (text: string, player?: Player, fancy = false) => {
         logElement.firstElementChild!.insertAdjacentHTML("beforebegin", entry.outerHTML);
     }
 };
-
-
-const preview = document.getElementById('card-preview')!;
-export const showCardPreview = (card: Card) => {
-    const url = getCardArtUrl(card);
-
-    if(url == null) {
-        console.error(`There is no artwork for Card ${card}!`);
-        return;
-    }
-
-    preview.style.backgroundImage = url;
-    preview.style.display = 'block';
-};
-
-export const hideCardPreview = () => {
-    preview.style.display = 'none';
-};
-
-export const resolveCardArt = (name: string) => `https://cdn.shardsofbeyond.com/rashid-test/${name.toLowerCase().replace(/\W/g, '')}.png`;
-export const getCardArtUrl = (card?: Card) => card === undefined ? null : `url('${resolveCardArt(card.name)}')`;
-export const getRawCardArtUrl = (card?: Card) => card === undefined ? null : `url('https://cdn.shardsofbeyond.com/rashid-test-artworks/${card.artwork}')`;
 
 export const shuffle = <T> (array: T[], seed?: number): T[] => {
     let currentIndex = array.length;
@@ -58,3 +36,6 @@ export const shuffle = <T> (array: T[], seed?: number): T[] => {
     return array;
 };
   
+export const range = (number: number): number[] => {
+    return [...Array(number).keys()];
+};
