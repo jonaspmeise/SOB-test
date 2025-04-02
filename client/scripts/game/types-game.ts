@@ -69,6 +69,7 @@ export type BeyondPlayer = {
   hand: Hand,
   crystalzone: CrystalZone,
   index: number,
+  deck: Deck,
   wonLanes: number
 } & Component;
 
@@ -82,3 +83,9 @@ export type Lane = {
   index: number,
   wonBy?: ID
 } & Container & Component;
+
+export type ShardsOfBeyondActionType = ShardsOfBeyondActionArrayType[number];
+export type ShardsOfBeyondActionArrayType = ['summon', 'draw', 'crystallize', 'pass', 'conquer'];
+export type ShardsOfBeyondState = {
+  turn: Turn
+};

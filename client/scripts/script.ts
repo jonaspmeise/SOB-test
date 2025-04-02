@@ -3,29 +3,17 @@
 
 import { log } from './engine/utility';
 import { state, components, types } from './engine/state';
-import { actions } from './engine/actions';
 import { highlight, resetHandleContext } from './engine/interaction-handler';
 import { rules } from './engine/rules';
 import { triggers } from './engine/triggers';
-import { Card, CardType, GameCard, Rarity, RawCard, Realm, REALM_MAPPING, Subtype } from './game/types-game';
+import { Card, CardType, GameCard, Rarity, RawCard, Realm, REALM_MAPPING, ShardsOfBeyondActionType, ShardsOfBeyondState, Subtype } from './game/types-game';
 import { UUID } from 'crypto';
 import { GameEngine } from './engine/engine';
 import { SHARDS_OF_BEYOND_ACTIONS } from './game/actions';
+import { SHARDS_OF_BEYOND_INITIAL_STATE } from './game/state';
 
 // CONSTANTS
 const cardFile = 'https://cdn.shardsofbeyond.com/client/cards.json';
-
-// Assign debug for easier in-browser debugging.
-Object.assign(window, {
-  debug: {
-    actions: actions,
-    state: state,
-    components: components,
-    types: types,
-    rules: rules,
-    triggers: triggers
-  }
-});
 
 // Events: When clicking "anywhere else", reset the handleContext.
 document.body.addEventListener('click', () => {
@@ -33,10 +21,15 @@ document.body.addEventListener('click', () => {
 });
 
 // Register engine and all types.
-const engine = new GameEngine();
+const engine = new GameEngine<ShardsOfBeyondState, ShardsOfBeyondActionType>(SHARDS_OF_BEYOND_INITIAL_STATE);
 SHARDS_OF_BEYOND_ACTIONS.forEach(engine.registerAction);
 engine.registerPlayer({name: 'Rashid'});
 engine.registerPlayer({name: 'Görzy'});
+
+// Assign debug for easier in-browser debugging.
+Object.assign(window, {
+  debug: engine
+});
 
 // SCRIPT
 document.addEventListener('DOMContentLoaded', async () => {

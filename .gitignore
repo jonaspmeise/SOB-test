@@ -6,3 +6,5 @@
 *.js
 # No binaries or big data files.
 *.png
+# Cards are loaded adaptively through the S3 Bucket.
+cards.json
