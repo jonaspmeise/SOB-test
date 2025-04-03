@@ -1,4 +1,4 @@
-import { Realm, RealmCount, RealmMapping } from "./types-game";
+import { Realm, RealmCount, RealmMapping } from "./types-game.js";
 
 /*
 export const getCombinations = (arrays: string[][]): RealmCount => {

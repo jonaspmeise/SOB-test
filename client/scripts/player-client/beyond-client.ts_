@@ -1,6 +1,6 @@
 import { Choice, Components, ID, PlayerClient } from "../engine/types-engine";
 import { log } from "../engine/utility";
-import { ACTION_COLORS } from "../game/actions";
+import { ACTION_COLORS } from "../game/actions.ts_";
 import { BeyondPlayer, Card, Lane, Slot, Turn } from '../game/types-game';
 
 type IdentifiableNode = Node & {id: ID};

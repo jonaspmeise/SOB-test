@@ -1,8 +1,8 @@
 import { Trigger } from '../engine/types-engine';
 import { BeyondPlayer, Lane, ShardsOfBeyondActionType } from './types-game';
 import { GameEngine } from '../engine/engine';
-import { PassAction, ConquerAction } from './actions';
-import { OnlyOneCrystallizePerTurnRule, OnlyOnePlayPerTurnRule } from './rules';
+import { PassAction, ConquerAction } from './actions.ts_';
+import { OnlyOneCrystallizePerTurnRule, OnlyOnePlayPerTurnRule } from './rules.ts_';
 
 // Triggers consume the type of an Action, the arguments of that action and the model state.
 export const SHARDS_OF_BEYOND_TRIGGERS: Trigger<any, any>[] = [

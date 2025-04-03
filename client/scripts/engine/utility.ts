@@ -1,5 +1,6 @@
-import { Player } from "./types-engine";
+import { PlayerInterface } from "./types-engine.js";
 
+/*
 const logElement = document.getElementById('log')!;
 // TODO: This mixes Log logic (state) with UI (client)!
 export const log = (text: string, player?: Player, client = false) => {
@@ -21,6 +22,7 @@ export const log = (text: string, player?: Player, client = false) => {
         logElement.firstElementChild!.insertAdjacentHTML("beforebegin", entry.outerHTML);
     }
 };
+*/
 
 export const shuffle = <T> (array: T[], seed?: number): T[] => {
     let currentIndex = array.length;

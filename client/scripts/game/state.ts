@@ -1,74 +1,75 @@
-import { BeyondPlayer, ShardsOfBeyondActionType, OwnedContainer, CrystalZone, Owned, Deck, Lane, Slot, Card, Costs, REALM_MAPPING } from './types-game';
-import { GameEngine } from '../engine/engine';
-import { ID, Type } from '../engine/types-engine';
+import { ShardsOfBeyondActionType, CrystalZone, Owned, Deck, Lane, Slot, Card, Costs, REALM_MAPPING, BeyondGameState, Player, Hand, Container } from './types-game.js';
+import { GameEngine } from '../engine/engine.js';
+import { Component, FlatObject, LazyInitializer, Simple, Type } from '../engine/types-engine.js';
+import { range } from '../engine/utility.js';
 
-const createOwnedContainer = (
-  engine: GameEngine<ShardsOfBeyondActionType>,
-  player: BeyondPlayer,
-  types: Type[],
-  name: string
-): OwnedContainer => {
-  return engine.registerComponent((() => {
-    // @ts-ignore
-    const container: Owned & ID[] = [];
-    container.owner = player.id;
-
-    return container;
-  })(), types, name) as OwnedContainer
+export type Lazy<T> = {
+  [key in keyof T]: T[key] 
 };
 
-export const INIT_SHARDS_OF_BEYOND_PLAYER: (
-  engine: GameEngine<ShardsOfBeyondActionType>,
-  name: string,
-  index: number
-) => BeyondPlayer = (
-  engine,
-  name,
-  index
-) => {
-  const player = engine.registerComponent({}, 'player', name) as BeyondPlayer;
+export const DEREFERENCE_SELF = <T>(self: unknown): T => self as T;
 
-  player.name = name;
-  player.wonLanes = [];
-  player.crystalzone = createOwnedContainer(engine, player, ['crystalzone'], `${name}'s Crystal Zone`) as CrystalZone;
-  player.crystalzone.supports = (costs: Costs) => {
-    // This is actually complicated; Dual-Type Cards make this a combinatorical problem!
-    const cards: Card[] = player.crystalzone.map(cardId => engine.components.get(cardId)! as Card);
-    const combinations: Costs[] = [];
+// TODO: Optionally accept game config parameters, which are handed from outside.
+export const INITIALIZE_BEYOND_GAMESTATE = (
+  engine: GameEngine<BeyondGameState, ShardsOfBeyondActionType>
+): BeyondGameState => {
 
-    if(costs.total > player.crystalzone.length) {
-      return false;
+  const createOwnedCardContainer = (self: any, engine: GameEngine<BeyondGameState, ShardsOfBeyondActionType>, types: Type | Type[], name?: string): Owned & Container => engine.registerComponent({
+    cards: engine.registerComponent([], 'container'),
+    owner: DEREFERENCE_SELF(self)
+  }, types, name);
+
+  const players: Player[] = ['Rashid', 'Görzy'].map(name => engine.registerComponent({
+    name: name,
+    hand: (self) => createOwnedCardContainer(self, engine, 'hand', `${self.name}'s Hand`),
+    crystalzone: (self) => createOwnedCardContainer(self, engine, 'crystalzone', `${self.name}'s Crystal Zone`),
+    index: 0,
+    deck: (self) => createOwnedCardContainer(self, engine, 'deck', `${self.name}'s Deck`)
+  }, 'player', `Rashid`));
+
+  const slots: Slot[] = range(5).map(x => range(4).map(y => 
+    engine.registerComponent({
+      x: x,
+      y: y,
+      card: undefined,
+      lanes: (self, engine: GameEngine<BeyondGameState, ShardsOfBeyondActionType>) => engine.state.board.lanes
+        .filter(lane => lane.orientation === 'horizontal'
+          ? lane.index === self.y
+          : lane.index === self.y)
+    }, 'slot', `Slot ${x + 1}-${y + 1}`) as Slot))
+    .flat();
+
+  const lanes: Lane[] = [
+    // Vertical Lanes
+    ...range(5).map(index => engine.registerComponent({
+      index: index,
+      orientation: 'vertical',
+      $slots: (self, engine: GameEngine<BeyondGameState, ShardsOfBeyondActionType>) => engine.record(
+        () => (engine.components
+          .filter(c => c.types.includes('slot')) as Component<Slot>[])
+          .filter(slot => slot.lanes.includes(self))
+      ),
+      $cards: (self, engine: GameEngine<BeyondGameState, ShardsOfBeyondActionType>) => engine.record(
+        () => self.$slots
+          .filter(slot => slot.card !== undefined)
+          .map(slot => slot.card!)
+      ),
+      $wonByPlayer: (self, engine: GameEngine<BeyondGameState, ShardsOfBeyondActionType>) => engine.record(
+        () => self.$cards.length < self.$slots.length
+          ? undefined
+          : undefined // TODO
+      )
+    }, 'lane', `Vertical Lane #${index + 1}`) as Lane)
+  ];
+
+  return {
+    players: players,
+    board: {
+      slots: slots,
+      lanes: lanes
+    },
+    turn: {
+      currentPlayer: players[0]
     }
-
-    // TODO: ????
-    // Calculate all combinations!
-    // cards.map(card => card.realms)
-
-    if(Array.from(REALM_MAPPING.values())
-      .filter(realm => realm !== 'NO_REALM')
-      .find(realm => costs[realm] > cards.filter(c => c.realms.includes(realm)).length) !== undefined
-    ) {
-      return false;
-    }
-
-    return true;
   };
-  player.deck = createOwnedContainer(engine, player, ['deck'], `${name}'s Deck`);
-  player.hand = createOwnedContainer(engine, player, ['hand'], `${name}'s Hand`);
-  player.index = index; // (Needed for styling!)
-  player.powerPerLane = () => 
-    Object.fromEntries(
-      engine.types.get('lane')!
-        .map(id => engine.components.get(id) as Lane)
-        .map(lane => {
-          return [
-            lane.id,
-            lane
-              .map(id => engine.components.get(id) as Slot)
-              .filter(slot => slot.card !== undefined)
-              .reduce((prev, curr) => prev + (engine.components.get(curr.card!) as Card).power, 0)];
-        })
-    );
-
-  return player;
 };

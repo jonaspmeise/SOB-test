@@ -1,4 +1,4 @@
-import { GameEngine } from "./engine";
+import { GameEngine } from "./engine.js";
 
 export type State = {};
 /*
@@ -19,6 +19,7 @@ export type State = {};
   },
 */
 
+/*
 export type Action<
   T extends string,
   R,
@@ -30,6 +31,7 @@ export type Action<
   log: (appliedParameters: R) => string,
   color?: string
 };
+*/
 
 /*
  name: 'Players may crystallize one card during their Turn from their Hand.',
@@ -68,6 +70,7 @@ export type Action<
     }
   }
 */
+/*
 export type Rule<T> = {
   name: string,
   properties?: T,
@@ -90,14 +93,14 @@ export type TriggerExecution<
   name: T['name'],
   execution: () => void
 };
+*/
 
-
-export type Component = {
+export type Component<T> = T & {
   id: ID,
   types: Type[]
 };
 
-export type Components = Map<ID, Component>;
+export type Components = Map<ID, Component<any>>;
 export type Types = Map<Type, ID[]>;
 
 
@@ -105,7 +108,7 @@ export type ID = string;
 export type ActorID = string;
 export type Type = string;
 
-export type Player = {
+export type PlayerInterface = {
   actorId: ActorID,
   playerComponent: ID, // A Player is a connection. A Player-Component is the in-game-representation of a Player.
   index: number,
@@ -135,4 +138,39 @@ export type TickHandler = (
 
 export interface PlayerClient {
   tickHandler: TickHandler
+};
+
+export type FlatObject<T> = {
+  [key in keyof T]: T[key] extends FlatObject<infer A>
+    ? LazyInitializer<A>
+    : T[key]
+};
+export type AtomicValue = string | number | boolean | null | undefined;
+export type AtomicArray = Array<AtomicValue>;
+export type Simple<T> = {
+  [key in keyof T]: T[key] extends AtomicArray
+    ? T[key]
+    : T[key] extends AtomicValue
+      ? T[key]
+      : undefined
+};
+
+export type Context<SOURCE, TARGET> = {
+  [key in keyof TARGET]: TARGET[key]
+};
+
+export type QueryFilter<T> = (components: Component<unknown>[]) => T[];
+export type QueryReference<SELF, T> = (self: SELF, engine: GameEngine<any, any>) => T;
+export type QueryReferenceName = `$${string}`; 
+
+export type LazyInitializer<T> = {
+  [key in keyof T]: T[key] extends Simple<infer A>
+    ? A
+    : T[key] extends AtomicArray
+      ? T[key]
+      : T[key] extends AtomicValue
+        ? T[key]
+        : key extends QueryReferenceName 
+          ? QueryReference<T, T[key]>
+          : ((self: Simple<T>, engine: GameEngine<any, any>) => T[key])
 };

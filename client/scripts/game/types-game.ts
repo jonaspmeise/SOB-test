@@ -1,20 +1,16 @@
-import { UUID } from "crypto";
-import { Component, ID, Player } from "../engine/types-engine";
+import { Component } from '../engine/types-engine.js';
 
-// TODO: Reference via ID needed? Can't just directly take the way around?
-export type GameCard = {
-  cardtype: CardType,
-  subtypes: Subtype[],
-  costs: Costs,
-  rarity: Rarity,
-  set: number,
-  text: string,
-  realms: Realm[],
-  power: number,
-  name: string,
-  artwork: URL,
-  location?: ID
-};
+export const REALM_MAPPING: RealmMapping = new Map();
+REALM_MAPPING.set('D', 'Divine');
+REALM_MAPPING.set('E', 'Elemental');
+REALM_MAPPING.set('M', 'Mortal');
+REALM_MAPPING.set('N', 'Nature');
+REALM_MAPPING.set('V', 'Void');
+REALM_MAPPING.set('?', 'NO_REALM');
+
+export type ShardsOfBeyondActionArrayType = ['summon', 'draw', 'crystallize', 'pass', 'conquer'];
+export type ShardsOfBeyondActionType = ShardsOfBeyondActionArrayType[number];
+export type ActionColors = {[key in ShardsOfBeyondActionType]: string | undefined};
 
 /** The Card the way it is saved in our json. */
 export type RawCard = {
@@ -24,7 +20,7 @@ export type RawCard = {
   Rarity: Rarity,
   Set: number,
   Text: string,
-  ID: UUID,
+  ID: string,
   Realms: string,
   Power: number,
   Name: string,
@@ -32,20 +28,6 @@ export type RawCard = {
     default: string
   }
 };
-
-export type Card = GameCard & Owned & Component;
-
-export type Owned = {
-  owner: ID
-};
-
-export type Container = ID[] & Component;
-export type OwnedContainer =  Owned & Container;
-export type Deck = OwnedContainer;
-export type Hand = OwnedContainer
-export type CrystalZone = OwnedContainer & {
-  supports: (costs: Costs) => boolean
-}
 
 export type CardType = 'Unit' | 'Terrain';
 export type Subtype = string;
@@ -57,43 +39,57 @@ export type Costs = {
 };
 export type Rarity = 'Common' | 'Uncommon' | 'Rare';
 
-export const REALM_MAPPING: RealmMapping = new Map();
-REALM_MAPPING.set('D', 'Divine');
-REALM_MAPPING.set('E', 'Elemental');
-REALM_MAPPING.set('M', 'Mortal');
-REALM_MAPPING.set('N', 'Nature');
-REALM_MAPPING.set('V', 'Void');
-REALM_MAPPING.set('?', 'NO_REALM');
-
+export type Card = {
+  cardtype: CardType,
+  subtypes: Subtype[],
+  costs: Costs,
+  rarity: Rarity,
+  set: number,
+  text: string,
+  realms: Realm[],
+  power: number,
+  name: string,
+  artwork: URL,
+  location?: Container
+};
 export type Slot = {
   x: number,
   y: number,
-  lanes: () => Lane[]
-  card?: ID
-} & Component;
-
-export type BeyondPlayer = {
+  card?: Card,
+  lanes: Lane[]
+};
+export type Board = {
+  slots: Slot[],
+  lanes: Lane[]
+};
+export type LaneOrientation = 'horizontal' | 'vertical';
+export type Player = {
   name: Readonly<string>,
   hand: Hand,
   crystalzone: CrystalZone,
   index: number,
-  deck: Deck,
-  wonLanes: ID[],
-  meta: Player,
-  powerPerLane: () => {[id: string]: number}
-} & Component;
-
-export type Turn = {
-  currentPlayer: ID
-} & Component;
-
-export type LaneOrientation = 'horizontal' | 'vertical';
-export type Lane = Container & {
+  deck: Deck
+};
+export type Lane = {
+  // $ means that this is realized using a query!
+  $slots: Slot[],
+  $cards: Card[],
   orientation: LaneOrientation,
   index: number,
-  wonByPlayer: () => ID | undefined
-} & Component;
-
-export type ShardsOfBeyondActionType = ShardsOfBeyondActionArrayType[number];
-export type ShardsOfBeyondActionArrayType = ['summon', 'draw', 'crystallize', 'pass', 'conquer'];
-export type ActionColors = {[key in ShardsOfBeyondActionType]: string | undefined};
+  $wonByPlayer?: Player
+};
+export type Owned = {owner: Player};
+export type Container = {
+  cards: Card[];
+};
+export type Hand = Container & Owned;
+export type Deck = Container & Owned;
+export type CrystalZone = Container & Owned;
+export type Turn = {
+  currentPlayer: Player
+};
+export type BeyondGameState = {
+  players: Player[],
+  board: Board,
+  turn: Turn
+};
