@@ -24,9 +24,9 @@ export const hideCardPreview = () => {
     preview.style.display = 'none';
 };
 
-export const resolveCardArt = (name) => `https://cdn.shardsofbeyond.com/rashid-test/${name.toLowerCase().replaceAll(/\W/g, '')}.png`;
+export const resolveCardArt = (name) => `https://cdn.shardsofbeyond.com/client/cards/${name.toLowerCase().replaceAll(/\W/g, '')}.png`;
 export const getCardArtUrl = (card) => card === undefined ? null : `url('${resolveCardArt(card.Name)}')`;
-export const getRawCardArtUrl = (card) => card === undefined ? null : `url('https://cdn.shardsofbeyond.com/rashid-test-artworks/${card.Artworks.default}')`;
+export const getRawCardArtUrl = (card) => card === undefined ? null : `url('https://cdn.shardsofbeyond.com/artworks/${card.Artworks.default}')`;
 
 export const shuffle = (array) => {
     let currentIndex = array.length;
