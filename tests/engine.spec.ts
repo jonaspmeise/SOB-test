@@ -345,4 +345,85 @@ describe('Basic Engine Tests.', () => {
     expect(die1.paired).to.be.undefined;
     expect(die2.paired).to.be.undefined;
   });
+
+  it('When serializing a Component, it is returned in JSON format.', () => {
+    const obj = engine.registerComponent({
+      test: 123
+    }, 'test');
+
+    expect(JSON.parse(JSON.stringify(obj))).to.deep.equal({
+      id: "0",
+      types: ['test'],
+      test: 123
+    });
+  });
+
+  
+  it('When serializing a Component with a lazy initialzed property, the rendered variant is returned in JSON format.', () => {
+    const obj: {test: number, lazy$: number} = engine.registerComponent({
+      test: 123,
+      lazy$: (engine, self) => self.test + 1
+    }, 'test');
+
+    expect(JSON.parse(JSON.stringify(obj))).to.deep.equal({
+      id: "0",
+      types: ['test'],
+      test: 123,
+      lazy$: 124
+    });
+  });
+
+  it('When serializing a Component with a query properted, the last known value is returned in its JSON format.', () => {
+    type Test = {test: number, another: number};
+
+    const obj1: Test = engine.registerComponent({
+      test: 123,
+      another: {
+        get: (_engine, self) => self.test * 2
+      }
+    }, 'test');
+
+    // Modification in-between...
+    obj1.test = 16;
+
+    expect(JSON.parse(JSON.stringify(obj1))).to.deep.equal({
+      id: "0",
+      types: ['test'],
+      test: 16,
+      another: 32
+    });
+  });
+
+  it('When serializing a Component with a reference to another component, that referenced is encoded using the ID of the other component.', () => {
+    type Test = {test: number, another: Test};
+
+    const obj1: Test = engine.registerComponent({
+      test: 123,
+      another: {
+        get: (engine, self) => (engine.query('test') as Component<Test>[]).filter(t => t.id !== self.id)[0]
+      }
+    }, 'test');
+
+    // A reference object that can be linked!
+    const obj2: Test = engine.registerComponent({
+      test: 123,
+      another: {
+        get: (engine, self) => (engine.query('test') as Component<Test>[]).filter(t => t.id !== self.id)[0]
+      }
+    }, 'test');
+
+    expect(JSON.parse(JSON.stringify(obj1))).to.deep.equal({
+      id: "0",
+      types: ['test'],
+      test: 123,
+      another: "@1"
+    });
+    
+    expect(JSON.parse(JSON.stringify(obj2))).to.deep.equal({
+      id: "1",
+      types: ['test'],
+      test: 123,
+      another: "@0"
+    });
+  });
 });

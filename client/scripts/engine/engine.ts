@@ -98,6 +98,39 @@ export class GameEngine<
     // Access to query-properties should BY DEFAULT always go through here anyhow.
     const accessedCallProperties: Set<string> = new Set();
     const proxy = new Proxy(modified, {
+      get: (target: typeof modified, prop: string | symbol) => {
+        const p = prop.toString();
+        console.debug(`Accessing property "${p}" of Component #${id}...`);
+
+        // This is not a potential query then...
+        if(target[prop]?.get === undefined || p === 'toJSON') {
+          return target[prop];
+        }
+
+        const cacheHit = queryCache.get(p);
+        if(cacheHit !== undefined && cacheHit.lastChanged >= this.changeCounter) {
+          console.debug('Cache Hit successful!');
+          return cacheHit.obj;
+        }
+
+        console.debug(`Query "${p}" of Component #${id} has seen an old state (${cacheHit?.lastChanged} < ${this.changeCounter}). Need to re-calculate...`);
+
+        if(accessedCallProperties.has(p)) {
+          // We already checked this state once. We will return undefined!
+          accessedCallProperties.clear();
+          console.warn(`Encountered infinite loop, because accessed "${p}" of Component #${id} again. Returning undefined...`);
+          return undefined;
+        }
+
+        accessedCallProperties.add(p);
+
+        const result = target[prop].get(this._proxy, proxy);
+        queryCache.set(p, {lastChanged: this.changeCounter, obj: result});
+
+        accessedCallProperties.clear();
+        
+        return result;
+      },
       set: (target: typeof modified, prop: string | symbol, value: unknown = undefined) => {
         const p = prop.toString();
         console.warn(`Set property "${p}" of Component #${id} to`, value);
@@ -140,39 +173,6 @@ export class GameEngine<
         target[prop] = value;
 
         return true;
-      },
-      get: (target: typeof modified, prop: string | symbol) => {
-        const p = prop.toString();
-        console.debug(`Accessing property "${p}" of Component #${id}...`);
-
-        // This is not a potential query then...
-        if(target[prop]?.get === undefined) {
-          return target[prop];
-        }
-
-        const cacheHit = queryCache.get(p);
-        if(cacheHit !== undefined && cacheHit.lastChanged >= this.changeCounter) {
-          console.debug('Cache Hit successful!');
-          return cacheHit.obj;
-        }
-
-        console.debug(`Query "${p}" of Component #${id} has seen an old state (${cacheHit?.lastChanged} < ${this.changeCounter}). Need to re-calculate...`);
-
-        if(accessedCallProperties.has(p)) {
-          // We already checked this state once. We will return undefined!
-          accessedCallProperties.clear();
-          console.warn(`Encountered infinite loop, because accessed "${p}" of Component #${id} again. Returning undefined...`);
-          return undefined;
-        }
-
-        accessedCallProperties.add(p);
-
-        const result = target[prop].get(this._proxy, proxy);
-        queryCache.set(p, {lastChanged: this.changeCounter, obj: result});
-
-        accessedCallProperties.clear();
-        
-        return result;
       }
     });
 
@@ -182,6 +182,29 @@ export class GameEngine<
     };
     modified.id = id;
     modified.types = types;
+
+    // We need to overwrite JSON deserialization.
+    Object.defineProperty(modified, 'toJSON', {
+      value: () => {
+        const obj = {};
+  
+        for(let key in modified) {
+          // Ignore function calls.
+          if(typeof proxy[key] === 'function') {
+            continue;
+          }
+  
+          if(proxy[key]?.id !== undefined) {
+            obj[key] = `@${proxy[key].id}`;
+          } else {
+            obj[key] = proxy[key];
+          }
+        }
+  
+        return obj;
+      },
+      enumerable: false
+    });
 
     // Trigger all lazy functions here!
     Object.keys(modified).forEach(key => {

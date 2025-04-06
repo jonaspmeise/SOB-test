@@ -105,7 +105,8 @@ export type Component<T> = {
       : Component<T[key]>
 } & {
   id: ID,
-  types: Type[]
+  types: Type[],
+  toJSON: () => unknown
 };
 
 export type Components = Map<ID, Component<any>>;
