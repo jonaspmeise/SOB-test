@@ -159,7 +159,10 @@ export type Simple<T> = {
 };
 
 export type StaticQueryFilter<TARGET> = (engine: GameEngine<any>) => TARGET;
-export type QueryFilter<TARGET, SELF = undefined> = (engine: GameEngine<any>, self: Component<SELF>) => TARGET;
+export type QueryFilter<TARGET, SELF = undefined> = {
+  get: (engine: GameEngine<any>, self: Component<SELF>) => TARGET
+  set?: (engine: GameEngine<any>, self: Component<SELF>, current: TARGET | undefined, next: TARGET) => void
+};
 
 // Properties with that name scheme are registered lazily - on first execution, then stay constant!
 export type LazyReferenceName = `${string}$`; 
@@ -174,13 +177,15 @@ export type Lazy<T> = {
       : T[key] extends Array<infer A>
         ? QueryFilter<Component<A>[], T>
         : undefined extends T[key] // We have a complex type here that needs to resolve to a Component!
-            ? QueryFilter<Component<Exclude<T[key], undefined>> | undefined, T>
-            : QueryFilter<Component<T[key]>, T>
+          ? QueryFilter<Component<Exclude<T[key], undefined>> | undefined, T>
+          : QueryFilter<Component<T[key]>, T>
 };
 
-export type LazyFunction<SELF, TARGET> = ((engine: GameEngine<any>, self: Component<SELF>) => TARGET extends Array<infer A>
-  ? Component<A>[]
-  : Component<TARGET>);
+export type LazyFunction<SELF, TARGET> = ((engine: GameEngine<any>, self: Component<SELF>) => TARGET extends AtomicValue 
+  ? TARGET
+  : TARGET extends Array<infer A>
+    ? Component<A>[]
+    : Component<TARGET>);
 
 export type Query = string;
 

@@ -103,8 +103,9 @@ export class GameEngine<
         console.warn(`Set property "${p}" of Component #${id} to`, value);
 
         // If we wanted to change (overwrite) a query result, we have to update the cache for it.
-        if(typeof target[prop] === 'function' && !p.endsWith('$')) {
+        if(typeof target[prop]?.get === 'function' && !p.endsWith('$')) {
           console.debug(`Forcefully overriding cache return value for query-function "${p}" of Component #${id}...`);
+          const previousValue = queryCache.get(p);
 
           if(value === undefined) {
             console.debug('Resetting created cache override...');
@@ -115,6 +116,13 @@ export class GameEngine<
               obj: value,
               lastChanged: Infinity
             });
+          }
+
+          // If we supplied a set-callback, we execute it, too.
+          const setCallback = target[prop].set;
+          if(setCallback !== undefined) {
+            console.debug(`Calling set-Callback for modifying property "${p}"...`);
+            (setCallback as QueryFilter<unknown, P>['set'])!(this, proxy, previousValue?.obj, value)
           }
         }
 
@@ -137,7 +145,8 @@ export class GameEngine<
         const p = prop.toString();
         console.debug(`Accessing property "${p}" of Component #${id}...`);
 
-        if(typeof target[prop] !== 'function') {
+        // This is not a potential query then...
+        if(target[prop]?.get === undefined) {
           return target[prop];
         }
 
@@ -158,7 +167,7 @@ export class GameEngine<
 
         accessedCallProperties.add(p);
 
-        const result = target[prop](this._proxy, proxy);
+        const result = target[prop].get(this._proxy, proxy);
         queryCache.set(p, {lastChanged: this.changeCounter, obj: result});
 
         accessedCallProperties.clear();
@@ -177,7 +186,7 @@ export class GameEngine<
     // Trigger all lazy functions here!
     Object.keys(modified).forEach(key => {
       if(key.endsWith('$')) {
-        modified[key] = (modified[key] as QueryFilter<unknown, P>)(this, proxy);
+        modified[key] = (modified[key] as LazyFunction<unknown, P>)(this, proxy);
       }
     });
 

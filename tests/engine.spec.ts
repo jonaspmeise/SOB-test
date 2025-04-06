@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { GameEngine } from "../client/scripts/engine/engine.js";
-import { Component } from "../client/scripts/engine/types-engine.js";
+import { Component, QueryFilter } from "../client/scripts/engine/types-engine.js";
 
 describe('Basic Engine Tests.', () => {
   let engine: GameEngine<''> = new GameEngine();
@@ -24,17 +24,17 @@ describe('Basic Engine Tests.', () => {
   });
   
   it('When a Component is added, if one of its properties ("__$") is lazily initialized, it can be accessed.', () => {
-    const myObj: {sides: number, value: number} = engine.registerComponent({
+    const myObj: {sides: number, value$: number} = engine.registerComponent({
       sides: 6,
-      value: (_engine, self) => self.sides
+      value$: (_engine, self) => self.sides
     }, 'die');
 
     expect(engine.components).length(1);
 
     expect(myObj.sides).equals(6);
-    expect(myObj.value).equals(6);
-    expect(myObj.value).equals(6);
-    expect(myObj.value).equals(6);
+    expect(myObj.value$).equals(6);
+    expect(myObj.value$).equals(6);
+    expect(myObj.value$).equals(6);
   });
   
   it('Lazy properties are initialized directly after object creation.', () => {
@@ -89,22 +89,26 @@ describe('Basic Engine Tests.', () => {
     }, 'test');
 
     const query = engine.registerComponent({
-      $values: (engine) => engine.query('test')
-    }, 'query-test') as {$values: {test: number}[]};
+      values: {
+        get: (engine) => engine.query('test')
+      }
+    }, 'query-test') as {values: {test: number}[]};
 
-    expect(Array.isArray(query.$values)).to.be.true;
-    expect(query.$values).to.be.length(3);
+    expect(Array.isArray(query.values)).to.be.true;
+    expect(query.values).to.be.length(3);
 
-    expect(query.$values.filter(v => v.test === 123)).to.have.length(1);
-    expect(query.$values.filter(v => v.test === 234)).to.have.length(1);
-    expect(query.$values.filter(v => v.test === 345)).to.have.length(1);
+    expect(query.values.filter(v => v.test === 123)).to.have.length(1);
+    expect(query.values.filter(v => v.test === 234)).to.have.length(1);
+    expect(query.values.filter(v => v.test === 345)).to.have.length(1);
   });
 
   
   it('If a component features a query attribute, its cached value is updated on access, if a change happened since then.', () => {
     // Registered, but no targets exist yet!
     const query = engine.registerComponent({
-      values: (engine) => engine.query('test')
+      values: {
+        get: (engine) => engine.query('test')
+      }
     }, 'query-test') as {values: {test: number}[]};
     expect(query.values).to.be.length(0);
 
@@ -129,7 +133,9 @@ describe('Basic Engine Tests.', () => {
   it('If a component features a query attribute that points to itself, it is updated whenever that property of itself changes.', () => {
     const obj: {name: string, greeting: string} = engine.registerComponent({
       name: 'John',
-      greeting: (engine, self) => `Hello ${self.name}!`
+      greeting: {
+        get: (engine, self) => `Hello ${self.name}!`
+      }
     }, 'person');
 
     expect(obj.greeting).to.be.equal('Hello John!');
@@ -184,7 +190,9 @@ describe('Basic Engine Tests.', () => {
     const obj: {test: number, test2: number} = engine.registerComponent({
       test: 123,
       // TODO: Remove test2 from self here, because self-reference....
-      test2: (engine, self) => self.test - 111
+      test2: {
+        get: (engine, self) => self.test - 111
+      }
     }, 'test');
 
     expect(engine.changes()).to.have.length(1);
@@ -200,7 +208,9 @@ describe('Basic Engine Tests.', () => {
     const obj: {test: number, test2: number} = engine.registerComponent({
       test: 123,
       // TODO: Remove test2 from self here, because self-reference....
-      test2: (engine, self) => self.test - 111
+      test2: {
+        get: (engine, self) => self.test - 111
+      }
     }, 'test');
 
     obj.test2;
@@ -219,12 +229,16 @@ describe('Basic Engine Tests.', () => {
 
     const die1 = engine.registerComponent({
       sides: 6,
-      paired: (engine, self) => (engine.query('die') as Component<Die>[]).filter(d => d.paired?.id === self.id)[0]
+      paired: {
+        get: (engine, self) => (engine.query('die') as Component<Die>[]).filter(d => d.paired?.id === self.id)[0]
+      }
     }, 'die') as Component<Die>;
     
     const die2 = engine.registerComponent({
       sides: 6,
-      paired: (engine, self) => (engine.query('die') as Component<Die>[]).filter(d => d.paired?.id === self.id)[0]
+      paired: {
+        get: (engine, self) => (engine.query('die') as Component<Die>[]).filter(d => d.paired?.id === self.id)[0]
+      }
     }, 'die') as Component<Die>;
 
     expect(die1.paired).to.be.undefined;
@@ -236,12 +250,16 @@ describe('Basic Engine Tests.', () => {
 
     const die1 = engine.registerComponent({
       sides: 6,
-      paired: (engine, self) => (engine.query('die') as Component<Die>[]).filter(d => d.paired?.id === self.id)[0]
+      paired: {
+        get: (engine, self) => (engine.query('die') as Component<Die>[]).filter(d => d.paired?.id === self.id)[0]
+      }
     }, 'die') as Component<Die>;
     
     const die2 = engine.registerComponent({
       sides: 6,
-      paired: (engine, self) => (engine.query('die') as Component<Die>[]).filter(d => d.paired?.id === self.id)[0]
+      paired: {
+        get: (engine, self) => (engine.query('die') as Component<Die>[]).filter(d => d.paired?.id === self.id)[0]
+      }
     }, 'die') as Component<Die>;
 
     // Some pairing action...
@@ -256,12 +274,16 @@ describe('Basic Engine Tests.', () => {
 
     const die1 = engine.registerComponent({
       sides: 6,
-      paired: (engine, self) => (engine.query('die') as Component<Die>[]).filter(d => d.paired?.id === self.id)[0]
+      paired: {
+        get: (engine, self) => (engine.query('die') as Component<Die>[]).filter(d => d.paired?.id === self.id)[0]
+      }
     }, 'die') as Component<Die>;
     
     const die2 = engine.registerComponent({
       sides: 6,
-      paired: (engine, self) => (engine.query('die') as Component<Die>[]).filter(d => d.paired?.id === self.id)[0]
+      paired: {
+        get: (engine, self) => (engine.query('die') as Component<Die>[]).filter(d => d.paired?.id === self.id)[0]
+      }
     }, 'die') as Component<Die>;
 
     // Some pairing action...
@@ -285,14 +307,26 @@ describe('Basic Engine Tests.', () => {
   it('If two components reference each other via queries, if one of the values is set, and then later reset on the other paired value(!), it returns to the original behavior.', () => {
     type Die = {sides: number, paired: Die | undefined};
 
+    const pairQuery: QueryFilter<Component<Die> | undefined, Die> = {
+      // When queried: return this.
+      get: (engine, self) => (engine.query('die') as Component<Die>[]).filter(d => d.paired?.id === self.id)[0],
+      // When set: execute this.
+      set: (engine, self, current, next) => {
+        if(current !== undefined) {
+          console.error(self, current);
+          current.paired = next;
+        }
+      }
+    };
+
     const die1 = engine.registerComponent({
       sides: 6,
-      paired: (engine, self) => (engine.query('die') as Component<Die>[]).filter(d => d.paired?.id === self.id)[0]
+      paired: pairQuery
     }, 'die') as Component<Die>;
     
     const die2 = engine.registerComponent({
       sides: 6,
-      paired: (engine, self) => (engine.query('die') as Component<Die>[]).filter(d => d.paired?.id === self.id)[0]
+      paired: pairQuery
     }, 'die') as Component<Die>;
 
     // Some pairing action...

@@ -16,7 +16,9 @@ export const INITIALIZE_BEYOND_GAMESTATE = (
   }, 'turn', 'Turn')
 
   const createOwnedCardContainer = (self: any, engine: GameEngine<ShardsOfBeyondActionType>, types: Type | Type[], name?: string): Component<Owned & Container> => engine.registerComponent({
-    cards: (engine, self) => (engine.query('card') as Component<Card>[]).filter(c => c.location?.id === self.id),
+    cards: {
+      get: (engine, self) => (engine.query('card') as Component<Card>[]).filter(c => c.location?.id === self.id)
+    },
     owner: DEREFERENCE_SELF(self)
   }, types, name);
 
@@ -37,12 +39,16 @@ export const INITIALIZE_BEYOND_GAMESTATE = (
     slots$: (engine: GameEngine<ShardsOfBeyondActionType>, self) => (engine.query('slots') as Component<Slot>[])
       .filter(slot => slot.lanes$.find(lane => lane.id === self.id) !== undefined
     ),
-    cards: (_engine, self) => self.slots$
+    cards: {
+      get: (_engine, self) => self.slots$
       .filter(slot => slot.card !== undefined)
-      .map(slot => slot.card! as Component<Card>),
-    wonByPlayer: (engine: GameEngine<ShardsOfBeyondActionType>, self) => self.cards.length < self.slots$.length
+      .map(slot => slot.card! as Component<Card>)
+    },
+    wonByPlayer: {
+      get: (engine: GameEngine<ShardsOfBeyondActionType>, self) => self.cards.length < self.slots$.length
       ? undefined
       : (engine.query('players') as Component<Player>[])[0] // TODO
+    }
   }, 'lane', `Vertical Lane #${index + 1}`) as Component<Lane>);
     
   // Horizontal Lanes
@@ -52,12 +58,16 @@ export const INITIALIZE_BEYOND_GAMESTATE = (
     slots$: (engine: GameEngine<ShardsOfBeyondActionType>, self) => (engine.query('slots') as Component<Slot>[])
       .filter(slot => slot.lanes$.find(lane => lane.id === self.id) !== undefined
     ),
-    cards: (_engine, self) => self.slots$
+    cards: {
+      get: (_engine, self) => self.slots$
       .filter(slot => slot.card !== undefined)
-      .map(slot => slot.card! as Component<Card>),
-    wonByPlayer: (engine: GameEngine<ShardsOfBeyondActionType>, self) => self.cards.length < self.slots$.length
+      .map(slot => slot.card! as Component<Card>)
+    },
+    wonByPlayer: {
+      get: (engine: GameEngine<ShardsOfBeyondActionType>, self) => self.cards.length < self.slots$.length
       ? undefined
       : (engine.query('players') as Component<Player>[])[0] // TODO
+    }
   }, 'lane', `Horizontal Lane #${index + 1}`) as Component<Lane>);
   
   // Slots.
@@ -65,7 +75,9 @@ export const INITIALIZE_BEYOND_GAMESTATE = (
     engine.registerComponent({
       x: x,
       y: y,
-      card: (engine, self) => (engine.query('cards') as Component<Card>[]).filter(c => c.location?.id === self.id)[0],
+      card: {
+        get: (engine, self) => (engine.query('cards') as Component<Card>[]).filter(c => c.location?.id === self.id)[0]
+      },
       lanes$: (engine: GameEngine<ShardsOfBeyondActionType>, self) => (engine.query('lanes') as Component<Lane>[])
         .filter(lane => lane.orientation === 'horizontal'
           ? lane.index === self.y
