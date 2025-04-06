@@ -213,4 +213,102 @@ describe('Basic Engine Tests.', () => {
       test2: 12
     });
   });
+
+  it('If two components reference each other via queries, no infinite loop happens.', () => {
+    type Die = {sides: number, paired: Die | undefined};
+
+    const die1 = engine.registerComponent({
+      sides: 6,
+      paired: (engine, self) => (engine.query('die') as Component<Die>[]).filter(d => d.paired?.id === self.id)[0]
+    }, 'die') as Component<Die>;
+    
+    const die2 = engine.registerComponent({
+      sides: 6,
+      paired: (engine, self) => (engine.query('die') as Component<Die>[]).filter(d => d.paired?.id === self.id)[0]
+    }, 'die') as Component<Die>;
+
+    expect(die1.paired).to.be.undefined;
+    expect(die2.paired).to.be.undefined;
+  });
+ 
+  it('If two components reference each other via queries, if one of the values is set, it can later be retrieved.', () => {
+    type Die = {sides: number, paired: Die | undefined};
+
+    const die1 = engine.registerComponent({
+      sides: 6,
+      paired: (engine, self) => (engine.query('die') as Component<Die>[]).filter(d => d.paired?.id === self.id)[0]
+    }, 'die') as Component<Die>;
+    
+    const die2 = engine.registerComponent({
+      sides: 6,
+      paired: (engine, self) => (engine.query('die') as Component<Die>[]).filter(d => d.paired?.id === self.id)[0]
+    }, 'die') as Component<Die>;
+
+    // Some pairing action...
+    die1.paired = die2;
+
+    expect(die1.paired).to.deep.equal(die2);
+    expect(die2.paired).to.deep.equal(die1);
+  });
+
+  it('If two components reference each other via queries, if one of the values is set, and then later reset, it returns to the original behavior.', () => {
+    type Die = {sides: number, paired: Die | undefined};
+
+    const die1 = engine.registerComponent({
+      sides: 6,
+      paired: (engine, self) => (engine.query('die') as Component<Die>[]).filter(d => d.paired?.id === self.id)[0]
+    }, 'die') as Component<Die>;
+    
+    const die2 = engine.registerComponent({
+      sides: 6,
+      paired: (engine, self) => (engine.query('die') as Component<Die>[]).filter(d => d.paired?.id === self.id)[0]
+    }, 'die') as Component<Die>;
+
+    // Some pairing action...
+    console.info('PAIRING DICE...');
+    die1.paired = die2;
+    console.info('DICE ARE PAIRED');
+    
+    expect(die1.paired).to.deep.equal(die2);
+    expect(die2.paired).to.deep.equal(die1);
+
+    // We later revoke this relationship!
+    console.info('REVOKING RELATIONSHIP...');
+    die1.paired = undefined;
+    console.info('RELATIONSHIP REVOKED');
+
+    expect(die1.paired).to.be.undefined;
+    expect(die2.paired).to.be.undefined;
+  });
+
+  
+  it('If two components reference each other via queries, if one of the values is set, and then later reset on the other paired value(!), it returns to the original behavior.', () => {
+    type Die = {sides: number, paired: Die | undefined};
+
+    const die1 = engine.registerComponent({
+      sides: 6,
+      paired: (engine, self) => (engine.query('die') as Component<Die>[]).filter(d => d.paired?.id === self.id)[0]
+    }, 'die') as Component<Die>;
+    
+    const die2 = engine.registerComponent({
+      sides: 6,
+      paired: (engine, self) => (engine.query('die') as Component<Die>[]).filter(d => d.paired?.id === self.id)[0]
+    }, 'die') as Component<Die>;
+
+    // Some pairing action...
+    console.info('PAIRING DICE...');
+    die1.paired = die2;
+    console.info('DICE ARE PAIRED');
+    
+    expect(die1.paired).to.deep.equal(die2);
+    expect(die2.paired).to.deep.equal(die1);
+
+    // We later revoke this relationship!
+    console.info('REVOKING RELATIONSHIP...');
+    die2.paired = undefined; // IMPORTANT: Other Die is referenced!
+    console.info('RELATIONSHIP REVOKED');
+
+    expect(die1.paired).to.be.undefined;
+    expect(die2.paired).to.be.undefined;
+  });
 });

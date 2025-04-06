@@ -100,7 +100,7 @@ export type Component<T> = {
   ? Component<A>[]
   : T[key] extends AtomicValue
     ? T[key]
-    : T[key] extends undefined
+    : undefined extends T[key]
       ? Component<Exclude<T[key], undefined>> | undefined
       : Component<T[key]>
 } & {

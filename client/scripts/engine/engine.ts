@@ -96,9 +96,28 @@ export class GameEngine<
     }> = new Map();
     // TODO: Track internal map of property -> Set<callbacks>. Adaptively populate this map.
     // Access to query-properties should BY DEFAULT always go through here anyhow.
+    const accessedCallProperties: Set<string> = new Set();
     const proxy = new Proxy(modified, {
-      set: (target: typeof modified, prop: string | symbol, value: unknown) => {
-        console.warn('Set', prop.toString());
+      set: (target: typeof modified, prop: string | symbol, value: unknown = undefined) => {
+        const p = prop.toString();
+        console.warn(`Set property "${p}" of Component #${id} to`, value);
+
+        // If we wanted to change (overwrite) a query result, we have to update the cache for it.
+        if(typeof target[prop] === 'function' && !p.endsWith('$')) {
+          console.debug(`Forcefully overriding cache return value for query-function "${p}" of Component #${id}...`);
+
+          if(value === undefined) {
+            console.debug('Resetting created cache override...');
+            queryCache.delete(p);
+          } else {
+            console.debug(`Overwriting cache with return value`, value);
+            queryCache.set(p, {
+              obj: value,
+              lastChanged: Infinity
+            });
+          }
+        }
+
         let changes = this._changeMap.get(modified.id);
 
         if(changes === undefined) {
@@ -116,13 +135,11 @@ export class GameEngine<
       },
       get: (target: typeof modified, prop: string | symbol) => {
         const p = prop.toString();
-        console.debug('Get', p);
+        console.debug(`Accessing property "${p}" of Component #${id}...`);
 
         if(typeof target[prop] !== 'function') {
           return target[prop];
         }
-
-        console.debug('QUERY ACCESSED', p);
 
         const cacheHit = queryCache.get(p);
         if(cacheHit !== undefined && cacheHit.lastChanged >= this.changeCounter) {
@@ -130,11 +147,22 @@ export class GameEngine<
           return cacheHit.obj;
         }
 
-        console.debug(`Query "${p}" of Component #${id} has seen an old state. Need to re-calculate...`);
+        console.debug(`Query "${p}" of Component #${id} has seen an old state (${cacheHit?.lastChanged} < ${this.changeCounter}). Need to re-calculate...`);
+
+        if(accessedCallProperties.has(p)) {
+          // We already checked this state once. We will return undefined!
+          accessedCallProperties.clear();
+          console.warn(`Encountered infinite loop, because accessed "${p}" of Component #${id} again. Returning undefined...`);
+          return undefined;
+        }
+
+        accessedCallProperties.add(p);
 
         const result = target[prop](this._proxy, proxy);
         queryCache.set(p, {lastChanged: this.changeCounter, obj: result});
 
+        accessedCallProperties.clear();
+        
         return result;
       }
     });

@@ -55,7 +55,7 @@ export type Card = {
 export type Slot = {
   x: number,
   y: number,
-  card?: Readonly<Card>,
+  card?: Card,
   lanes$: Lane[]
 };
 
