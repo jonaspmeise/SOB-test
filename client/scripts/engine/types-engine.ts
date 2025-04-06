@@ -95,7 +95,13 @@ export type TriggerExecution<
 };
 */
 
-export type Component<T> = T & {
+export type Component<T> = {
+  [key in keyof T]: T[key] extends Array<infer A>
+  ? Component<A>[]
+  : T[key] extends AtomicValue
+    ? T[key]
+    : Component<T[key]>
+} & {
   id: ID,
   types: Type[]
 };
@@ -150,37 +156,38 @@ export type Simple<T> = {
       : undefined
 };
 
-export type QueryFilter<TARGET, SELF = undefined> = (engine: GameEngine<any>, self: SELF) => TARGET extends Array<infer A>
-? A[]
-: TARGET extends undefined
-  ? TARGET | undefined
-  : TARGET extends unknown 
-    ? TARGET | TARGET[]
-    : TARGET;
+export type StaticQueryFilter<TARGET> = (engine: GameEngine<any>) => TARGET;
+export type QueryFilter<TARGET, SELF = undefined> = (engine: GameEngine<any>, self: Component<SELF>) => TARGET;
 
-export type QueryReferenceName = `$${string}`; 
-
-export type LazyOld<T> = {
-  [key in keyof T]: T[key] extends AtomicArray
-    ? T[key]
-    : T[key] extends AtomicValue
-      ? T[key]
-      : key extends QueryReferenceName 
-        ? QueryFilter<T[key], T>
-        : LazyFunction<T, T[key]>
-};
-
+// Properties with that name scheme are registered lazily - on first execution, then stay constant!
+export type LazyReferenceName = `${string}$`; 
 
 export type Lazy<T> = {
-  [key in keyof T]: key extends QueryReferenceName
-    ? QueryFilter<T[key], T>
-    : T[key] extends AtomicArray
-      ? T[key]
-      : T[key] extends AtomicValue
-        ? T[key]
-        : LazyFunction<T, T[key]>
+  [key in keyof T]: key extends LazyReferenceName 
+  ? LazyFunction<T, T[key]>
+  : T[key] extends AtomicArray
+    ? T[key] | QueryFilter<T[key], T>
+    : T[key] extends AtomicValue
+      ? T[key] | QueryFilter<T[key], T>
+      : T[key] extends Array<infer A>
+        ? QueryFilter<Component<A>[], T>
+        : QueryFilter<Component<T[key]>, T>
 };
 
-export type LazyFunction<SELF, TARGET> = ((self: Simple<SELF>, engine: GameEngine<any>) => TARGET);
+export type LazyFunction<SELF, TARGET> = ((engine: GameEngine<any>, self: Component<SELF>) => TARGET extends Array<infer A>
+  ? Component<A>[]
+  : Component<TARGET>);
 
 export type Query = string;
+
+export type CacheEntry<T> = {
+  timestamp: number,
+  result: T,
+  func: QueryFilter<T>
+};
+
+export type StaticCacheEntry<T> = {
+  timestamp: number,
+  result: T,
+  func: StaticQueryFilter<T>
+};

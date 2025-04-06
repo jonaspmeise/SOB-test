@@ -13,7 +13,7 @@ describe('Basic Engine Tests.', () => {
     const myObj = {value: 'test'};
 
     const engine = new GameEngine();
-    engine.registerComponent(myObj, ['something']);
+    engine.registerComponent(myObj, 'something');
 
     expect(engine.components).length(1);
 
@@ -23,56 +23,47 @@ describe('Basic Engine Tests.', () => {
     expect(engine.components[0].value).equals('test');
   });
   
-  it('When a Component is added, if it is lazily initialized, the types still exist.', () => {
-    const myObj: {value: string, lazy: {boy: string}} = engine.registerComponent({
-      value: '123',
-      lazy: (self) => {
-        return {
-          boy: self.value + '$'
-        };
-      }
-    }, 'some lazy boi');
-
-    // All lazy components are initialized here!
-    engine.start();
+  it('When a Component is added, if one of its properties ("__$") is lazily initialized, it can be accessed.', () => {
+    const myObj: {sides: number, value: number} = engine.registerComponent({
+      sides: 6,
+      value: (_engine, self) => self.sides
+    }, 'die');
 
     expect(engine.components).length(1);
 
-    expect(myObj.value).equals('123');
-    expect(myObj.lazy).deep.equals({boy: '123$'});
-    expect(myObj.lazy.boy).equals('123$');
+    expect(myObj.sides).equals(6);
+    expect(myObj.value).equals(6);
+    expect(myObj.value).equals(6);
+    expect(myObj.value).equals(6);
   });
   
-  it('When a Component is added, if it has an nested component, both are registered.', () => {
+  it('Lazy properties are initialized directly after object creation.', () => {
     const obj = engine.registerComponent({
       value: '123',
-      lazy: (self) => engine.registerComponent({
+      lazy$: (engine, self) => engine.registerComponent({
         boy: self.value + '$'
       }, 'some lazy boi')
-    }, 'value') as {value: string, lazy: {boy: string}};
-    
-    // All lazy components are initialized here!
-    engine.start();
+    }, 'value') as {value: string, lazy$: {boy: string}};
 
     expect(engine.components).length(2);
     
-    // The outer component should be registered first.
-    const first = engine.components[0] as Component<typeof obj>;
+    // The inner component should be registered first.
+    const first = engine.components[1] as Component<typeof obj>;
 
     expect(first.id).equals('0');
     expect(first.value).equals('123');
-    expect(first.lazy).deep.equal({boy: '123$', id: '1', types: ['some lazy boi']});
-    expect(first.lazy.boy).equals('123$');
+    expect(first.lazy$).deep.equal({boy: '123$', id: '1', types: ['some lazy boi']});
+    expect(first.lazy$.boy).equals('123$');
 
-    // The inner component should be registered second.
-    const second = engine.components[1] as Component<{boy: string}>;
+    // The outer component should be registered second.
+    const second = engine.components[0] as Component<{boy: string}>;
 
     expect(second.id).equals('1');
     expect(second.types).deep.equal(['some lazy boi']);
     expect(second.boy).equals('123$');
   });
 
-  it('Registered components can be accessed through queries. Natively, each type receives an own simple query.', () => {
+  it('Registered components can be accessed through queries. Natively, each used type registers an own simple query.', () => {
     engine.registerComponent({
       hello: 'world'
     }, ['simple', 'easy']);
@@ -85,7 +76,7 @@ describe('Basic Engine Tests.', () => {
     expect(engine.query('easy')[0]).to.deep.equal(obj);
   });
 
-  it('If a component features a query attribute "$___", it is automatically resolved and executed after initialization.', () => {
+  it('If a component features a query attribute, it is automatically resolved when accessed.', () => {
     // Simple examples.
     engine.registerComponent({
       test: 123
@@ -110,42 +101,42 @@ describe('Basic Engine Tests.', () => {
   });
 
   
-  it('If a component features a query attribute "$___", it is updated whenever another component is registered.', () => {
-    
+  it('If a component features a query attribute, its cached value is updated on access, if a change happened since then.', () => {
     // Registered, but no targets exist yet!
     const query = engine.registerComponent({
-      $values: (engine) => engine.query('test')
-    }, 'query-test') as {$values: {test: number}[]};
-    expect(query.$values).to.be.length(0);
+      values: (engine) => engine.query('test')
+    }, 'query-test') as {values: {test: number}[]};
+    expect(query.values).to.be.length(0);
 
     // Simple examples.
     engine.registerComponent({
       test: 123
     }, 'test');
-    expect(query.$values).to.be.length(1);
+
+    expect(query.values).to.be.length(1);
 
     engine.registerComponent({
       test: 234
     }, 'test');
-    expect(query.$values).to.be.length(2);
+    expect(query.values).to.be.length(2);
 
     engine.registerComponent({
       test: 345
     }, 'test');
-    expect(query.$values).to.be.length(3);
+    expect(query.values).to.be.length(3);
   });
 
   it('If a component features a query attribute that points to itself, it is updated whenever that property of itself changes.', () => {
-    const obj: {name: string, $greeting: string} = engine.registerComponent({
+    const obj: {name: string, greeting: string} = engine.registerComponent({
       name: 'John',
-      $greeting: (engine, self) => `Hello ${self.name}!`
+      greeting: (engine, self) => `Hello ${self.name}!`
     }, 'person');
 
-    expect(obj.$greeting).to.be.equal('Hello John!');
+    expect(obj.greeting).to.be.equal('Hello John!');
 
     // We modify the component and thus expect a change in its query attribute.
     obj.name = 'Lutz';
-    expect(obj.$greeting).to.be.equal('Hello Lutz!');
+    expect(obj.greeting).to.be.equal('Hello Lutz!');
   });
 
   it('If a component is modified, it is recorded in the change map.', () => {
@@ -157,6 +148,9 @@ describe('Basic Engine Tests.', () => {
 
     expect(engine.changes()).to.have.length(1);
     expect(engine.changes().get(obj.id)).to.deep.equal({
+      // This component was newly created!
+      id: '0',
+      types: ['test'],
       test: 999
     });
   });
@@ -170,8 +164,53 @@ describe('Basic Engine Tests.', () => {
     obj.test = 1000;
 
     expect(engine.changes()).to.have.length(1);
-    expect(engine.changes().get(obj.id)).to.deep.equal({
-      test: 1000
+    expect(engine.changes().get(obj.id)!.test).to.equal(1000);
+  });
+
+  it('If a component is registered, it appears in the changes.', () => {
+    engine.registerComponent({
+      test: 123
+    }, 'test');
+
+    expect(engine.changes()).to.have.length(1);
+    expect(engine.changes().get('0')).to.deep.equal({
+      id: '0',
+      types: ['test'],
+      test: 123
+    });
+  });
+  
+  it('If a component is registered with a query attribute, the initially resolved attribute is added to it.', () => {
+    const obj: {test: number, test2: number} = engine.registerComponent({
+      test: 123,
+      // TODO: Remove test2 from self here, because self-reference....
+      test2: (engine, self) => self.test - 111
+    }, 'test');
+
+    expect(engine.changes()).to.have.length(1);
+    expect(engine.changes().get('0')).to.deep.equal({
+      id: '0',
+      types: ['test'],
+      test: 123,
+      test2: 12
+    });
+  });
+  
+  it('If a component is registered with a query attribute, and it is accessed, the returned value of that query is added to the changes.', () => {
+    const obj: {test: number, test2: number} = engine.registerComponent({
+      test: 123,
+      // TODO: Remove test2 from self here, because self-reference....
+      test2: (engine, self) => self.test - 111
+    }, 'test');
+
+    obj.test2;
+
+    expect(engine.changes()).to.have.length(1);
+    expect(engine.changes().get('0')).to.deep.equal({
+      id: '0',
+      types: ['test'],
+      test: 123,
+      test2: 12
     });
   });
 });

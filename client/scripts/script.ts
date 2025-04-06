@@ -2,7 +2,7 @@
 // [VAR]$ = component/id reference
 
 import { range } from './engine/utility.js';
-import { BeyondGameState, Card, CardType, Lane, Rarity, RawCard, Realm, REALM_MAPPING, ShardsOfBeyondActionType, Slot, Subtype } from './game/types-game.js';
+import { Card, CardType, Lane, Rarity, RawCard, Realm, REALM_MAPPING, ShardsOfBeyondActionType, Slot, Subtype } from './game/types-game.js';
 import { GameEngine } from './engine/engine.js';
 import { INITIALIZE_BEYOND_GAMESTATE } from './game/state.js';
 
@@ -10,7 +10,7 @@ import { INITIALIZE_BEYOND_GAMESTATE } from './game/state.js';
 const cardFile = 'https://cdn.shardsofbeyond.com/client/cards.json';
 
 // Register engine and all types.
-const engine = new GameEngine<BeyondGameState, ShardsOfBeyondActionType>();
+const engine = new GameEngine<ShardsOfBeyondActionType>();
 INITIALIZE_BEYOND_GAMESTATE(engine);
 
 // For easier debugging.

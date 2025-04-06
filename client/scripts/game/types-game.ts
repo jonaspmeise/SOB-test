@@ -56,24 +56,24 @@ export type Slot = {
   x: number,
   y: number,
   card?: Card,
-  lanes: Lane[]
+  lanes$: Lane[]
 };
 
 export type LaneOrientation = 'horizontal' | 'vertical';
 export type Player = {
   name: Readonly<string>,
-  hand: Hand,
-  crystalzone: CrystalZone,
+  hand$: Hand,
+  crystalzone$: CrystalZone,
   index: number,
-  deck: Deck
+  deck$: Deck
 };
 export type Lane = {
   // $ means that this is realized using a query!
-  $slots: Slot[],
-  $cards: Card[],
+  slots$: Slot[],
+  cards: Card[],
   orientation: LaneOrientation,
   index: number,
-  $wonByPlayer?: Player
+  wonByPlayer: Player | undefined
 };
 export type Owned = {owner: Player};
 export type Container = {
