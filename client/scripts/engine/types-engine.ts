@@ -140,12 +140,7 @@ export interface PlayerClient {
   tickHandler: TickHandler
 };
 
-export type FlatObject<T> = {
-  [key in keyof T]: T[key] extends FlatObject<infer A>
-    ? LazyInitializer<A>
-    : T[key]
-};
-export type AtomicValue = string | number | boolean | null | undefined;
+export type AtomicValue = string | number | boolean;
 export type AtomicArray = Array<AtomicValue>;
 export type Simple<T> = {
   [key in keyof T]: T[key] extends AtomicArray
@@ -155,22 +150,37 @@ export type Simple<T> = {
       : undefined
 };
 
-export type Context<SOURCE, TARGET> = {
-  [key in keyof TARGET]: TARGET[key]
-};
+export type QueryFilter<TARGET, SELF = undefined> = (engine: GameEngine<any>, self: SELF) => TARGET extends Array<infer A>
+? A[]
+: TARGET extends undefined
+  ? TARGET | undefined
+  : TARGET extends unknown 
+    ? TARGET | TARGET[]
+    : TARGET;
 
-export type QueryFilter<T> = (components: Component<unknown>[]) => T[];
-export type QueryReference<SELF, T> = (self: SELF, engine: GameEngine<any, any>) => T;
 export type QueryReferenceName = `$${string}`; 
 
-export type LazyInitializer<T> = {
-  [key in keyof T]: T[key] extends Simple<infer A>
-    ? A
+export type LazyOld<T> = {
+  [key in keyof T]: T[key] extends AtomicArray
+    ? T[key]
+    : T[key] extends AtomicValue
+      ? T[key]
+      : key extends QueryReferenceName 
+        ? QueryFilter<T[key], T>
+        : LazyFunction<T, T[key]>
+};
+
+
+export type Lazy<T> = {
+  [key in keyof T]: key extends QueryReferenceName
+    ? QueryFilter<T[key], T>
     : T[key] extends AtomicArray
       ? T[key]
       : T[key] extends AtomicValue
         ? T[key]
-        : key extends QueryReferenceName 
-          ? QueryReference<T, T[key]>
-          : ((self: Simple<T>, engine: GameEngine<any, any>) => T[key])
+        : LazyFunction<T, T[key]>
 };
+
+export type LazyFunction<SELF, TARGET> = ((self: Simple<SELF>, engine: GameEngine<any>) => TARGET);
+
+export type Query = string;

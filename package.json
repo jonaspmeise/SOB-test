@@ -4,7 +4,7 @@
   "main": "script.js",
   "scripts": {
     "build": "npx tsc & webpack",
-    "test": "mocha --require ts-node/register ./tests/*.spec.ts"
+    "test": "mocha --require ts-node/register --reporter list ./tests/*.spec.ts"
   },
   "type": "module",
   "keywords": [],

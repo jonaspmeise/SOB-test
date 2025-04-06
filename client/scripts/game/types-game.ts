@@ -58,10 +58,7 @@ export type Slot = {
   card?: Card,
   lanes: Lane[]
 };
-export type Board = {
-  slots: Slot[],
-  lanes: Lane[]
-};
+
 export type LaneOrientation = 'horizontal' | 'vertical';
 export type Player = {
   name: Readonly<string>,
@@ -87,9 +84,4 @@ export type Deck = Container & Owned;
 export type CrystalZone = Container & Owned;
 export type Turn = {
   currentPlayer: Player
-};
-export type BeyondGameState = {
-  players: Player[],
-  board: Board,
-  turn: Turn
 };
