@@ -100,7 +100,9 @@ export type Component<T> = {
   ? Component<A>[]
   : T[key] extends AtomicValue
     ? T[key]
-    : Component<T[key]>
+    : T[key] extends undefined
+      ? Component<Exclude<T[key], undefined>> | undefined
+      : Component<T[key]>
 } & {
   id: ID,
   types: Type[]
@@ -163,7 +165,7 @@ export type QueryFilter<TARGET, SELF = undefined> = (engine: GameEngine<any>, se
 export type LazyReferenceName = `${string}$`; 
 
 export type Lazy<T> = {
-  [key in keyof T]: key extends LazyReferenceName 
+  [key in keyof T]-?: key extends LazyReferenceName 
   ? LazyFunction<T, T[key]>
   : T[key] extends AtomicArray
     ? T[key] | QueryFilter<T[key], T>
@@ -171,7 +173,9 @@ export type Lazy<T> = {
       ? T[key] | QueryFilter<T[key], T>
       : T[key] extends Array<infer A>
         ? QueryFilter<Component<A>[], T>
-        : QueryFilter<Component<T[key]>, T>
+        : undefined extends T[key] // We have a complex type here that needs to resolve to a Component!
+            ? QueryFilter<Component<Exclude<T[key], undefined>> | undefined, T>
+            : QueryFilter<Component<T[key]>, T>
 };
 
 export type LazyFunction<SELF, TARGET> = ((engine: GameEngine<any>, self: Component<SELF>) => TARGET extends Array<infer A>

@@ -1,6 +1,6 @@
 import { ShardsOfBeyondActionType, Owned, Lane, Slot, Card, Player, Container } from './types-game.js';
 import { GameEngine } from '../engine/engine.js';
-import { Component,  Lazy,  Type } from '../engine/types-engine.js';
+import { Component,  Lazy,  QueryFilter,  Type } from '../engine/types-engine.js';
 import { range } from '../engine/utility.js';
 
 export const DEREFERENCE_SELF = <T>(self: unknown): T => self as T;
@@ -44,7 +44,6 @@ export const INITIALIZE_BEYOND_GAMESTATE = (
       ? undefined
       : (engine.query('players') as Component<Player>[])[0] // TODO
   }, 'lane', `Vertical Lane #${index + 1}`) as Component<Lane>);
-
     
   // Horizontal Lanes
   range(4).map(index => engine.registerComponent({
@@ -66,7 +65,7 @@ export const INITIALIZE_BEYOND_GAMESTATE = (
     engine.registerComponent({
       x: x,
       y: y,
-      card: undefined,
+      card: (engine, self) => (engine.query('cards') as Component<Card>[]).filter(c => c.location?.id === self.id)[0],
       lanes$: (engine: GameEngine<ShardsOfBeyondActionType>, self) => (engine.query('lanes') as Component<Lane>[])
         .filter(lane => lane.orientation === 'horizontal'
           ? lane.index === self.y

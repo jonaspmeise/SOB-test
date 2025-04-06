@@ -55,7 +55,7 @@ export type Card = {
 export type Slot = {
   x: number,
   y: number,
-  card?: Card,
+  card?: Readonly<Card>,
   lanes$: Lane[]
 };
 
@@ -73,7 +73,7 @@ export type Lane = {
   cards: Card[],
   orientation: LaneOrientation,
   index: number,
-  wonByPlayer: Player | undefined
+  wonByPlayer?: Player
 };
 export type Owned = {owner: Player};
 export type Container = {

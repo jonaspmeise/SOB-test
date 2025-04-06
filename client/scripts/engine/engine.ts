@@ -151,11 +151,6 @@ export class GameEngine<
       if(key.endsWith('$')) {
         modified[key] = (modified[key] as QueryFilter<unknown, P>)(this, proxy);
       }
-
-      // If it's a function, but _not_ a lazy function, we simply invoke an initial value.
-      if(typeof modified[key] === 'function') {
-        modified[key];
-      }
     });
 
     // Register accesses.
