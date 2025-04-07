@@ -1,4 +1,4 @@
-import { Component } from '../engine/types-engine.js';
+import { Component, Query, Simple } from '../engine/types-engine.js';
 
 export const REALM_MAPPING: RealmMapping = new Map();
 REALM_MAPPING.set('D', 'Divine');
@@ -34,12 +34,12 @@ export type Subtype = string;
 export type Realm = 'Divine' | 'Void' | 'Elemental' | 'Mortal' | 'Nature' | 'NO_REALM';
 export type RealmCount = {[key in Realm]: number};
 export type RealmMapping = Map<string, Realm>;
-export type Costs = {
+export type Costs = Component<{
   [key in Realm | 'total']: number
-};
+}>;
 export type Rarity = 'Common' | 'Uncommon' | 'Rare';
 
-export type Card = {
+export type Card = Component<{
   cardtype: CardType,
   subtypes: Subtype[],
   costs: Costs,
@@ -50,38 +50,48 @@ export type Card = {
   power: number,
   name: string,
   artwork: URL,
-  location?: Container
-};
-export type Slot = {
+  location: Container | Slot 
+}>;
+
+export type Slot = Component<{
   x: number,
   y: number,
-  card?: Card,
-  lanes$: Lane[]
-};
+  card?: Query<Slot, Card | undefined>,
+  lanes: Query<Slot, Lane[]>
+}>;
 
 export type LaneOrientation = 'horizontal' | 'vertical';
-export type Player = {
+
+export type Player = Component<{
   name: Readonly<string>,
-  hand$: Hand,
-  crystalzone$: CrystalZone,
+  hand: Query<Player, Hand>
+  crystalzone: Query<Player, CrystalZone>
   index: number,
-  deck$: Deck
-};
-export type Lane = {
-  // $ means that this is realized using a query!
-  slots$: Slot[],
-  cards: Card[],
+  deck: Query<Player, Deck>
+  wonLanes: Query<Player, Lane[]>
+}>;
+
+export type Lane = Component<{
+  slots: Query<Lane, Slot[]>,
+  cards: Query<Lane, Card[]>,
+  isFull: Query<Lane, boolean>,
   orientation: LaneOrientation,
   index: number,
-  wonByPlayer?: Player
+  wonBy: Player | undefined
+}>;
+
+export type Owned = {
+  owner: Simple<Player>
 };
-export type Owned = {owner: Player};
+
 export type Container = {
-  cards: Card[];
+  cards: Query<Container, Card[]>
 };
+
 export type Hand = Container & Owned;
 export type Deck = Container & Owned;
 export type CrystalZone = Container & Owned;
-export type Turn = {
+
+export type Turn = Component<{
   currentPlayer: Player
-};
+}>;

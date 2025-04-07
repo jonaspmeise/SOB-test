@@ -1,87 +1,74 @@
-import { ShardsOfBeyondActionType, Owned, Lane, Slot, Card, Player, Container } from './types-game.js';
+import { ShardsOfBeyondActionType, Owned, Lane, Slot, Card, Player, Container, Turn, Hand, Deck, CrystalZone } from './types-game.js';
 import { GameEngine } from '../engine/engine.js';
-import { Component,  Lazy,  QueryFilter,  Type } from '../engine/types-engine.js';
+import { Component,  Lazy,  QueryFilter,  Simple,  Type } from '../engine/types-engine.js';
 import { range } from '../engine/utility.js';
 
-export const DEREFERENCE_SELF = <T>(self: unknown): T => self as T;
-
-// TODO: Optionally accept game config parameters, which are handed from outside.
+// TODO: Optionally accept game config parameters, which are handed from outside (player names, starting deck...?).
 export const INITIALIZE_BEYOND_GAMESTATE = (
   engine: GameEngine<ShardsOfBeyondActionType>
 ): void => {
 
-  // Turn
-  engine.registerComponent({
-    currentPlayer: undefined
-  }, 'turn', 'Turn')
+  // Players
+  ['Görzy', 'Rashid'].forEach((name, i) => {
+    const player = engine.registerComponent({
+      name: name,
+      // @ts-ignore // FIXME ???
+      hand: (self, engine) => (engine.query('hand') as Simple<Hand>[]).filter(hand => hand.owner === self)[0],
+      deck: (self, engine) => (engine.query('deck') as Simple<Deck>[]).filter(deck => deck.owner === self)[0],
+      crystalzone: (self, engine) => (engine.query('crystalzone') as Simple<CrystalZone>[]).filter(crystalzone => crystalzone.owner === self)[0],
+      index: i,
+      wonLanes: (self, engine) => (engine.query('lane') as Simple<Lane>[]).filter(lane => lane.wonBy === self)
+    }, 'player', name) as Simple<Player>;
 
-  const createOwnedCardContainer = (self: any, engine: GameEngine<ShardsOfBeyondActionType>, types: Type | Type[], name?: string): Component<Owned & Container> => engine.registerComponent({
-    cards: {
-      get: (engine, self) => (engine.query('card') as Component<Card>[]).filter(c => c.location?.id === self.id)
-    },
-    owner: DEREFERENCE_SELF(self)
-  }, types, name);
+    const hand = engine.registerComponent({
+      owner: player,
+      cards: (self, engine) => (engine.query('card') as Simple<Card>[]).filter(c => c.location === self)
+    }, 'hand', `${name}'s Hand`) as Simple<Hand>;
 
-  // Players.
-  ['Rashid', 'Görzy'].map(name => engine.registerComponent({
-    name: name,
-    hand$: (engine, self) => createOwnedCardContainer(self, engine, 'hand', `${self.name}'s Hand`),
-    crystalzone$: (engine, self) => createOwnedCardContainer(self, engine, 'crystalzone', `${self.name}'s Crystal Zone`),
-    index: 0,
-    deck$: (engine, self) => createOwnedCardContainer(self, engine, 'deck', `${self.name}'s Deck`)
-  }, 'player', `Rashid`) as Component<Player>);
-
-  // Lanes
-  // Vertical Lanes
-  range(5).map(index => engine.registerComponent({
-    index: index,
-    orientation: 'vertical',
-    slots$: (engine: GameEngine<ShardsOfBeyondActionType>, self) => (engine.query('slots') as Component<Slot>[])
-      .filter(slot => slot.lanes$.find(lane => lane.id === self.id) !== undefined
-    ),
-    cards: {
-      get: (_engine, self) => self.slots$
-      .filter(slot => slot.card !== undefined)
-      .map(slot => slot.card! as Component<Card>)
-    },
-    wonByPlayer: {
-      get: (engine: GameEngine<ShardsOfBeyondActionType>, self) => self.cards.length < self.slots$.length
-      ? undefined
-      : (engine.query('players') as Component<Player>[])[0] // TODO
-    }
-  }, 'lane', `Vertical Lane #${index + 1}`) as Component<Lane>);
+    const crystalzone = engine.registerComponent({
+      owner: player,
+      cards: (self, engine) => (engine.query('card') as Simple<Card>[]).filter(c => c.location === self)
+    }, 'crystalzone', `${name}'s Crystal Zone`) as Simple<CrystalZone>;
     
-  // Horizontal Lanes
-  range(4).map(index => engine.registerComponent({
-    index: index,
-    orientation: 'horizontal',
-    slots$: (engine: GameEngine<ShardsOfBeyondActionType>, self) => (engine.query('slots') as Component<Slot>[])
-      .filter(slot => slot.lanes$.find(lane => lane.id === self.id) !== undefined
-    ),
-    cards: {
-      get: (_engine, self) => self.slots$
-      .filter(slot => slot.card !== undefined)
-      .map(slot => slot.card! as Component<Card>)
-    },
-    wonByPlayer: {
-      get: (engine: GameEngine<ShardsOfBeyondActionType>, self) => self.cards.length < self.slots$.length
-      ? undefined
-      : (engine.query('players') as Component<Player>[])[0] // TODO
-    }
-  }, 'lane', `Horizontal Lane #${index + 1}`) as Component<Lane>);
-  
-  // Slots.
-  range(5).map(x => range(4).map(y => 
+    const deck = engine.registerComponent({
+      owner: player,
+      cards: (self, engine) => (engine.query('card') as Simple<Card>[]).filter(c => c.location === self)
+    }, 'hand', `${name}'s Hand`) as Simple<Deck>;
+  });
+
+  // Horizontal Lanes.
+  range(4).forEach(i => {
+    engine.registerComponent({
+      index: i,
+      slots: (self, engine) => (engine.query('slot') as Simple<Slot>[]).filter(slot => slot.y === self.index),
+      cards: (self) => self.slots.filter(slot => slot.card !== undefined).map(slot => slot.card!),
+      isFull: (self) => self.slots.length === self.cards.length,
+      wonBy: undefined,
+      orientation: 'horizontal'
+    }, ['lane', 'horizontal-lane'], `Horizontal Lane ${i + 1}`) as Simple<Lane>;
+  });
+
+  // Vertical Lanes.
+  range(5).forEach(i => {
+    engine.registerComponent({
+      index: i,
+      slots: (self, engine) => (engine.query('slot') as Simple<Slot>[]).filter(slot => slot.x === self.index),
+      cards: (self) => self.slots.filter(slot => slot.card !== undefined).map(slot => slot.card),
+      isFull: (self) => self.slots.length === self.cards.length,
+      wonBy: undefined,
+      orientation: 'vertical'
+    }, ['lane', 'vertical-lane'], `Vertical Lane ${i + 1}`) as Simple<Lane>;
+  });
+
+  type a = Simple<Lane>['cards'];
+
+  // Slots
+  range(4).forEach(x => range(5).forEach(y => {
     engine.registerComponent({
       x: x,
       y: y,
-      card: {
-        get: (engine, self) => (engine.query('cards') as Component<Card>[]).filter(c => c.location?.id === self.id)[0]
-      },
-      lanes$: (engine: GameEngine<ShardsOfBeyondActionType>, self) => (engine.query('lanes') as Component<Lane>[])
-        .filter(lane => lane.orientation === 'horizontal'
-          ? lane.index === self.y
-          : lane.index === self.y)
-    }, 'slot', `Slot ${x + 1}-${y + 1}`) as Component<Slot>)
-  );
+      card: (self, engine) => (engine.query('card') as Simple<Card>[]).filter(card => card.location === self),
+      lanes: (self, engine) => (engine.query('lane') as Simple<Lane>[]).filter(lane => lane.slots.includes(self))
+    }, 'Slot', `Slot ${x}/${y}`) as Simple<Slot>;
+  }));
 };

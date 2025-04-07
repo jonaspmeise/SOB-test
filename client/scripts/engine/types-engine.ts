@@ -95,15 +95,7 @@ export type TriggerExecution<
 };
 */
 
-export type Component<T> = {
-  [key in keyof T]: T[key] extends Array<infer A>
-  ? Component<A>[]
-  : T[key] extends AtomicValue
-    ? T[key]
-    : undefined extends T[key]
-      ? Component<Exclude<T[key], undefined>> | undefined
-      : Component<T[key]>
-} & {
+export type Component<T> = T & {
   id: ID,
   types: Type[],
   toJSON: () => unknown
@@ -151,15 +143,8 @@ export interface PlayerClient {
 
 export type AtomicValue = string | number | boolean;
 export type AtomicArray = Array<AtomicValue>;
-export type Simple<T> = {
-  [key in keyof T]: T[key] extends AtomicArray
-    ? T[key]
-    : T[key] extends AtomicValue
-      ? T[key]
-      : undefined
-};
 
-export type StaticQueryFilter<TARGET> = (engine: GameEngine<any>) => TARGET;
+export type StaticQueryFilter<TARGET> = (component: GameEngine<any>) => TARGET;
 export type QueryFilter<TARGET, SELF = undefined> = {
   get: (engine: GameEngine<any>, self: Component<SELF>) => TARGET
   set?: (engine: GameEngine<any>, self: Component<SELF>, current: TARGET | undefined, next: TARGET) => void
@@ -188,16 +173,28 @@ export type LazyFunction<SELF, TARGET> = ((engine: GameEngine<any>, self: Compon
     ? Component<A>[]
     : Component<TARGET>);
 
-export type Query = string;
-
 export type CacheEntry<T> = {
   timestamp: number,
   result: T,
   func: QueryFilter<T>
 };
 
-export type StaticCacheEntry<T> = {
+export type StaticCacheEntry<A, B extends Simple<A>> = {
   timestamp: number,
-  result: T,
-  func: StaticQueryFilter<T>
+  result: B,
+  func: StaticQueryFilter<B>
 };
+
+export type Simple<T> = {
+  [key in keyof T]: undefined extends T[key]
+    ? T[key] extends Query<any, infer A>
+      ? Simple<Exclude<A, undefined>>[] | undefined
+      : Simple<Exclude<T[key], undefined>> | undefined
+    : T[key] extends Query<any, infer A>
+      ? A extends Array<infer B>
+        ? Simple<B>[]
+        : Simple<A>
+      : Simple<T[key]>
+};
+
+export type Query<SELF, TARGET> = (self: Simple<SELF>, engine: GameEngine<any>) => Simple<TARGET>;

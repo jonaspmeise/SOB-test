@@ -1,252 +1,55 @@
-import { ActionProxy, Choice, Component, Components, ID, PlayerInterface, Type, Types, QueryFilter, Lazy, LazyFunction, CacheEntry, StaticQueryFilter, StaticCacheEntry } from './types-engine.js';
+import { ActionProxy, Choice, Component, Components, ID, PlayerInterface, Type, Types, QueryFilter, Lazy, LazyFunction, CacheEntry, StaticQueryFilter, StaticCacheEntry, Simple } from './types-engine.js';
 
 export class GameEngine<
   ACTION extends string
 > {
   private componentCounter: number = 0;
-  private queryCounter: number = 0;
   private changeCounter: number = 0;
 
-  private queryIncantations: string[] = [];
-  public _proxy = new Proxy(this, {
-    get: (target: typeof this, prop: string | symbol, receiver: any) => {
-      const t = target[prop];
+  private readonly _components: Simple<Component<unknown>>[] = [];
 
-      // Track access if in record mode.
-      if(!this.isRecording) {
-        return t;
-      }
+  private readonly _queries: Map<string, StaticCacheEntry<unknown, Simple<unknown>>> = new Map();
+  private readonly _changes: Map<ID, Partial<Simple<Component<unknown>>>> = new Map();
 
-      // If it is a function, we keep track of that function.
-      if(typeof t === 'function' && prop === 'query') {
-        return new Proxy(t, {
-          apply: (target: any, thisArg: any, args: any[]) => {
-            console.warn(`CALLED function ${prop.toString()} with parameters:`, args);
-            this.queryIncantations.push(args[0]);
-  
-            return target.apply(thisArg, args);
-          }
-        });
-      }
-
-      console.warn(`"${prop.toString()}" (${typeof t}) of Game Engine was called!`);
-
-      return t;
-    }
-  });
-
-  // TEST: No Components -> Error.
-  private readonly _components: Component<unknown>[] = [];
-  private readonly _idMap: Map<ID, Component<unknown>> = new Map();
-  // TEST: No Players -> Error.
-  private readonly _playerInterfaces: PlayerInterface[] = [];
-  // TEST: No Actions -> Error.
-  // private readonly _actions: {[key: string]: Action<ACTION, any, any>} = {};
-  // TEST: No Triggers -> Error.
-  // private readonly _triggers: Trigger<any, any>[] = [];
-  // TEST: No Rules -> Error.
-  // private readonly _rules: Rule<any>[] = [];
-  private readonly triggerQueue: (() => void)[] = [];
-  private choiceSpace: Choice[] = [];
-  private _changeMap: Map<ID, {[key: string]: unknown}> = new Map();
-
-  private isRecording: boolean = false;
-  private hasStarted: boolean = false;
-  private _queries: Map<string, StaticCacheEntry<unknown>> = new Map();
-
-  private typeCallbacks: Map<string, {target: Component<unknown>, prop: string, func: Function}[]> = new Map();
-
-  public get components(): ReadonlyArray<Component<unknown>> {
-    return this._components;
-  };
-
-  /*
-  public get playerInterfaces(): Readonly<typeof this._playerInterfaces> {
-    return this._playerInterfaces;
-  };
-  
-  public get triggers(): Readonly<typeof this._triggers> {
-    return this._triggers;
-  };
-  
-  public get rules(): Readonly<typeof this._rules> {
-    return this._rules;
-  };
-
-  // TEST: Can't register component with same name multiple times.
-  // TEST: Make Properties have specific formats depending on Type, so that integrity is checked during runtime (e.g.: $__ => reference, __$ => callable, _ => possibly undefined)
-  // TEST: An Registered Array still has Prototype Array. An registered Object has Prototype of its prior Object.
-
-  */
-  public registerComponent = <P, L extends Lazy<P>> (properties: L, types: Type | Type[], name?: string): Component<P> => {
+  public registerComponent = <P extends {}> (properties: P, types: Type | Type[], name?: string): Simple<Component<P>> => {
     if(!Array.isArray(types)) {
       types = [types];
     }
 
     const id: ID = '' + this.componentCounter++;
     console.debug(`Registering component of types "${types}" with ID ${id}...`);
-    
-    // @ts-ignore FIXME
-    const modified: Component<P> = properties as Component<P>;
 
-    // We cache all current states of query properties of our object.
-    const queryCache: Map<string, {
-      obj: unknown,
-      lastChanged: number
-    }> = new Map();
-    // TODO: Track internal map of property -> Set<callbacks>. Adaptively populate this map.
-    // Access to query-properties should BY DEFAULT always go through here anyhow.
-    const accessedCallProperties: Set<string> = new Set();
-    const proxy = new Proxy(modified, {
-      get: (target: typeof modified, prop: string | symbol) => {
-        const p = prop.toString();
-        console.debug(`Accessing property "${p}" of Component #${id}...`);
+    // Register basic values.
+    const proxy: Component<P> = new Proxy(properties, {
+      set: (target: P, p: string | symbol, newValue: any) => {
+        const prop: string = p.toString();
 
-        // This is not a potential query then...
-        if(target[prop]?.get === undefined || p === 'toJSON') {
-          return target[prop];
-        }
-
-        const cacheHit = queryCache.get(p);
-        if(cacheHit !== undefined && cacheHit.lastChanged >= this.changeCounter) {
-          console.debug('Cache Hit successful!');
-          return cacheHit.obj;
-        }
-
-        console.debug(`Query "${p}" of Component #${id} has seen an old state (${cacheHit?.lastChanged} < ${this.changeCounter}). Need to re-calculate...`);
-
-        if(accessedCallProperties.has(p)) {
-          // We already checked this state once. We will return undefined!
-          accessedCallProperties.clear();
-          console.warn(`Encountered infinite loop, because accessed "${p}" of Component #${id} again. Returning undefined...`);
-          return undefined;
-        }
-
-        accessedCallProperties.add(p);
-
-        const result = target[prop].get(this._proxy, proxy);
-        queryCache.set(p, {lastChanged: this.changeCounter, obj: result});
-
-        accessedCallProperties.clear();
-        
-        return result;
-      },
-      set: (target: typeof modified, prop: string | symbol, value: unknown = undefined) => {
-        const p = prop.toString();
-        console.warn(`Set property "${p}" of Component #${id} to`, value);
-
-        // If we wanted to change (overwrite) a query result, we have to update the cache for it.
-        if(typeof target[prop]?.get === 'function' && !p.endsWith('$')) {
-          console.debug(`Forcefully overriding cache return value for query-function "${p}" of Component #${id}...`);
-          const previousValue = queryCache.get(p);
-
-          if(value === undefined) {
-            console.debug('Resetting created cache override...');
-            queryCache.delete(p);
-          } else {
-            console.debug(`Overwriting cache with return value`, value);
-            queryCache.set(p, {
-              obj: value,
-              lastChanged: Infinity
-            });
-          }
-
-          // If we supplied a set-callback, we execute it, too.
-          const setCallback = target[prop].set;
-          if(setCallback !== undefined) {
-            console.debug(`Calling set-Callback for modifying property "${p}"...`);
-            (setCallback as QueryFilter<unknown, P>['set'])!(this, proxy, previousValue?.obj, value)
-          }
-        }
-
-        let changes = this._changeMap.get(modified.id);
-
-        if(changes === undefined) {
-          changes = {};
-          this._changeMap.set(modified.id, changes);
-        }
-
-        // TODO: Changes if target is an Array?
-        this._changeMap.set(modified.id, {...changes, [prop]: value});
+        this._changes.set(id, {...this._changes.get(id) ?? {}, [prop]: newValue});
         this.changeCounter++;
 
-        target[prop] = value;
+        target[p] = newValue;
 
         return true;
       }
-    });
+    }) as Component<P>;
+    proxy.id = id;
+    proxy.types = types;
 
-    // Explicitly set values here so we don't change an Array to an Object by accident!
-    if(name !== undefined) {
-      modified.toString = () => name;
-    };
-    modified.id = id;
-    modified.types = types;
-
-    // We need to overwrite JSON deserialization.
-    Object.defineProperty(modified, 'toJSON', {
-      value: () => {
-        const obj = {};
-  
-        for(let key in modified) {
-          // Ignore function calls.
-          if(typeof proxy[key] === 'function') {
-            continue;
-          }
-  
-          if(proxy[key]?.id !== undefined) {
-            obj[key] = `@${proxy[key].id}`;
-          } else {
-            obj[key] = proxy[key];
-          }
-        }
-  
-        return obj;
-      },
-      enumerable: false
-    });
-
-    // Trigger all lazy functions here!
-    Object.keys(modified).forEach(key => {
-      if(key.endsWith('$')) {
-        modified[key] = (modified[key] as LazyFunction<unknown, P>)(this, proxy);
-      }
-    });
-
-    // Register accesses.
-    this._idMap.set(id, proxy);
+    // Register change and component.
     this._components.push(proxy);
 
-    // Create automatic queries for all of this types!
+    this._changes.set(id, {...proxy});
+    this.changeCounter++;
+
+    // Automatically register a query for these types!
     types.forEach(type => {
-      this._queries.set(type, {
-        result: this.components.filter(c => c.types.includes(type)),
-        timestamp: this.changeCounter,
-        func: (engine) => engine.components.filter(c => c.types.includes(type))
-      });
+      this.registerQuery(
+        type,
+        (engine) => engine.components().filter(component => component.types.includes(type))
+      );
     });
 
-    // Add change entry for this, because this component was just created.
-    this.changeCounter++;
-    this._changeMap.set(id, {...proxy});
-
-    /*
-    const proxy = new Proxy(properties, {
-      get: (target: L, prop: string | Symbol) => {
-        console.debug(`Accessed ${prop.toString()} of`, target);
-
-        if(typeof prop === 'symbol') {
-          console.error(`WTF!!!!`);
-        }
-
-        return target[prop as unknown as string];
-      }
-    }) as unknown as Component<P>;
-    */
-
-    // Update reference maps.
-
-    return proxy;
+    return proxy as Simple<Component<P>>;
   };
 
   /*
@@ -371,20 +174,21 @@ export class GameEngine<
   public start = () => {
     console.debug('Game is starting!');
 
-    this.hasStarted = true;
-
     // this.tick();
   };
 
-  public query = <T> (queryName: string): Component<T>[] => {
+  public query = <T> (queryName: string): Simple<Component<T>>[] => {
     const entry = this._queries.get(queryName);
 
     if(entry === undefined) {
+      console.warn(`Query "${queryName}" does not exist!`);
+
       return [];
     }
 
     if(entry.timestamp >= this.changeCounter) {
-      return entry.result as Component<T>[];
+      console.debug(`Query "${queryName}" is still cached. Retrieving...`);
+      return entry.result as Simple<Component<T>>[];
     }
 
     console.debug(`Updating content of query "${queryName}"...`);
@@ -396,11 +200,11 @@ export class GameEngine<
       result: newValue
     })
 
-    return newValue as Component<T>[];
+    return newValue as Simple<Component<T>>[];
   };
 
   // TEST: No queries can be overwritten.
-  public registerQuery = <T> (name: string, func: StaticQueryFilter<T>): void => {
+  public registerQuery = (name: string, func: StaticQueryFilter<Simple<Component<unknown>>[]>): void => {
     this._queries.set(name, {
       result: func(this),
       timestamp: this.changeCounter,
@@ -408,7 +212,15 @@ export class GameEngine<
     });
   };
 
-  public changes = (): ReadonlyMap<ID, {[key: string]: unknown}> => {
-    return this._changeMap;
+  public changes = (): ReadonlyMap<ID, Partial<Simple<Component<unknown>>>> => {
+    return this._changes;
+  };
+
+  public queries = (): ReadonlyArray<string> => {
+    return Array.from(this._queries.keys());
+  };
+
+  public components = (): ReadonlyArray<Simple<Component<unknown>>> => {
+    return this._components;
   }
 }

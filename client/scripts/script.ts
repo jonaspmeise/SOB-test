@@ -4,7 +4,7 @@
 import { range } from './engine/utility.js';
 import { Card, CardType, Lane, Rarity, RawCard, Realm, REALM_MAPPING, ShardsOfBeyondActionType, Slot, Subtype } from './game/types-game.js';
 import { GameEngine } from './engine/engine.js';
-import { INITIALIZE_BEYOND_GAMESTATE } from './game/state.js';
+import { INITIALIZE_BEYOND_GAMESTATE } from './game/state.ts_';
 
 // CONSTANTS
 const cardFile = 'https://cdn.shardsofbeyond.com/client/cards.json';
