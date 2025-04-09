@@ -8,6 +8,10 @@ export class GameEngine<
 
   private readonly _components: Simple<Component<unknown>>[] = [];
 
+  private static FUNCTIONS_TO_IGNORE: Set<string> = new Set<string>()
+    .add('indexOf')
+    .add('toJSON');
+
   private readonly _queries: Map<string, StaticCacheEntry<unknown, Simple<unknown>>> = new Map();
   private readonly _changes: Map<ID, Partial<Simple<Component<unknown>>>> = new Map();
 
@@ -19,10 +23,25 @@ export class GameEngine<
     const id: ID = '' + this.componentCounter++;
     console.debug(`Registering component of types "${types}" with ID ${id}...`);
 
+    // We check for nested objects inside the given object.
+    Object.entries(properties).forEach(([key, value]) => {
+      // TODO: Might need array here too!
+      if(typeof value === 'object') {
+        // We register this as a separate, anonymous object.
+        console.debug(`Registering nested object in property ${key} as an anonymous entity...`);
+        properties[key] = this.registerComponent(value as Object, 'anonymous');
+      }
+    });
+
+    const cache: Map<string, CacheEntry<unknown>> = new Map();
     // Register basic values.
     const proxy: Component<P> = new Proxy(properties, {
       set: (target: P, p: string | symbol, newValue: any) => {
         const prop: string = p.toString();
+
+        if(typeof target[p] === 'function') {
+          throw new Error(`Can't set a value to the property "${prop}" of Component with Types "${types}" because it's a query attribute!`);
+        }
 
         this._changes.set(id, {...this._changes.get(id) ?? {}, [prop]: newValue});
         this.changeCounter++;
@@ -30,12 +49,90 @@ export class GameEngine<
         target[p] = newValue;
 
         return true;
+      },
+      get: (t: P, p: string | symbol) => {
+        const prop: string = p.toString();
+        const target = t[p];
+
+        if(typeof target === 'function') {
+          // Some in-built Array-functions aside, we can assume that it's a query.
+          if(GameEngine.FUNCTIONS_TO_IGNORE.has(prop)) {
+            console.debug(`Not proxying function access to function ${prop}...`);
+            return target;
+          }
+
+          // We try and access a query. 
+          // We automatically execute it using our cache and then return the value.
+
+          const entry = cache.get(prop);
+
+          if(entry === undefined) {
+            // Fill cache initially.
+            console.debug(`Cache is empty for property "${prop}" on Component #${id}. Initializing...`);
+            const result = target(proxy, this);
+            cache.set(prop, {
+              func: target,
+              timestamp: this.changeCounter,
+              result: result
+            });
+
+            return result;
+          } else {
+            if(entry.timestamp >= this.changeCounter) {
+              console.debug(`Property "${prop}" is still cached. Retrieving...`);
+
+              return entry.result;
+            } else {
+              console.debug(`Updating property cache for "${prop}" because timestamps differ: ${entry.timestamp} < ${this.changeCounter}`);
+              
+              const result = target(proxy, this);
+              cache.set(prop, {
+                func: target,
+                timestamp: this.changeCounter,
+                result: result
+              });
+
+              return result;
+            }
+          }
+        }
+
+        return target;
       }
     }) as Component<P>;
     proxy.id = id;
     proxy.types = types;
+    proxy.toJSON = () => {
+      console.debug('Calling toJSON on', id);
+      const json = {};
+      for(let key in proxy) {
+        const target = proxy[key];
+        console.debug('----', key);
+        // Default case.
+        // Functions are ignored.
+        if(typeof target === 'function') {
+          continue;
+        }
 
-    // Register change and component.
+        if(typeof target !== 'object') {
+          json[key] = proxy;
+          continue;
+        }
+        
+        console.debug('A');
+        console.debug(Object.keys(proxy));
+        console.debug('B');
+        console.debug(`Masking reference to other component in property "${key}" (${typeof target}) of Component with Types ${types}...`);
+        console.debug('C');
+        // Exclude references to other Entities!
+        json[key] = `@${target.id}`;
+        console.debug('D');
+      }
+
+      return json;
+    }
+
+    // Register change and component. We use proxy values here because these values can be interacted with from the "outside" world.
     this._components.push(proxy);
 
     this._changes.set(id, {...proxy});
@@ -222,5 +319,5 @@ export class GameEngine<
 
   public components = (): ReadonlyArray<Simple<Component<unknown>>> => {
     return this._components;
-  }
+  };
 }
