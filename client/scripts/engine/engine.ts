@@ -1,4 +1,4 @@
-import { ActionProxy, Choice, Component, Components, ID, PlayerInterface, Type, Types, QueryFilter, Lazy, LazyFunction, CacheEntry, StaticQueryFilter, StaticCacheEntry, Simple } from './types-engine.js';
+import { ActionProxy, Choice, Component, Components, ID, PlayerInterface, Type, QueryFilter, Lazy, LazyFunction, CacheEntry, StaticQueryFilter, StaticCacheEntry, Simple } from './types-engine.js';
 
 export class GameEngine<
   ACTION extends string
@@ -7,27 +7,38 @@ export class GameEngine<
   private changeCounter: number = 0;
 
   private readonly _components: Simple<Component<unknown>>[] = [];
+  private readonly _componentMap: Map<ID, Simple<Component<unknown>>> = new Map();;
 
   private static FUNCTIONS_TO_IGNORE: Set<string> = new Set<string>()
     .add('indexOf')
-    .add('toJSON');
+    .add('toJSON')
+    .add('toString')
+    .add('constructor');
 
   private readonly _queries: Map<string, StaticCacheEntry<unknown, Simple<unknown>>> = new Map();
   private readonly _changes: Map<ID, Partial<Simple<Component<unknown>>>> = new Map();
 
-  public registerComponent = <P extends {}> (properties: P, types: Type | Type[], name?: string): Simple<Component<P>> => {
-    if(!Array.isArray(types)) {
-      types = [types];
-    }
+  public registerComponent = <P extends {}> (properties: P, type: Type, name?: string): Simple<Component<P>> => {
+    // Something will change!
+    this.changeCounter++;
 
     const id: ID = '' + this.componentCounter++;
-    console.debug(`Registering component of types "${types}" with ID ${id}...`);
+    console.debug(`Registering component of type "${type}" with ID ${id}...`);
 
     // We check for nested objects inside the given object.
     Object.entries(properties).forEach(([key, value]) => {
       // TODO: Might need array here too!
       if(typeof value === 'object') {
-        // We register this as a separate, anonymous object.
+        // We register this as a separate, anonymous object - if it is not registered yet!
+        const otherId = (value as {id?: ID})?.id;
+        console.debug(`Nested Object is already registered? ID = ${otherId}`);
+        if(otherId !== undefined) {
+          if(this._componentMap.has(otherId)) {
+            console.debug(`Component #${otherId} was already registered! Not registering again...`);
+            return;
+          }
+        }
+
         console.debug(`Registering nested object in property ${key} as an anonymous entity...`);
         properties[key] = this.registerComponent(value as Object, 'anonymous');
       }
@@ -38,12 +49,16 @@ export class GameEngine<
     const proxy: Component<P> = new Proxy(properties, {
       set: (target: P, p: string | symbol, newValue: any) => {
         const prop: string = p.toString();
+        console.debug(`Setting "${prop}" on Component #${id} (${type})...`);
 
-        if(typeof target[p] === 'function') {
-          throw new Error(`Can't set a value to the property "${prop}" of Component with Types "${types}" because it's a query attribute!`);
+        if(typeof target[p] === 'function' && !GameEngine.FUNCTIONS_TO_IGNORE.has(prop)) {
+          throw new Error(`Can't set a value to the property "${prop}" of Component with Type "${type}" because it's a query attribute!`);
         }
 
-        this._changes.set(id, {...this._changes.get(id) ?? {}, [prop]: newValue});
+        this._changes.set(id, {
+          ...this._changes.get(id) ?? {},
+          [prop]: newValue
+        });
         this.changeCounter++;
 
         target[p] = newValue;
@@ -100,14 +115,15 @@ export class GameEngine<
         return target;
       }
     }) as Component<P>;
+
+    // Initializing default behaviors.
     proxy.id = id;
-    proxy.types = types;
+    proxy.type = type;
     proxy.toJSON = () => {
       console.debug('Calling toJSON on', id);
       const json = {};
       for(let key in proxy) {
         const target = proxy[key];
-        console.debug('----', key);
         // Default case.
         // Functions are ignored.
         if(typeof target === 'function') {
@@ -115,36 +131,30 @@ export class GameEngine<
         }
 
         if(typeof target !== 'object') {
-          json[key] = proxy;
+          json[key] = target;
           continue;
         }
         
-        console.debug('A');
         console.debug(Object.keys(proxy));
-        console.debug('B');
-        console.debug(`Masking reference to other component in property "${key}" (${typeof target}) of Component with Types ${types}...`);
-        console.debug('C');
+        console.debug(`Masking reference to other component in property "${key}" (${typeof target}) of Component with Type ${type}...`);
         // Exclude references to other Entities!
         json[key] = `@${target.id}`;
-        console.debug('D');
       }
 
       return json;
-    }
+    };
+    proxy.toString = () => name ?? `Component #${id} (${type})`;
 
     // Register change and component. We use proxy values here because these values can be interacted with from the "outside" world.
     this._components.push(proxy);
-
+    this._componentMap.set(id, proxy);
     this._changes.set(id, {...proxy});
-    this.changeCounter++;
 
-    // Automatically register a query for these types!
-    types.forEach(type => {
-      this.registerQuery(
-        type,
-        (engine) => engine.components().filter(component => component.types.includes(type))
-      );
-    });
+    // Automatically register a query for this type!
+    this.registerQuery(
+      type,
+      (engine) => engine.components().filter(component => component.type === type)
+    );
 
     return proxy as Simple<Component<P>>;
   };

@@ -97,13 +97,12 @@ export type TriggerExecution<
 
 export type Component<T> = T & {
   id: ID,
-  types: Type[],
-  toJSON: () => unknown
+  type: Type,
+  toJSON: () => unknown,
+  toString: () => unknown
 };
 
 export type Components = Map<ID, Component<any>>;
-export type Types = Map<Type, ID[]>;
-
 
 export type ID = string;
 export type ActorID = string;
@@ -194,7 +193,9 @@ export type Simple<T> = {
       ? A extends Array<infer B>
         ? Simple<B>[]
         : Simple<A>
-      : Simple<T[key]>
+      : key extends ('toJSON' | 'toString') // We ignore built-in functions.
+        ? T[key]
+        : Simple<T[key]>
 };
 
 export type Query<SELF, TARGET> = (self: Simple<SELF>, engine: GameEngine<any>) => Simple<TARGET>;

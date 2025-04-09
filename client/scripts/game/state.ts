@@ -33,7 +33,7 @@ export const INITIALIZE_BEYOND_GAMESTATE = (
     const deck = engine.registerComponent({
       owner: player,
       cards: (self, engine) => (engine.query('card') as Simple<Card>[]).filter(c => c.location === self)
-    }, 'hand', `${name}'s Hand`) as Simple<Deck>;
+    }, 'deck', `${name}'s Hand`) as Simple<Deck>;
   });
 
   // Horizontal Lanes.
@@ -41,11 +41,11 @@ export const INITIALIZE_BEYOND_GAMESTATE = (
     engine.registerComponent({
       index: i,
       slots: (self, engine) => (engine.query('slot') as Simple<Slot>[]).filter(slot => slot.y === self.index),
-      cards: (self) => self.slots.filter(slot => slot.card !== undefined).map(slot => slot.card!),
+      cards: (self) => self.slots.filter(slot => slot.card !== undefined).map(slot => slot.card as Simple<Card>),
       isFull: (self) => self.slots.length === self.cards.length,
       wonBy: undefined,
       orientation: 'horizontal'
-    }, ['lane', 'horizontal-lane'], `Horizontal Lane ${i + 1}`) as Simple<Lane>;
+    }, 'lane', `Horizontal Lane ${i + 1}`) as Simple<Lane>;
   });
 
   // Vertical Lanes.
@@ -53,11 +53,11 @@ export const INITIALIZE_BEYOND_GAMESTATE = (
     engine.registerComponent({
       index: i,
       slots: (self, engine) => (engine.query('slot') as Simple<Slot>[]).filter(slot => slot.x === self.index),
-      cards: (self) => self.slots.filter(slot => slot.card !== undefined).map(slot => slot.card),
+      cards: (self) => self.slots.filter(slot => slot.card !== undefined).map(slot => slot.card as Simple<Card>),
       isFull: (self) => self.slots.length === self.cards.length,
       wonBy: undefined,
       orientation: 'vertical'
-    }, ['lane', 'vertical-lane'], `Vertical Lane ${i + 1}`) as Simple<Lane>;
+    }, 'lane', `Vertical Lane ${i + 1}`) as Simple<Lane>;
   });
 
   type a = Simple<Lane>['cards'];
@@ -69,6 +69,6 @@ export const INITIALIZE_BEYOND_GAMESTATE = (
       y: y,
       card: (self, engine) => (engine.query('card') as Simple<Card>[]).filter(card => card.location === self),
       lanes: (self, engine) => (engine.query('lane') as Simple<Lane>[]).filter(lane => lane.slots.includes(self))
-    }, 'Slot', `Slot ${x}/${y}`) as Simple<Slot>;
+    }, 'slot', `Slot ${x}/${y}`) as Simple<Slot>;
   }));
 };

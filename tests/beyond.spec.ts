@@ -2,7 +2,9 @@
 import { expect } from 'chai';
 import { GameEngine } from '../client/scripts/engine/engine.js';
 import { ShardsOfBeyondActionType } from '../client/scripts/game/types-game.js';
-import { INITIALIZE_BEYOND_GAMESTATE } from '../client/scripts/game/state.ts_';
+import { INITIALIZE_BEYOND_GAMESTATE } from '../client/scripts/game/state.js';
+
+console.debug = () => {};
 
 // Example test suite
 describe('Component Initialization', () => {
@@ -26,13 +28,9 @@ describe('Component Initialization', () => {
     ].forEach(combination => {
       it(`has the correct number of ${combination.type} registered: ${combination.number}`, () => {
         expect(
-          engine.components.filter(component => component.types.includes(combination.type))
+          engine.query(combination.type)
         ).length(combination.number);
       });
-    })
-
-    it('should return -1 when the value is not present', () => {
-      expect([1, 2, 3].indexOf(4)).to.equal(-1);
     });
   });
 });

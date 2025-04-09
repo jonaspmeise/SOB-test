@@ -2,6 +2,15 @@ import { expect } from "chai";
 import { GameEngine } from "../client/scripts/engine/engine.js";
 import { Component, Query, QueryFilter, Simple } from "../client/scripts/engine/types-engine.js";
 
+const removeStaticFunctions = <T> (obj: T): Partial<T> => {
+  //@ts-ignore
+  delete obj.toJSON;
+  //@ts-ignore
+  delete obj.toString;
+
+  return obj;
+};
+
 describe('Basic Engine Tests.', () => {
   let engine: GameEngine<''> = new GameEngine();
 
@@ -14,9 +23,9 @@ describe('Basic Engine Tests.', () => {
       value: 'test'
     }, 'my-type');
 
-    expect(obj).to.deep.equal({
+    expect(removeStaticFunctions(obj)).to.deep.equal({
       id: '0',
-      types: ['my-type'],
+      type: 'my-type',
       value: 'test'
     });
   });
@@ -34,15 +43,14 @@ describe('Basic Engine Tests.', () => {
     expect(obj2.id).to.equal('1');
   });
 
-  it('If a Component is created, an automatic query for its types can be executed, that returns that object.', () => {
+  it('If a Component is created, an automatic query for its type can be executed, that returns that object.', () => {
     const obj = engine.registerComponent({
       value: 'test'
-    }, ['my-type', 'my-other-type']);
+    }, 'my-type');
 
-    expect(engine.query('my-type')).to.deep.equal([obj]);
-    expect(engine.query('my-other-type')).to.deep.equal([obj]);
+    expect(engine.query('my-type')).to.deep.equal([removeStaticFunctions(obj)]);
 
-    expect(engine.queries()).to.have.length(2);
+    expect(engine.queries()).to.have.length(1);
   });
 
   it('If a Query is executed that is not registered, it returns [].', () => {
@@ -83,10 +91,10 @@ describe('Basic Engine Tests.', () => {
     }, 'my-type');
 
     expect(engine.changes()).to.have.length(1);
-    expect(engine.changes().get('0')).to.deep.equal({
+    expect(removeStaticFunctions(engine.changes().get('0'))).to.deep.equal({
       value: 'test',
       id: '0',
-      types: ['my-type']
+      type: 'my-type'
     });
   });
 
@@ -150,7 +158,7 @@ describe('Basic Engine Tests.', () => {
     }, 'test');
 
     expect(obj.upper).to.equal('upper');
-    expect(obj.nested).to.deep.equal({id: '1', types: ['anonymous'], value: 'test'}); // This is an anonymous registered component!
+    expect(removeStaticFunctions(obj.nested)).to.deep.equal({id: '1', type: 'anonymous', value: 'test'}); // This is an anonymous registered component!
     expect(obj.nested.value).to.equal('test');
 
     expect(engine.components()).to.have.length(2);
@@ -171,7 +179,7 @@ describe('Basic Engine Tests.', () => {
     // @ts-ignore
     expect(obj.fields.id).to.equal('1');
     // @ts-ignore
-    expect(obj.fields.types).to.deep.equal(['anonymous']);
+    expect(obj.fields.type).to.equal('anonymous');
 
     expect(obj.fields[0]).to.deep.equal('A');
 
@@ -206,9 +214,9 @@ describe('Basic Engine Tests.', () => {
     obj2.reference = obj1;
 
     // Obj1 loops back to itself!
-    expect(obj1.reference.reference).to.deep.equal({
+    expect(removeStaticFunctions(obj1.reference.reference)).to.deep.equal({
       id: '0',
-      types: ['test-1'],
+      type: 'test-1',
       reference: obj2,
       value: 1
     });
@@ -227,9 +235,9 @@ describe('Basic Engine Tests.', () => {
     }, 'test-2');
 
     // Obj1 loops back to itself!
-    expect(obj1.reference.reference).to.deep.equal({
+    expect(removeStaticFunctions(obj1.reference.reference)).to.deep.equal({
       id: '0',
-      types: ['test-1'],
+      type: 'test-1',
       reference: obj2,
       value: 1
     });
@@ -245,7 +253,7 @@ describe('Basic Engine Tests.', () => {
     expect(JSON.parse(serialized)).to.deep.equal({
       value: 'test',
       id: '0',
-      types: ['test']
+      type: 'test'
     })
   });
 
@@ -263,12 +271,45 @@ describe('Basic Engine Tests.', () => {
     }, 'test-2');
 
     const serialized = JSON.stringify(obj1);
+    console.log(serialized);
 
     expect(JSON.parse(serialized)).to.deep.equal({
-      value: 0,
+      value: 1,
       reference: '@1',
       id: '0',
-      types: ['test-1']
+      type: 'test-1'
     })
+  });
+
+  it('If a component is registered without a name, it receives a default name.', () => {
+    const obj = engine.registerComponent({
+      value: 'test'
+    }, 'test-type');
+
+    expect(obj.toString()).to.equal('Component #0 (test-type)');
+  });
+  
+  it('If a component is registered with a name, it is rendered when this Component is stringified.', () => {
+    const obj = engine.registerComponent({
+      value: 'test'
+    }, 'test-type', 'My cool name!');
+
+    type a = typeof obj['toString'];
+    type b = typeof obj['toJSON'];
+
+    expect(obj.toString()).to.equal('My cool name!');
+  });
+
+  it('If a component is registered that has a nested property, but that property is already registered, it wont automatically be registered another time.', () => {
+    const nested = engine.registerComponent({
+      value: 'im nested'
+    }, 'nested');
+
+    const parent = engine.registerComponent({
+      value: 'im parent',
+      nested: nested
+    }, 'parent');
+
+    expect(engine.components()).to.have.length(2);
   });
 });
