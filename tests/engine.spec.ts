@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { GameEngine } from "../client/scripts/engine/engine.js";
-import { Component, Query, QueryFilter, Simple } from "../client/scripts/engine/types-engine.js";
+import { Action, Changes, Choice, Component, Components, Query, QueryFilter, Simple } from "../client/scripts/engine/types-engine.js";
 
 const removeStaticFunctions = <T> (obj: T): Partial<T> => {
   //@ts-ignore
@@ -11,8 +11,13 @@ const removeStaticFunctions = <T> (obj: T): Partial<T> => {
   return obj;
 };
 
+type Dice = Component<{
+  sides: number,
+  value: number
+}>;
+
 describe('Basic Engine Tests.', () => {
-  let engine: GameEngine<''> = new GameEngine();
+  let engine: GameEngine = new GameEngine();
 
   beforeEach(() => {
     engine = new GameEngine();
@@ -311,5 +316,85 @@ describe('Basic Engine Tests.', () => {
     }, 'parent');
 
     expect(engine.components()).to.have.length(2);
+  });
+
+  it('A user can register into the game with a User Interface.', (done) => {
+    engine.registerInterface({
+      // This function is called whenever a Tick happens and the Game State was updated.
+      tickHandler: (delta: Changes, choices: Choice[]) => {
+        done();
+      },
+      actorId: 'Player 1'
+    });
+
+    // When the game starts, an initial tick is issued.
+    engine.tick();
+  });
+
+  it('A user is informed about any changes to the game state. On more changes after one tick, only the delta changes since the last tick are transmitted.', (done) => {
+    let ticked = 0;
+
+    const obj = engine.registerComponent({
+      value: 'test'
+    }, 'test');
+
+    engine.registerInterface({
+      tickHandler: (delta: Changes, choices: Choice[]) => {
+        if(ticked === 0) {
+          expect(delta).to.have.length(1);
+          expect(removeStaticFunctions(delta.get('0'))).to.deep.equal({
+            id: '0',
+            value: 'test',
+            type: 'test'
+          });
+        }
+
+        if(ticked === 1) {
+          expect(delta).to.have.length(1);
+          console.log(delta.get('0'));
+          expect(delta.get('0')).to.deep.equal({
+            value: 'another test',
+          });
+        }
+
+        ticked++;
+        if(ticked == 2) {
+          done();
+        }
+      },
+      actorId: 'player-1'
+    })
+
+    engine.tick();
+    obj.value = 'another test';
+    engine.tick();
+  });
+
+  it('An Action can be registered.', () => {
+    const roll: Action<{target: Dice}, {target: Dice}> = engine.registerAction({
+      name: 'roll',
+      execute: (engine, parameters: {
+        target: Dice
+      }) => {
+        parameters.target.value = Math.floor(Math.random() * parameters.target.sides);
+
+        return parameters;
+      },
+      log: (parameters) => `Dice ${parameters.target} was rolled`
+    });
+
+    expect(engine.actions()).to.have.length(1);
+  });
+
+  it('A rule can be registered.', () => {
+    engine.registerRule({
+      name: 'A rule that does nothing!.',
+      type: 'positive',
+      handler: (engine) => {
+        return [];
+      }
+    });
+
+    expect(engine.rules()).to.have.length(1);
   });
 });

@@ -5,7 +5,7 @@ import { range } from '../engine/utility.js';
 
 // TODO: Optionally accept game config parameters, which are handed from outside (player names, starting deck...?).
 export const INITIALIZE_BEYOND_GAMESTATE = (
-  engine: GameEngine<ShardsOfBeyondActionType>
+  engine: GameEngine
 ): void => {
 
   // Players

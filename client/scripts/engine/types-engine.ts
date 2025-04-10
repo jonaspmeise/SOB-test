@@ -33,49 +33,31 @@ export type Action<
 };
 */
 
-/*
- name: 'Players may crystallize one card during their Turn from their Hand.',
-  properties: {
-    // Track per Player how many cards they crystallized already.
-    alreadyCrystallized: [0, 0]
-  },
-  handler: (engine, properties) => {
-    return model.players.map((player, i) => {
-      // If it's not your Turn, do nothing.
-      if(model.turn.currentPlayer$ !== player.id) {
-        return undefined;
-      }
-      // If already crystallized, they may not crystallize.
-      if(properties.alreadyCrystallized[player.index] > 0) {
-        return undefined;
-      }
-
-      return player.hand$.map(card$ => {
-        return {
-          actor: player.id,
-          type: 'crystallize',
-          args: [card$, player.crystalzone$.id],
-          // !!!
-          callback: () => properties.alreadyCrystallized[player.index]++
-        };
-      });
-    })
-    .filter(action => action !== undefined)
-    .flat();
-  },
-  // Reset conditions after every turn.
-  onTrigger: (actionType, args, model, properties) => {
-    if(actionType === 'pass') {
-      properties.alreadyCrystallized = [0, 0];
-    }
-  }
-*/
-/*
-export type Rule<T> = {
+export type Action<INPUT_PARAMETERS extends {}, USED_PARAMETERS extends {}> = {
   name: string,
-  properties?: T,
-  handler: (engine: GameEngine<any>, properties: T) => CallbackableChoice[]
+  execute: (engine: GameEngine, parameters: INPUT_PARAMETERS) => USED_PARAMETERS,
+  log: (usedParameters: USED_PARAMETERS) => string
 };
+
+export type Rule<T extends {} | undefined = undefined> =
+  | PositiveRule<T>
+  | NegativeRule<T>;
+
+export type PositiveRule<T extends {} | undefined = undefined>  = {
+  name: string,
+  type: 'positive',
+  properties?: T,
+  handler: (engine: GameEngine, properties: T) => CallbackableChoice[]
+};
+
+export type NegativeRule<T extends {} | undefined = undefined> = {
+  name: string,
+  type: 'negative',
+  properties?: T,
+  handler: (choices: Choice[], properties: T) => Choice[]
+};
+
+/*
 
 export type TriggerTiming = 'before' | 'after';
 
@@ -102,17 +84,16 @@ export type Component<T> = T & {
   toString: () => unknown
 };
 
-export type Components = Map<ID, Component<any>>;
+export type Components = Map<ID, Simple<Component<unknown>>>;
 
 export type ID = string;
 export type ActorID = string;
 export type Type = string;
 
-export type PlayerInterface = {
+export type PlayerInterface<T extends Simple<Component<unknown>> | undefined = undefined> = {
   actorId: ActorID,
-  playerComponent: ID, // A Player is a connection. A Player-Component is the in-game-representation of a Player.
-  index: number,
-  client: PlayerClient
+  playerComponent?: T,
+  tickHandler: TickHandler
 };
 
 export type ActionProxy<ACTION extends string> = {[key in ACTION]: (...parameters: any[]) => void};
@@ -132,7 +113,7 @@ export type CallbackableChoice = Choice & {
 }
 
 export type TickHandler = (
-  stateDelta: Components,
+  stateDelta: Changes,
   choices: Choice[]
 ) => void;
 
@@ -143,10 +124,10 @@ export interface PlayerClient {
 export type AtomicValue = string | number | boolean;
 export type AtomicArray = Array<AtomicValue>;
 
-export type StaticQueryFilter<TARGET> = (component: GameEngine<any>) => TARGET;
+export type StaticQueryFilter<TARGET> = (component: GameEngine) => TARGET;
 export type QueryFilter<TARGET, SELF = undefined> = {
-  get: (engine: GameEngine<any>, self: Component<SELF>) => TARGET
-  set?: (engine: GameEngine<any>, self: Component<SELF>, current: TARGET | undefined, next: TARGET) => void
+  get: (engine: GameEngine, self: Component<SELF>) => TARGET
+  set?: (engine: GameEngine, self: Component<SELF>, current: TARGET | undefined, next: TARGET) => void
 };
 
 // Properties with that name scheme are registered lazily - on first execution, then stay constant!
@@ -166,7 +147,7 @@ export type Lazy<T> = {
           : QueryFilter<Component<T[key]>, T>
 };
 
-export type LazyFunction<SELF, TARGET> = ((engine: GameEngine<any>, self: Component<SELF>) => TARGET extends AtomicValue 
+export type LazyFunction<SELF, TARGET> = ((engine: GameEngine, self: Component<SELF>) => TARGET extends AtomicValue 
   ? TARGET
   : TARGET extends Array<infer A>
     ? Component<A>[]
@@ -198,4 +179,6 @@ export type Simple<T> = {
         : Simple<T[key]>
 };
 
-export type Query<SELF, TARGET> = (self: Simple<SELF>, engine: GameEngine<any>) => Simple<TARGET>;
+export type Query<SELF, TARGET> = (self: Simple<SELF>, engine: GameEngine) => Simple<TARGET>;
+export type Change<T> = Partial<Simple<Component<unknown>>>;
+export type Changes = Map<ID, Partial<Simple<Component<unknown>>>>;

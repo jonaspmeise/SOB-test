@@ -8,10 +8,10 @@ console.debug = () => {};
 
 // Example test suite
 describe('Component Initialization', () => {
-  let engine: GameEngine<ShardsOfBeyondActionType>;
+  let engine: GameEngine;
 
   beforeEach(() => {
-    engine = new GameEngine<ShardsOfBeyondActionType>();
+    engine = new GameEngine();
     INITIALIZE_BEYOND_GAMESTATE(engine);
 
     engine.start();

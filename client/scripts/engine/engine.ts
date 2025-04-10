@@ -1,13 +1,11 @@
-import { ActionProxy, Choice, Component, Components, ID, PlayerInterface, Type, QueryFilter, Lazy, LazyFunction, CacheEntry, StaticQueryFilter, StaticCacheEntry, Simple } from './types-engine.js';
+import { ActionProxy, Choice, Component, Components, ID, PlayerInterface, Type, QueryFilter, Lazy, LazyFunction, CacheEntry, StaticQueryFilter, StaticCacheEntry, Simple, Changes, Action, Rule } from './types-engine.js';
 
-export class GameEngine<
-  ACTION extends string
-> {
+export class GameEngine {
   private componentCounter: number = 0;
   private changeCounter: number = 0;
 
   private readonly _components: Simple<Component<unknown>>[] = [];
-  private readonly _componentMap: Map<ID, Simple<Component<unknown>>> = new Map();;
+  private readonly _componentMap: Components = new Map();
 
   private static FUNCTIONS_TO_IGNORE: Set<string> = new Set<string>()
     .add('indexOf')
@@ -16,7 +14,10 @@ export class GameEngine<
     .add('constructor');
 
   private readonly _queries: Map<string, StaticCacheEntry<unknown, Simple<unknown>>> = new Map();
-  private readonly _changes: Map<ID, Partial<Simple<Component<unknown>>>> = new Map();
+  private readonly _changes: Changes = new Map();
+  private readonly _playerInterfaces: PlayerInterface[] = [];
+  private readonly _actions: Map<string, Action<any, any>> = new Map();
+  private readonly _rules: Map<string, Rule> = new Map();
 
   public registerComponent = <P extends {}> (properties: P, type: Type, name?: string): Simple<Component<P>> => {
     // Something will change!
@@ -221,11 +222,21 @@ export class GameEngine<
     }) as unknown as ActionProxy<ACTION>;
   }
 
-  public tick = (depth = 0) => {
+  */
+
+  public tick = () => {
     console.debug('Tick triggered.');
+
+    this._playerInterfaces.forEach(player => {
+      player.tickHandler(this._changes, []);
+    });
+
+    // Clean up change state!
+    this._changes.clear();
 
     // Calculate action space for both playerInterfaces.
     // TODO: Right now, the action space is re-calculated greedily.
+    /*
     this.choiceSpace = this._rules
       .map(rule => rule.handler(this, rule.properties))
       .flat()
@@ -266,8 +277,10 @@ export class GameEngine<
         );
       });
     }
+      */
   };
   
+  /*
   private choices = (player: PlayerInterface | undefined): typeof this.choiceSpace => {
     if(player === undefined) {
       return this.choiceSpace;
@@ -275,13 +288,13 @@ export class GameEngine<
 
     return this.choiceSpace.filter(choice => choice.actor === player.actorId);
   }
-
   */
+
   // Main Game Loop.
   public start = () => {
     console.debug('Game is starting!');
 
-    // this.tick();
+    (() => this.tick())();
   };
 
   public query = <T> (queryName: string): Simple<Component<T>>[] => {
@@ -312,6 +325,7 @@ export class GameEngine<
 
   // TEST: No queries can be overwritten.
   public registerQuery = (name: string, func: StaticQueryFilter<Simple<Component<unknown>>[]>): void => {
+    this.changeCounter++;
     this._queries.set(name, {
       result: func(this),
       timestamp: this.changeCounter,
@@ -330,4 +344,38 @@ export class GameEngine<
   public components = (): ReadonlyArray<Simple<Component<unknown>>> => {
     return this._components;
   };
+
+  public actions = (): ReadonlyMap<string, Action<{}, {}>> => {
+    return this._actions;
+  };
+
+  // TEST: Can't have duplicate names.
+  public registerAction =<T extends Action<any, any>> (action: T): T => {
+    this.changeCounter++;
+    this._actions.set(
+      action.name,
+      action
+    );
+
+    return action;
+  };
+
+  // TEST: Can't have duplicate rules.
+  public registerRule =<T extends Rule> (rule: T): T => {
+    this._rules.set(
+      rule.name,
+      rule
+    );
+
+    return rule;
+  };
+
+  public registerInterface = (player: PlayerInterface): void => {
+    this.changeCounter++;
+    this._playerInterfaces.push(player);
+  };
+
+  public rules = (): ReadonlyMap<string, Rule> => {
+    return this._rules;
+  }
 }
