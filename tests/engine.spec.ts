@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { GameEngine } from "../client/scripts/engine/engine.js";
-import { Action, Changes, Choice, Component, Components, Query, QueryFilter, Simple } from "../client/scripts/engine/types-engine.js";
+import { Action, Changes, Choice, Component, Components, PlayerChoice, Query, QueryFilter, Rule, Simple } from "../client/scripts/engine/types-engine.js";
 
 const removeStaticFunctions = <T> (obj: T): Partial<T> => {
   //@ts-ignore
@@ -11,7 +11,7 @@ const removeStaticFunctions = <T> (obj: T): Partial<T> => {
   return obj;
 };
 
-type Dice = Component<{
+type Die = Component<{
   sides: number,
   value: number
 }>;
@@ -321,7 +321,7 @@ describe('Basic Engine Tests.', () => {
   it('A user can register into the game with a User Interface.', (done) => {
     engine.registerInterface({
       // This function is called whenever a Tick happens and the Game State was updated.
-      tickHandler: (delta: Changes, choices: Choice[]) => {
+      tickHandler: (delta: Changes, choices: PlayerChoice<unknown>[]) => {
         done();
       },
       actorId: 'Player 1'
@@ -339,7 +339,7 @@ describe('Basic Engine Tests.', () => {
     }, 'test');
 
     engine.registerInterface({
-      tickHandler: (delta: Changes, choices: Choice[]) => {
+      tickHandler: (delta: Changes, choices: PlayerChoice<unknown>[]) => {
         if(ticked === 0) {
           expect(delta).to.have.length(1);
           expect(removeStaticFunctions(delta.get('0'))).to.deep.equal({
@@ -363,7 +363,7 @@ describe('Basic Engine Tests.', () => {
         }
       },
       actorId: 'player-1'
-    })
+    });
 
     engine.tick();
     obj.value = 'another test';
@@ -371,16 +371,16 @@ describe('Basic Engine Tests.', () => {
   });
 
   it('An Action can be registered.', () => {
-    const roll: Action<{target: Dice}, {target: Dice}> = engine.registerAction({
+    const roll: Action<{target: Die}, {target: Die}> = engine.registerAction({
       name: 'roll',
       execute: (engine, parameters: {
-        target: Dice
+        target: Die
       }) => {
         parameters.target.value = Math.floor(Math.random() * parameters.target.sides);
 
         return parameters;
       },
-      log: (parameters) => `Dice ${parameters.target} was rolled`
+      log: (parameters) => `Die ${parameters.target} was rolled`
     });
 
     expect(engine.actions()).to.have.length(1);
@@ -396,5 +396,81 @@ describe('Basic Engine Tests.', () => {
     });
 
     expect(engine.rules()).to.have.length(1);
+  });
+
+  it('If only an Action is registered (without a rule that enables it), a choice doesnt exist.', (done) => {
+    const roll: Action<{target: Die}, {target: Die}> = engine.registerAction({
+      name: 'roll',
+      execute: (engine, parameters: {
+        target: Die
+      }) => {
+        parameters.target.value = Math.floor(Math.random() * parameters.target.sides);
+
+        return parameters;
+      },
+      log: (parameters) => `Die ${parameters.target} was rolled`
+    });
+
+    engine.registerInterface({
+      tickHandler: (delta: Changes, choices: PlayerChoice<unknown>[]) => {
+        expect(choices).to.have.length(0);
+        done();
+      },
+      actorId: 'player-1'
+    });
+
+    engine.tick();
+  });
+
+  
+  it('If a Rule exists that enables an Action (it generates choices for it), the player is informed about choices.', (done) => {
+    engine.registerComponent({
+      sides: 6,
+      value: 1
+    }, 'die') as Simple<Die>;
+    engine.registerComponent({
+      sides: 20,
+      value: 1
+    }, 'die') as Simple<Die>;
+
+    const roll: Action<{dice: Die}, {dice: Die}> = engine.registerAction({
+      name: 'roll',
+      execute: (engine, parameters: {
+        dice: Die
+      }) => {
+        parameters.dice.value = Math.floor(Math.random() * parameters.dice.sides);
+
+        return parameters;
+      },
+      log: (parameters) => `Dice ${parameters.dice} was rolled`
+    });
+
+    const canRoll: Rule = engine.registerRule({
+      type: 'positive',
+      name: 'Dice can be rolled.',
+      handler: (engine) => engine.query('die').map(die => {
+          return {
+            
+          };
+        })
+    });
+
+    engine.registerInterface({
+      tickHandler: (delta: Changes, choices: PlayerChoice<unknown>[]) => {
+        expect(choices).to.have.length(1);
+        expect(choices[0]).to.deep.equal({
+          id: 'choice-0',
+          actionType: 'roll',
+          parameters: {
+            dice: '@0'
+          }
+        });
+
+        done();
+      },
+      actorId: 'player-1'
+    });
+
+    engine.tick();
   });
 });

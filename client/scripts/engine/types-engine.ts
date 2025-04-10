@@ -99,10 +99,16 @@ export type PlayerInterface<T extends Simple<Component<unknown>> | undefined = u
 export type ActionProxy<ACTION extends string> = {[key in ACTION]: (...parameters: any[]) => void};
 
 export type LifelessChoice = {
+  id: string,
   actor: ActorID,
-  actionType: string,
-  arguments: ID[]
+  actionType: string
 };
+
+export type PlayerChoice<T extends {} | unknown = unknown> = {
+  id: string,
+  actionType: string,
+  parameters: T
+}
 
 export type Choice = LifelessChoice & {
   execute: () => void
@@ -114,7 +120,7 @@ export type CallbackableChoice = Choice & {
 
 export type TickHandler = (
   stateDelta: Changes,
-  choices: Choice[]
+  choices: PlayerChoice<unknown>[]
 ) => void;
 
 export interface PlayerClient {
