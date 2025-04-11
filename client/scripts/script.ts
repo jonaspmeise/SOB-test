@@ -15,7 +15,11 @@ const engine = new GameEngine();
 const request = await fetch(cardFile);
 const cards = (await request.json() as RawCard[]);
 
+const startTime = new Date().getTime();
 INITIALIZE_BEYOND_GAMESTATE(engine, cards);
+const endTime = new Date().getTime();
+
+console.info(`Loaded game in ${(endTime - startTime) / 1000} seconds.`);
 
 // For easier debugging.
 window['engine'] = engine;

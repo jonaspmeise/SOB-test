@@ -37,48 +37,51 @@ export const INITIALIZE_BEYOND_GAMESTATE = (
     }, 'deck', `${name}'s Hand`) as Simple<Deck>;
 
     // Initialize 30 random cards and add them to each Deck!
-    shuffle(cards).slice(0, 30).map(card => {
-      const cardComponent = engine.registerComponent({
-        name: card.Name,
-        artwork: new URL(`https://cdn.shardsofbeyond.com/artworks/${card.Artworks.default}`),
-        rarity: card.Rarity as Rarity,
-        set: card.Set,
-        power: card.Power,
-        text: card.Text,
-        cardtype: card.Cardtype as CardType,
-        realms: card.Realms?.split(' ').map(part => part.trim()) as Realm[] ?? [],
-        subtypes: card.Types?.split(' ').map(part => part.trim()) as Subtype[] ?? [],
-        costs: card.Costs.split(',')
-          .map(realm => realm.trim())
-          .reduce((prev, curr) => {
-            const realm: Realm | undefined = REALM_MAPPING.get(curr);
+    shuffle(cards).slice(0, 30)
+      .filter(card => card.Cardtype === 'Unit')
+      .map(card => {
+        console.debug(`Loading ${card.Name}...`);
 
-            if(realm === undefined) {
-              console.error(`The part "${curr}" is not a valid cost!`);
+        engine.registerComponent({
+          name: card.Name,
+          artwork: new URL(`https://cdn.shardsofbeyond.com/artworks/${card.Artworks.default}`),
+          rarity: card.Rarity as Rarity,
+          set: card.Set,
+          power: card.Power,
+          text: card.Text,
+          cardtype: card.Cardtype as CardType,
+          realms: card.Realms?.split(' ').map(part => part.trim()) as Realm[] ?? [],
+          subtypes: card.Types?.split(' ').map(part => part.trim()) as Subtype[] ?? [],
+          costs: card.Costs.split(',')
+            .map(realm => realm.trim())
+            .reduce((prev, curr) => {
+              const realm: Realm | undefined = REALM_MAPPING.get(curr);
+
+              if(realm === undefined) {
+                console.error(`The part "${curr}" is not a valid cost!`);
+                return prev;
+              }
+              
+              prev[realm] = prev[realm] + 1;
+              prev['total'] = prev['total'] + 1;
+
               return prev;
-            }
-            
-            prev[realm] = prev[realm] + 1;
-            prev['total'] = prev['total'] + 1;
+            }, {
+              'Divine': 0,
+              'Mortal': 0,
+              'Elemental': 0,
+              'Nature': 0,
+              'Void': 0,
+              'NO_REALM': 0,
+              'total': 0
+            }),
+          location: deck
+        }, 'card', card.Name) as Simple<Card>;
+      });
 
-            return prev;
-          }, {
-            'Divine': 0,
-            'Mortal': 0,
-            'Elemental': 0,
-            'Nature': 0,
-            'Void': 0,
-            'NO_REALM': 0,
-            'total': 0
-          }),
-        location: deck
-      }, 'card', card.Name) as Simple<Card>;
+      return player;
     });
 
-    return player;
-  });
-
-  
   // TURN
   const turn = engine.registerComponent({
     currentPlayer: players[0]
