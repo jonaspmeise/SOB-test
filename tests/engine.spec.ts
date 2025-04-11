@@ -231,11 +231,11 @@ describe('Basic Engine Tests.', () => {
     type MyType = Component<{value: number, reference: Query<MyType, MyType>}>;
 
     const obj1: Simple<MyType> = engine.registerComponent({
-      reference: (self, engine) => (engine.query('test-2') as Simple<MyType>[])[0], // Reference created via query!
+      reference: (self, engine) => engine.query<MyType>('test-2')[0], // Reference created via query!
       value: 1
     }, 'test-1');
     const obj2: Simple<MyType> = engine.registerComponent({
-      reference: (self, engine) => (engine.query('test-1') as Simple<MyType>[])[0], // Reference created via query!
+      reference: (self, engine) => engine.query<MyType>('test-1') [0], // Reference created via query!
       value: 2
     }, 'test-2');
 
@@ -267,11 +267,11 @@ describe('Basic Engine Tests.', () => {
     type MyType = Component<{value: number, reference: Query<MyType, MyType>}>;
 
     const obj1: Simple<MyType> = engine.registerComponent({
-      reference: (self, engine) => (engine.query('test-2') as Simple<MyType>[])[0], // Reference created via query!
+      reference: (self, engine) => engine.query<MyType>('test-2')[0], // Reference created via query!
       value: 1
     }, 'test-1');
     const obj2: Simple<MyType> = engine.registerComponent({
-      reference: (self, engine) => (engine.query('test-1') as Simple<MyType>[])[0], // Reference created via query!
+      reference: (self, engine) => engine.query<MyType>('test-1')[0], // Reference created via query!
       value: 2
     }, 'test-2');
 

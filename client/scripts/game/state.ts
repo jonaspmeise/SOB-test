@@ -13,26 +13,26 @@ export const INITIALIZE_BEYOND_GAMESTATE = (
     const player = engine.registerComponent({
       name: name,
       // @ts-ignore // FIXME ???
-      hand: (self, engine) => (engine.query('hand') as Simple<Hand>[]).filter(hand => hand.owner === self)[0],
-      deck: (self, engine) => (engine.query('deck') as Simple<Deck>[]).filter(deck => deck.owner === self)[0],
-      crystalzone: (self, engine) => (engine.query('crystalzone') as Simple<CrystalZone>[]).filter(crystalzone => crystalzone.owner === self)[0],
+      hand: (self, engine) => engine.query<Hand>('hand').filter(hand => hand.owner === self)[0],
+      deck: (self, engine) => engine.query<Deck>('deck').filter(deck => deck.owner === self)[0],
+      crystalzone: (self, engine) => engine.query<CrystalZone>('crystalzone').filter(crystalzone => crystalzone.owner === self)[0],
       index: i,
-      wonLanes: (self, engine) => (engine.query('lane') as Simple<Lane>[]).filter(lane => lane.wonBy === self)
+      wonLanes: (self, engine) => engine.query<Lane>('lane').filter(lane => lane.wonBy === self)
     }, 'player', name) as Simple<Player>;
 
     const hand = engine.registerComponent({
       owner: player,
-      cards: (self, engine) => (engine.query('card') as Simple<Card>[]).filter(c => c.location === self)
+      cards: (self, engine) => engine.query<Card>('card').filter(c => c.location === self)
     }, 'hand', `${name}'s Hand`) as Simple<Hand>;
 
     const crystalzone = engine.registerComponent({
       owner: player,
-      cards: (self, engine) => (engine.query('card') as Simple<Card>[]).filter(c => c.location === self)
+      cards: (self, engine) => engine.query<Card>('card').filter(c => c.location === self)
     }, 'crystalzone', `${name}'s Crystal Zone`) as Simple<CrystalZone>;
     
     const deck = engine.registerComponent({
       owner: player,
-      cards: (self, engine) => (engine.query('card') as Simple<Card>[]).filter(c => c.location === self)
+      cards: (self, engine) => engine.query<Card>('card').filter(c => c.location === self)
     }, 'deck', `${name}'s Hand`) as Simple<Deck>;
   });
 
@@ -40,7 +40,7 @@ export const INITIALIZE_BEYOND_GAMESTATE = (
   range(4).forEach(i => {
     engine.registerComponent({
       index: i,
-      slots: (self, engine) => (engine.query('slot') as Simple<Slot>[]).filter(slot => slot.y === self.index),
+      slots: (self, engine) => engine.query<Slot>('slot').filter(slot => slot.y === self.index),
       cards: (self) => self.slots.filter(slot => slot.card !== undefined).map(slot => slot.card as Simple<Card>),
       isFull: (self) => self.slots.length === self.cards.length,
       wonBy: undefined,
@@ -52,7 +52,7 @@ export const INITIALIZE_BEYOND_GAMESTATE = (
   range(5).forEach(i => {
     engine.registerComponent({
       index: i,
-      slots: (self, engine) => (engine.query('slot') as Simple<Slot>[]).filter(slot => slot.x === self.index),
+      slots: (self, engine) => engine.query<Slot>('slot').filter(slot => slot.x === self.index),
       cards: (self) => self.slots.filter(slot => slot.card !== undefined).map(slot => slot.card as Simple<Card>),
       isFull: (self) => self.slots.length === self.cards.length,
       wonBy: undefined,
@@ -65,8 +65,8 @@ export const INITIALIZE_BEYOND_GAMESTATE = (
     engine.registerComponent({
       x: x,
       y: y,
-      card: (self, engine) => (engine.query('card') as Simple<Card>[]).filter(card => card.location === self),
-      lanes: (self, engine) => (engine.query('lane') as Simple<Lane>[]).filter(lane => lane.slots.includes(self))
+      card: (self, engine) => engine.query<Card>('card').filter(card => card.location === self),
+      lanes: (self, engine) => engine.query<Lane>('lane').filter(lane => lane.slots.includes(self))
     }, 'slot', `Slot ${x}/${y}`) as Simple<Slot>;
   }));
 };

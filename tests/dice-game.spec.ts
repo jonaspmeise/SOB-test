@@ -134,6 +134,4 @@ describe('Simple Dice Game.', () => {
 
     engine.tick();
   });
-
-  // TODO: FIX as Simple<Component<...>>[] to query<...>
 });
