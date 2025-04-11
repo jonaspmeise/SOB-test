@@ -11,7 +11,11 @@ const cardFile = 'https://cdn.shardsofbeyond.com/client/cards.json';
 
 // Register engine and all types.
 const engine = new GameEngine();
-INITIALIZE_BEYOND_GAMESTATE(engine);
+
+const request = await fetch(cardFile);
+const cards = (await request.json() as RawCard[]);
+
+INITIALIZE_BEYOND_GAMESTATE(engine, cards);
 
 // For easier debugging.
 window['engine'] = engine;

@@ -1,15 +1,16 @@
-import { ShardsOfBeyondActionType, Owned, Lane, Slot, Card, Player, Container, Turn, Hand, Deck, CrystalZone } from './types-game.js';
+import { ShardsOfBeyondActionType, Owned, Lane, Slot, Card, Player, Container, Turn, Hand, Deck, CrystalZone, RawCard, Rarity, CardType, Subtype, Realm, REALM_MAPPING } from './types-game.js';
 import { GameEngine } from '../engine/engine.js';
-import { Component,  Lazy,  QueryFilter,  Simple,  Type } from '../engine/types-engine.js';
-import { range } from '../engine/utility.js';
+import { Component,  QueryFilter,  Simple,  Type } from '../engine/types-engine.js';
+import { range, shuffle } from '../engine/utility.js';
 
 // TODO: Optionally accept game config parameters, which are handed from outside (player names, starting deck...?).
 export const INITIALIZE_BEYOND_GAMESTATE = (
-  engine: GameEngine
+  engine: GameEngine,
+  cards: RawCard[]
 ): void => {
 
   // Players
-  ['Görzy', 'Rashid'].forEach((name, i) => {
+  const players = ['Görzy', 'Rashid'].map((name, i) => {
     const player = engine.registerComponent({
       name: name,
       // @ts-ignore // FIXME ???
@@ -34,7 +35,54 @@ export const INITIALIZE_BEYOND_GAMESTATE = (
       owner: player,
       cards: (self, engine) => engine.query<Card>('card').filter(c => c.location === self)
     }, 'deck', `${name}'s Hand`) as Simple<Deck>;
+
+    // Initialize 30 random cards and add them to each Deck!
+    shuffle(cards).slice(0, 30).map(card => {
+      const cardComponent: Card = engine.registerComponent({
+        name: card.Name,
+        artwork: new URL(`https://cdn.shardsofbeyond.com/artworks/${card.Artworks.default}`),
+        rarity: card.Rarity as Rarity,
+        set: card.Set,
+        power: card.Power,
+        text: card.Text,
+        cardtype: card.Cardtype as CardType,
+        realms: card.Realms?.split(' ').map(part => part.trim()) as Realm[] ?? [],
+        subtypes: card.Types?.split(' ').map(part => part.trim()) as Subtype[] ?? [],
+        costs: card.Costs.split(',')
+          .map(realm => realm.trim())
+          .reduce((prev, curr) => {
+            const realm: Realm | undefined = REALM_MAPPING.get(curr);
+
+            if(realm === undefined) {
+              console.error(`The part "${curr}" is not a valid cost!`);
+              return prev;
+            }
+            
+            prev[realm] = prev[realm] + 1;
+            prev['total'] = prev['total'] + 1;
+
+            return prev;
+          }, {
+            'Divine': 0,
+            'Mortal': 0,
+            'Elemental': 0,
+            'Nature': 0,
+            'Void': 0,
+            'NO_REALM': 0,
+            'total': 0
+          }),
+        location: deck
+      }, 'card', card.Name);
+    });
+
+    return player;
   });
+
+  
+  // TURN
+  const turn = engine.registerComponent({
+    currentPlayer: players[0]
+  }, 'turn', 'Turn') as Turn;
 
   // Horizontal Lanes.
   range(4).forEach(i => {

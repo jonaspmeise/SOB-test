@@ -39,6 +39,7 @@ export type Costs = Component<{
 }>;
 export type Rarity = 'Common' | 'Uncommon' | 'Rare';
 
+// TODO: Technically not right to just name everything Simple<...> here...
 export type Card = Component<{
   cardtype: CardType,
   subtypes: Subtype[],

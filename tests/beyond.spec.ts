@@ -12,7 +12,7 @@ describe('Component Initialization', () => {
 
   beforeEach(() => {
     engine = new GameEngine();
-    INITIALIZE_BEYOND_GAMESTATE(engine);
+    INITIALIZE_BEYOND_GAMESTATE(engine, []);
 
     engine.start();
   });

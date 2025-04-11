@@ -14,7 +14,7 @@ describe('Simple Dice Game.', () => {
     engine = new GameEngine();
   });
   
-  it('If a Rule exists that enables an Action (it generates choices for it), the player is informed about choices.', (done) => {
+  it('If a Rule exists that enables an Action (it generates choices for it), all players are informed about their choices.', (done) => {
     engine.registerComponent({
       sides: 6,
       value: 1,
@@ -57,7 +57,28 @@ describe('Simple Dice Game.', () => {
     engine.registerInterface({
       tickHandler: (_delta: Changes, choices: CommunicatedChoice[]) => {
         // General specifications - this is usually not communicated to the Client.
-        expect(engine.choices()).to.have.length(2); // 1 Action, 2 Dice, 1 Players => 1x2x2 = 4 total choices in this gamestate!
+        expect(engine.choices()).to.have.length(4); // 1 Action, 2 Dice, 2 Players => 1x2x2 = 4 total choices in this gamestate!
+
+        expect(choices).to.have.length(2);
+
+        expect(choices[0].actionType).to.equal('roll');
+        expect(choices[0].message).to.equal(`Roll D6`);
+        expect(choices[0].components).to.deep.equal(['0']);
+
+        expect(engine.choices().get(choices[0].id)).to.not.be.undefined;
+        
+        expect(choices[1].actionType).to.equal('roll');
+        expect(choices[1].message).to.equal(`Roll D20`);
+        expect(choices[1].components).to.deep.equal(['1']);
+        expect(engine.choices().get(choices[1].id)).to.not.be.undefined;
+      },
+      actorId: 'player-01'
+    });
+
+    engine.registerInterface({
+      tickHandler: (_delta: Changes, choices: CommunicatedChoice[]) => {
+        // General specifications - this is usually not communicated to the Client.
+        expect(engine.choices()).to.have.length(4); // 1 Action, 2 Dice, 2 Players => 1x2x2 = 4 total choices in this gamestate!
 
         expect(choices).to.have.length(2);
 
@@ -74,7 +95,7 @@ describe('Simple Dice Game.', () => {
 
         done();
       },
-      actorId: 'player-1'
+      actorId: 'player-02'
     });
 
     engine.tick();

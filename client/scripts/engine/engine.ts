@@ -1,4 +1,4 @@
-import { ActionProxy, Component, Components, ID, PlayerInterface, Type, QueryFilter, Lazy, LazyFunction, CacheEntry, StaticQueryFilter, StaticCacheEntry, Simple, Changes, Action, PositiveRule, NegativeRule, RuleType, InternalChoice, ImplentationChoice, Identifiable } from './types-engine.js';
+import { ActionProxy, Component, Components, ID, PlayerInterface, Type, CacheEntry, StaticQueryFilter, StaticCacheEntry, Simple, Changes, Action, PositiveRule, NegativeRule, RuleType, InternalChoice, ImplentationChoice, Identifiable } from './types-engine.js';
 import { jsonify } from '../game/utility.js';
 
 export class GameEngine {
@@ -414,6 +414,7 @@ export class GameEngine {
     return rule;
   };
 
+  // TEST: Can't register the same ActorID twice!
   public registerInterface = (player: PlayerInterface): void => {
     this.changeCounter++;
     this._playerInterfaces.push(player);

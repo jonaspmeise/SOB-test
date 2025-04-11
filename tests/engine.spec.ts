@@ -333,7 +333,7 @@ describe('Basic Engine Tests.', () => {
     engine.tick();
   });
 
-  it('A user is informed about any changes to the game state. On more changes after one tick, only the delta changes since the last tick are transmitted.', (done) => {
+  it('All users are informed about any changes to the game state. On more changes after one tick, only the delta changes since the last tick are transmitted.', (done) => {
     let ticked = 0;
 
     const obj = engine.registerComponent({
