@@ -33,7 +33,7 @@ export type Action<
 };
 */
 
-export type Action<INPUT_PARAMETERS extends {}, USED_PARAMETERS extends {}> = {
+export type Action<INPUT_PARAMETERS extends {}, USED_PARAMETERS extends {} = INPUT_PARAMETERS> = {
   name: string,
   execute: (engine: GameEngine, parameters: INPUT_PARAMETERS) => USED_PARAMETERS,
   log: (usedParameters: USED_PARAMETERS) => string
@@ -43,18 +43,26 @@ export type Rule<T extends {} | undefined = undefined> =
   | PositiveRule<T>
   | NegativeRule<T>;
 
+export type RuleType = 'positive' | 'negative';
+
 export type PositiveRule<T extends {} | undefined = undefined>  = {
   name: string,
   type: 'positive',
   properties?: T,
-  handler: (engine: GameEngine, properties: T) => CallbackableChoice[]
+  handler: (engine: GameEngine, properties: T) => ChoiceImplementation[]
 };
 
 export type NegativeRule<T extends {} | undefined = undefined> = {
   name: string,
   type: 'negative',
   properties?: T,
-  handler: (choices: Choice[], properties: T) => Choice[]
+  /**
+   * 
+   * @param chocie The choice to potentially filter out.
+   * @param properties Optional properties that make the state of this rule.
+   * @returns "true" if the choice is valid, "false" if this rule prevents this choice from being viable.
+   */
+  handler: (choice: ChoiceImplementation, properties: T) => boolean
 };
 
 /*
@@ -92,31 +100,27 @@ export type Type = string;
 
 export type PlayerInterface<T extends Simple<Component<unknown>> | undefined = undefined> = {
   actorId: ActorID,
-  playerComponent?: T,
+  // We can link Players to avatars, which are in-game component representations of that player. This is necessary if players can interact within the game with another player (conceptually).
+  avatar?: T,
   tickHandler: TickHandler
 };
 
 export type ActionProxy<ACTION extends string> = {[key in ACTION]: (...parameters: any[]) => void};
 
-export type LifelessChoice = {
-  id: string,
-  actor: ActorID,
-  actionType: string
-};
-
 export type PlayerChoice<T extends {} | unknown = unknown> = {
   id: string,
   actionType: string,
-  parameters: T
-}
-
-export type Choice = LifelessChoice & {
-  execute: () => void
+  context: T
 };
 
-export type CallbackableChoice = Choice & {
-  callback?: () => void;
-}
+export type ChoiceImplementation<T extends {} | unknown = unknown> = {
+  player: PlayerInterface,
+  actionType: string,
+  // The context of this choice - this has nothing to do with the choice itself (or its implementation), but gives the player context on with what components this choice interacts!
+  context: T,
+  execute: () => void,
+  callback?: () => void
+};
 
 export type TickHandler = (
   stateDelta: Changes,

@@ -1,4 +1,4 @@
-import { GameEngine } from "../engine/engine";
+dimport { GameEngine } from "../engine/engine";
 import { Rule } from "../engine/types-engine";
 import { BeyondPlayer, Card, ShardsOfBeyondActionType, Slot, Turn } from "./types-game";
 

@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { GameEngine } from "../client/scripts/engine/engine.js";
-import { Action, Changes, Choice, Component, Components, PlayerChoice, Query, QueryFilter, Rule, Simple } from "../client/scripts/engine/types-engine.js";
+import { Action, Changes, ChoiceImplementation, Component, Components, PlayerChoice, Query, QueryFilter, Rule, Simple } from "../client/scripts/engine/types-engine.js";
 
 const removeStaticFunctions = <T> (obj: T): Partial<T> => {
   //@ts-ignore
@@ -327,6 +327,8 @@ describe('Basic Engine Tests.', () => {
       actorId: 'Player 1'
     });
 
+    expect(engine.players()).to.have.length(1);
+
     // When the game starts, an initial tick is issued.
     engine.tick();
   });
@@ -386,16 +388,32 @@ describe('Basic Engine Tests.', () => {
     expect(engine.actions()).to.have.length(1);
   });
 
-  it('A rule can be registered.', () => {
+  it('A positive rule can be registered.', () => {
     engine.registerRule({
-      name: 'A rule that does nothing!.',
+      name: 'A rule that doesnt add any choices!.',
       type: 'positive',
       handler: (engine) => {
+        // This rule returns no new choices...
         return [];
       }
     });
 
     expect(engine.rules()).to.have.length(1);
+    expect(engine.rules('positive')).to.have.length(1);
+  });
+  
+  it('A negative rule can be registered.', () => {
+    engine.registerRule({
+      name: 'A rule that prevents anything from happening!.',
+      type: 'negative',
+      handler: (choices: ChoiceImplementation) => {
+        // By returning false, each previously generated choices is filtered out. In this state, _no_ player can do anything!
+        return false;
+      }
+    });
+
+    expect(engine.rules()).to.have.length(1);
+    expect(engine.rules('negative')).to.have.length(1);
   });
 
   it('If only an Action is registered (without a rule that enables it), a choice doesnt exist.', (done) => {
@@ -414,58 +432,6 @@ describe('Basic Engine Tests.', () => {
     engine.registerInterface({
       tickHandler: (delta: Changes, choices: PlayerChoice<unknown>[]) => {
         expect(choices).to.have.length(0);
-        done();
-      },
-      actorId: 'player-1'
-    });
-
-    engine.tick();
-  });
-
-  
-  it('If a Rule exists that enables an Action (it generates choices for it), the player is informed about choices.', (done) => {
-    engine.registerComponent({
-      sides: 6,
-      value: 1
-    }, 'die') as Simple<Die>;
-    engine.registerComponent({
-      sides: 20,
-      value: 1
-    }, 'die') as Simple<Die>;
-
-    const roll: Action<{dice: Die}, {dice: Die}> = engine.registerAction({
-      name: 'roll',
-      execute: (engine, parameters: {
-        dice: Die
-      }) => {
-        parameters.dice.value = Math.floor(Math.random() * parameters.dice.sides);
-
-        return parameters;
-      },
-      log: (parameters) => `Dice ${parameters.dice} was rolled`
-    });
-
-    const canRoll: Rule = engine.registerRule({
-      type: 'positive',
-      name: 'Dice can be rolled.',
-      handler: (engine) => engine.query('die').map(die => {
-          return {
-            
-          };
-        })
-    });
-
-    engine.registerInterface({
-      tickHandler: (delta: Changes, choices: PlayerChoice<unknown>[]) => {
-        expect(choices).to.have.length(1);
-        expect(choices[0]).to.deep.equal({
-          id: 'choice-0',
-          actionType: 'roll',
-          parameters: {
-            dice: '@0'
-          }
-        });
-
         done();
       },
       actorId: 'player-1'

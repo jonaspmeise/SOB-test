@@ -4,13 +4,13 @@
 import { range } from './engine/utility.js';
 import { Card, CardType, Lane, Rarity, RawCard, Realm, REALM_MAPPING, ShardsOfBeyondActionType, Slot, Subtype } from './game/types-game.js';
 import { GameEngine } from './engine/engine.js';
-import { INITIALIZE_BEYOND_GAMESTATE } from './game/state.ts_';
+import { INITIALIZE_BEYOND_GAMESTATE } from './game/state.js';
 
 // CONSTANTS
 const cardFile = 'https://cdn.shardsofbeyond.com/client/cards.json';
 
 // Register engine and all types.
-const engine = new GameEngine<ShardsOfBeyondActionType>();
+const engine = new GameEngine();
 INITIALIZE_BEYOND_GAMESTATE(engine);
 
 // For easier debugging.
@@ -23,6 +23,7 @@ window['engine'] = engine;
 // SCRIPT
 document.addEventListener('DOMContentLoaded', async () => {
   const request = await fetch(cardFile);
+  /*
   const cards: Card[] = (await request.json() as RawCard[])
     .filter(card => card.Set == 1) // Only valid cards from Set 1 should be made into decks.
     .filter(card => card.Cardtype === 'Unit') // Only play with Units.
@@ -62,7 +63,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             'total': 0
           })
       };
-    });
+    });*/
 
   // log(`Loaded a total of ${cards.length} cards!`, undefined, true);
 

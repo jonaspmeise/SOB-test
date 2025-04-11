@@ -1,4 +1,5 @@
-import { ActionProxy, Choice, Component, Components, ID, PlayerInterface, Type, QueryFilter, Lazy, LazyFunction, CacheEntry, StaticQueryFilter, StaticCacheEntry, Simple, Changes, Action, Rule } from './types-engine.js';
+import { ActionProxy, Component, Components, ID, PlayerInterface, Type, QueryFilter, Lazy, LazyFunction, CacheEntry, StaticQueryFilter, StaticCacheEntry, Simple, Changes, Action, Rule, PositiveRule, NegativeRule, RuleType } from './types-engine.js';
+import { jsonify } from '../game/utility.js';
 
 export class GameEngine {
   private componentCounter: number = 0;
@@ -17,7 +18,10 @@ export class GameEngine {
   private readonly _changes: Changes = new Map();
   private readonly _playerInterfaces: PlayerInterface[] = [];
   private readonly _actions: Map<string, Action<any, any>> = new Map();
+
   private readonly _rules: Map<string, Rule> = new Map();
+  private readonly _positiveRules: Map<string, PositiveRule> = new Map();
+  private readonly _negativeRules: Map<string, NegativeRule> = new Map();
 
   public registerComponent = <P extends {}> (properties: P, type: Type, name?: string): Simple<Component<P>> => {
     // Something will change!
@@ -120,30 +124,7 @@ export class GameEngine {
     // Initializing default behaviors.
     proxy.id = id;
     proxy.type = type;
-    proxy.toJSON = () => {
-      console.debug('Calling toJSON on', id);
-      const json = {};
-      for(let key in proxy) {
-        const target = proxy[key];
-        // Default case.
-        // Functions are ignored.
-        if(typeof target === 'function') {
-          continue;
-        }
-
-        if(typeof target !== 'object') {
-          json[key] = target;
-          continue;
-        }
-        
-        console.debug(Object.keys(proxy));
-        console.debug(`Masking reference to other component in property "${key}" (${typeof target}) of Component with Type ${type}...`);
-        // Exclude references to other Entities!
-        json[key] = `@${target.id}`;
-      }
-
-      return json;
-    };
+    proxy.toJSON = () => jsonify(proxy);
     proxy.toString = () => name ?? `Component #${id} (${type})`;
 
     // Register change and component. We use proxy values here because these values can be interacted with from the "outside" world.
@@ -227,11 +208,39 @@ export class GameEngine {
   public tick = () => {
     console.debug('Tick triggered.');
 
+    // Calculate the complete choice space for the current game state.
+
+    const positiveChoiceSpace = Array.from(this._positiveRules.values())
+      .map(rule => rule.handler(this, rule.properties))
+      .flat();
+
+    console.debug(`After applying all positive rules, a total of ${positiveChoiceSpace.length} choices were generated...`);
+
+    const negativeRules = Array.from(this._negativeRules.values());
+    const choiceSpace = positiveChoiceSpace
+      // Filter out all negative rules.
+      .filter(choice => negativeRules.find(rule => rule.handler(choice, rule.properties) === false) === undefined);
+
+    console.debug(`After applying all negative rules, a total of ${choiceSpace.length} choices remain...`);
+
     this._playerInterfaces.forEach(player => {
-      player.tickHandler(this._changes, []);
+      // const choiceSpace = this.
+
+      player.tickHandler(
+        this._changes,
+        choiceSpace
+          .filter(choice => choice.player.actorId === player.actorId)
+          .map(choice => {
+            return {
+              actionType: choice.actionType,
+              context: jsonify(choice.context),
+              id: 'abc123' // TODO: Generate a random ID here to reference this choice!
+            };
+          })
+      );
     });
 
-    // Clean up change state!
+    // Clean up change state (so far)!
     this._changes.clear();
 
     // Calculate action space for both playerInterfaces.
@@ -367,6 +376,18 @@ export class GameEngine {
       rule
     );
 
+    if(rule.type === 'negative') {
+      this._negativeRules.set(
+        rule.name,
+        rule
+      );
+    } else {
+      this._positiveRules.set(
+        rule.name,
+        rule
+      );
+    }
+
     return rule;
   };
 
@@ -375,7 +396,22 @@ export class GameEngine {
     this._playerInterfaces.push(player);
   };
 
-  public rules = (): ReadonlyMap<string, Rule> => {
-    return this._rules;
+  public rules = (ruleType?: RuleType): ReadonlyMap<string, Rule> => {
+    if(ruleType === undefined) {
+      return this._rules
+    } else if(ruleType === 'positive') {
+      return this._positiveRules;
+    } else {
+      return this._negativeRules;
+    }
+  };
+
+  // TEST: Throw error if action does not exist.
+  public executeAction = <T extends {} | unknown = unknown> (actionType: string, parameters: T, actor?: PlayerInterface): void => {
+
+  };
+
+  public players = (): ReadonlyArray<PlayerInterface> => {
+    return this._playerInterfaces;
   }
 }
