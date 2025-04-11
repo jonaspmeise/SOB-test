@@ -121,3 +121,7 @@ export const INITIALIZE_BEYOND_GAMESTATE = (
     }, 'slot', `Slot ${x}/${y}`) as Simple<Slot>;
   }));
 };
+
+export const REGISTER_BEYOND_LINGO = (engine: GameEngine): void => {
+  
+};

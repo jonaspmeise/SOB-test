@@ -26,14 +26,12 @@ describe('Simple Dice Game.', () => {
 
     const roll: Action<{die: Die}> = engine.registerAction({
       name: 'roll',
-      execute: (engine, parameters: {
-        die: Die
-      }) => {
-        parameters.die.value = Math.floor(Math.random() * parameters.die.sides);
+      execute: (engine, context) => {
+        context.die.value = Math.floor(Math.random() * context.die.sides);
 
-        return parameters;
+        return context;
       },
-      context: (entrypoint) => entrypoint,
+      context: (engine, entrypoint) => entrypoint,
       message: (context) => `Roll ${context.die}`,
       log: (parameters) => `${parameters.die} was rolled`
     });
@@ -109,10 +107,12 @@ describe('Simple Dice Game.', () => {
 
     const spinupAction = engine.registerAction({
       name: 'spin-up',
-      execute: (engine, parameters: {die: Die}) => {
-        parameters.die.value++;
+      execute: (engine, context) => {
+        context.die.value++;
+
+        return context;
       },
-      context: (entrypoint) => entrypoint,
+      context: (engine, entrypoint) => entrypoint,
       message: (context) => `Spin ${context.die} up`,
       log: (parameters) => `${parameters.die} was spun up.`
     }) as Action<{die: Die}>;

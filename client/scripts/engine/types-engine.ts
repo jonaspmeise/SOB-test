@@ -34,17 +34,17 @@ export type Action<
 */
 
 export type Action<
-  ENTRYPOINT extends {[key: string]: Simple<Component<unknown>>},
-  INPUT_CONTEXT extends {[key: string]: Simple<Component<unknown>>} = ENTRYPOINT,
+  ENTRYPOINT extends {[key: string]: Component<unknown>},
+  INPUT_CONTEXT extends {[key: string]: Component<unknown>} = ENTRYPOINT,
   USED_PARAMETERS extends {} = INPUT_CONTEXT
 > = {
   name: string,
-  execute: (engine: GameEngine, context: INPUT_CONTEXT) => USED_PARAMETERS,
-  context: (entrypoint: ENTRYPOINT) => INPUT_CONTEXT,
+  execute: (engine: GameEngine, context: Simple<INPUT_CONTEXT>) => Simple<USED_PARAMETERS>,
+  context: (engine: GameEngine, entrypoint: Simple<ENTRYPOINT>) => Simple<INPUT_CONTEXT>,
   // The text that is generated _before_ executing this action (descriptor of this action).
-  message: (context: INPUT_CONTEXT) => string,
+  message: (context: Simple<INPUT_CONTEXT>) => string,
   // The text that is generated _after_ executing this action.
-  log: (parameters: USED_PARAMETERS) => string
+  log: (parameters: Simple<USED_PARAMETERS>) => string
 };
 
 export type RuleType = 'positive' | 'negative';

@@ -375,14 +375,12 @@ describe('Basic Engine Tests.', () => {
   it('An Action can be registered.', () => {
     const roll: Action<{target: Die}, {target: Die}> = engine.registerAction({
       name: 'roll',
-      execute: (engine, parameters: {
-        target: Die
-      }) => {
-        parameters.target.value = Math.floor(Math.random() * parameters.target.sides);
+      execute: (engine, context) => {
+        context.target.value = Math.floor(Math.random() * context.target.sides);
 
-        return parameters;
+        return context;
       },
-      context: (entrypoint) => entrypoint,
+      context: (engine, entrypoint) => entrypoint,
       message: (context) => `Roll ${context.target}`,
       log: (parameters) => `${parameters.target} was rolled`
     });
@@ -421,14 +419,12 @@ describe('Basic Engine Tests.', () => {
   it('If only an Action is registered (without a rule that enables it), a choice doesnt exist.', (done) => {
     const roll: Action<{target: Die}, {target: Die}> = engine.registerAction({
       name: 'roll',
-      execute: (engine, parameters: {
-        target: Die
-      }) => {
-        parameters.target.value = Math.floor(Math.random() * parameters.target.sides);
+      execute: (engine, context) => {
+        context.target.value = Math.floor(Math.random() * context.target.sides);
 
-        return parameters;
+        return context;
       },
-      context: (entrypoint) => entrypoint,
+      context: (engine, entrypoint) => entrypoint,
       message: (context) => `Roll ${context.target}`,
       log: (parameters) => `Die ${parameters.target} was rolled`
     });

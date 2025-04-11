@@ -242,7 +242,7 @@ export class GameEngine {
           id: choice.id,
           player: choice.player,
           callback: choice.callback,
-          execute: () => choice.action.execute(this, choice.action.context(choice.action))
+          execute: () => choice.action.execute(this, choice.action.context(this, choice.entrypoint)) // TEST:
         }
       );
     });
@@ -255,14 +255,14 @@ export class GameEngine {
         choiceSpace
           .filter(choice => choice.player.actorId === player.actorId)
           .map(choice => {
-            const context = choice.action.context(choice.entrypoint);
+            const context = choice.action.context(this, choice.entrypoint);
             const message = choice.action.message(context);
 
             return {
               id: choice.id, // TODO: Generate a random ID here to reference this choice!
               message: message,
               actionType: choice.action.name,
-              components: Object.values(context).map(component => (component as Component<unknown>).id)
+              components: Object.values(context).map(component => (component as Simple<Component<unknown>>).id)
             };
           })
       );

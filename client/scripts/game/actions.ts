@@ -1,7 +1,8 @@
-import { GameEngine } from "../engine/engine";
-import { Action, ID } from "../engine/types-engine";
-import { ActionColors, BeyondPlayer, Card, CrystalZone, Deck, Lane, OwnedContainer, ShardsOfBeyondActionType, Slot, Turn } from './types-game';
+import { GameEngine } from "../engine/engine.js";
+import { Action, ID, Simple } from "../engine/types-engine.js";
+import { ActionColors, Card, CrystalZone, Deck, Lane, Player, ShardsOfBeyondActionType, Slot, Turn } from './types-game.js';
 
+/*
 export const PassAction = {
   name: 'pass',
   execute: (engine: GameEngine<ShardsOfBeyondActionType>, player: BeyondPlayer, turn: Turn) => {
@@ -106,19 +107,29 @@ export const CrystallizeAction = {
   },
   log: (parameters) => `${parameters.player} crystallized ${parameters.card}.`,
 } as Action<'crystallize', {player: BeyondPlayer, card: Card}, Card>;
+*/
 
-export const SHARDS_OF_BEYOND_ACTIONS: Action<ShardsOfBeyondActionType, any, any, any>[] = [
-  DrawAction,
-  SummonAction,
-  CrystallizeAction,
-  PassAction,
-  ConquerAction
-];
+export const REGISTER_BEYOND_ACTIONS = (engine: GameEngine): void => {
+  engine.registerAction({
+    name: 'Pass',
+    context: (engine, entrypoint) => {
+      const turn = engine.query<Turn>('turn')[0];
 
-export const ACTION_COLORS: ActionColors = {
-  conquer: undefined,
-  crystallize: 'darkgoldenrod',
-  summon: 'blue',
-  draw: undefined,
-  pass: 'green'
+      return {
+        player: turn.currentPlayer,
+        turn: turn
+      };
+    },
+    message: () => 'Pass your Turn.',
+    execute: (engine, context) => {
+      const otherPlayer = engine.query<Player>('player').filter(player => player.id !== context.player.id)[0];
+      context.turn.currentPlayer = otherPlayer;
+
+      return {
+        previous: context.player,
+        next: otherPlayer
+      };
+    },
+    log: (context) => `${context.previous} passed their Turn to ${context.next}.`
+  }) as Action<{}, {player: Simple<Player>, turn: Simple<Turn>}, {previous: Simple<Player>, next: Simple<Player>}>;
 };
