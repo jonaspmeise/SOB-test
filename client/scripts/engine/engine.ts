@@ -20,7 +20,7 @@ export class GameEngine {
   private readonly _actions: Map<string, Action<any, any>> = new Map();
 
   private readonly _rules: Map<string, Rule> = new Map();
-  private readonly _positiveRules: Map<string, PositiveRule> = new Map();
+  private readonly _positiveRules: Map<string, PositiveRule<any>> = new Map();
   private readonly _negativeRules: Map<string, NegativeRule<any>> = new Map();
 
   public registerComponent = <P extends {}> (properties: P, type: Type, name?: string): Simple<Component<P>> => {
@@ -370,12 +370,7 @@ export class GameEngine {
   };
 
   // TEST: Can't have duplicate rules.
-  public registerRule = <T extends Rule> (rule: T): T => {
-    this._rules.set(
-      rule.name,
-      rule
-    );
-
+  public registerRule = <T extends PositiveRule<ACTION> | NegativeRule<ACTION>, ACTION extends Action<any>> (rule: T): T => {
     if(rule.type === 'negative') {
       this._negativeRules.set(
         rule.name,
@@ -396,10 +391,8 @@ export class GameEngine {
     this._playerInterfaces.push(player);
   };
 
-  public rules = (ruleType?: RuleType): ReadonlyMap<string, Rule> => {
-    if(ruleType === undefined) {
-      return this._rules
-    } else if(ruleType === 'positive') {
+  public rules = (ruleType: RuleType): ReadonlyMap<string, Rule> => {
+    if(ruleType === 'positive') {
       return this._positiveRules;
     } else {
       return this._negativeRules;

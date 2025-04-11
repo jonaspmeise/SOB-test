@@ -399,8 +399,8 @@ describe('Basic Engine Tests.', () => {
       }
     });
 
-    expect(engine.rules()).to.have.length(1);
     expect(engine.rules('positive')).to.have.length(1);
+    expect(engine.rules('negative')).to.have.length(0);
   });
   
   it('A negative rule can be registered.', () => {
@@ -413,8 +413,8 @@ describe('Basic Engine Tests.', () => {
       }
     });
 
-    expect(engine.rules()).to.have.length(1);
     expect(engine.rules('negative')).to.have.length(1);
+    expect(engine.rules('positive')).to.have.length(0);
   });
 
   it('If only an Action is registered (without a rule that enables it), a choice doesnt exist.', (done) => {

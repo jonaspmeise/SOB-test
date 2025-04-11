@@ -41,29 +41,29 @@ export type Action<ENTRYPOINT extends {}, INPUT_PARAMETERS extends {} = ENTRYPOI
 };
 
 export type Rule<T extends {} | undefined = undefined> =
-  | PositiveRule<T>
+  | PositiveRule<Action<any>, T>
   | NegativeRule<Action<any>, T>;
 
 export type RuleType = 'positive' | 'negative';
 
-export type PositiveRule<T extends {} | undefined = undefined>  = {
+export type PositiveRule<ACTION extends Action<any>, T extends {} | undefined = undefined>  = {
   name: string,
   type: 'positive',
   properties?: T,
-  handler: (engine: GameEngine, properties: T) => ChoiceImplementation<any>[]
+  handler: (engine: GameEngine, properties: T) => ChoiceImplementation<ACTION>[]
 };
 
-export type NegativeRule<ACTION extends Action<any>, T extends {} | undefined = undefined> = {
+export type NegativeRule<ACTION extends Action<any>, PROPERTIES extends {} | undefined = undefined> = {
   name: string,
   type: 'negative',
-  properties?: T,
+  properties?: PROPERTIES,
   /**
    * 
    * @param chocie The choice to potentially filter out.
    * @param properties Optional properties that make the state of this rule.
    * @returns "true" if the choice is valid, "false" if this rule prevents this choice from being viable.
    */
-  handler: (choice: ChoiceImplementation<ACTION>, properties: T) => boolean
+  handler: (choice: ChoiceImplementation<ACTION>, properties: PROPERTIES) => boolean
 };
 
 /*

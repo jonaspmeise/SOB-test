@@ -91,7 +91,7 @@ describe('Simple Dice Game.', () => {
     }) as Action<{die: Die}>;
 
     // TODO: Too many redundant values!
-    const rollRule = engine.registerRule({
+    const rollRule: Rule<typeof rollAction> = engine.registerRule({
       name: 'Dice can be spun up.',
       type: 'positive',
       handler: (engine) => {
@@ -106,7 +106,7 @@ describe('Simple Dice Game.', () => {
           };
         })).flat()
       }
-    });
+    }) as Rule<typeof rollAction>;
     
     // TODO: Types.
     engine.registerRule({
@@ -131,5 +131,4 @@ describe('Simple Dice Game.', () => {
 
     engine.tick();
   });
-  // TEST: Context should hang on an action (THE RETURN TYPE), not a rule or choice!
 });
