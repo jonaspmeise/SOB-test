@@ -34,9 +34,9 @@ export type Subtype = string;
 export type Realm = 'Divine' | 'Void' | 'Elemental' | 'Mortal' | 'Nature' | 'NO_REALM';
 export type RealmCount = {[key in Realm]: number};
 export type RealmMapping = Map<string, Realm>;
-export type Costs = Component<{
+export type Costs = {
   [key in Realm | 'total']: number
-}>;
+};
 export type Rarity = 'Common' | 'Uncommon' | 'Rare';
 
 // TODO: Technically not right to just name everything Simple<...> here...

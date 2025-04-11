@@ -38,7 +38,7 @@ export const INITIALIZE_BEYOND_GAMESTATE = (
 
     // Initialize 30 random cards and add them to each Deck!
     shuffle(cards).slice(0, 30).map(card => {
-      const cardComponent: Card = engine.registerComponent({
+      const cardComponent = engine.registerComponent({
         name: card.Name,
         artwork: new URL(`https://cdn.shardsofbeyond.com/artworks/${card.Artworks.default}`),
         rarity: card.Rarity as Rarity,
@@ -72,7 +72,7 @@ export const INITIALIZE_BEYOND_GAMESTATE = (
             'total': 0
           }),
         location: deck
-      }, 'card', card.Name);
+      }, 'card', card.Name) as Simple<Card>;
     });
 
     return player;
@@ -82,7 +82,7 @@ export const INITIALIZE_BEYOND_GAMESTATE = (
   // TURN
   const turn = engine.registerComponent({
     currentPlayer: players[0]
-  }, 'turn', 'Turn') as Turn;
+  }, 'turn', 'Turn') as Simple<Turn>;
 
   // Horizontal Lanes.
   range(4).forEach(i => {

@@ -181,7 +181,7 @@ export type Simple<T> = {
         ? Simple<B>[]
         : Simple<A>
       : key extends ('toJSON' | 'toString') // We ignore built-in functions.
-        ? T[key]
+        ? T[key] // direct references to objects can be held.
         : Simple<T[key]>
 };
 
