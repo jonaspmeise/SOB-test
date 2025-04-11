@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { GameEngine } from "../client/scripts/engine/engine.js";
-import { Action, Changes, Component, PlayerChoice, Rule, Simple } from "../client/scripts/engine/types-engine.js";
+import { Action, Changes, Component, NegativeRule, PlayerChoice, Rule, Simple } from "../client/scripts/engine/types-engine.js";
 
 type Die = Component<{
   sides: number,
@@ -33,6 +33,7 @@ describe('Simple Dice Game.', () => {
 
         return parameters;
       },
+      context: (entrypoint) => entrypoint,
       log: (parameters) => `Dice ${parameters.die} was rolled`
     });
 
@@ -74,5 +75,61 @@ describe('Simple Dice Game.', () => {
     engine.tick();
   });
 
-  // TEST: Negative Rules have precedence over positive Rules: Positive Rule is "Increase Die", Negative Rule is "Only increase dice that have value of 1"
+  it('Negative Rules have precedence over positive rules.', (done) => {
+    engine.registerComponent({
+      sides: 6,
+      value: 3 // IMPORTANT: This Die has a current value of 3!
+    }, 'die') as Simple<Die>;
+
+    const rollAction = engine.registerAction({
+      name: 'spin-up',
+      execute: (engine, parameters: {die: Die}) => {
+        parameters.die.value++;
+      },
+      context: (entrypoint) => entrypoint,
+      log: (parameters) => `${parameters.die} was spun up.`
+    }) as Action<{die: Die}>;
+
+    // TODO: Too many redundant values!
+    const rollRule = engine.registerRule({
+      name: 'Dice can be spun up.',
+      type: 'positive',
+      handler: (engine) => {
+        return engine.players().map(player => engine.query('die').map(die => {
+          return {
+            actionType: 'spin-up',
+            context: {die: die},
+            player: player,
+            execute: () => {
+              engine.executeAction('spin-up', {die: die}, player);
+            }
+          };
+        })).flat()
+      }
+    });
+    
+    // TODO: Types.
+    engine.registerRule({
+      name: 'Dice cant be spun up if their value is bigger than 1.',
+      type: 'negative',
+      handler: (choice) => {
+        if(choice.actionType !== 'spin-up') {
+          return true;
+        }
+
+        return (choice.context.die as Die).value <= 1;
+      }
+    }) as NegativeRule<typeof rollAction>;
+
+    engine.registerInterface({
+      actorId: 'player-01',
+      tickHandler: (delta: Changes, choices: PlayerChoice<unknown>[]) => {
+        expect(choices).to.have.length(0); // The negative rule overwrites the positive rule here!
+        done();
+      }
+    });
+
+    engine.tick();
+  });
+  // TEST: Context should hang on an action (THE RETURN TYPE), not a rule or choice!
 });

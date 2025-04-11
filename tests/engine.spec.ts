@@ -382,6 +382,7 @@ describe('Basic Engine Tests.', () => {
 
         return parameters;
       },
+      context: (entrypoint) => entrypoint,
       log: (parameters) => `Die ${parameters.target} was rolled`
     });
 
@@ -406,7 +407,7 @@ describe('Basic Engine Tests.', () => {
     engine.registerRule({
       name: 'A rule that prevents anything from happening!.',
       type: 'negative',
-      handler: (choices: ChoiceImplementation) => {
+      handler: (choices: ChoiceImplementation<Action<any>>) => {
         // By returning false, each previously generated choices is filtered out. In this state, _no_ player can do anything!
         return false;
       }
@@ -426,6 +427,7 @@ describe('Basic Engine Tests.', () => {
 
         return parameters;
       },
+      context: (entrypoint) => entrypoint,
       log: (parameters) => `Die ${parameters.target} was rolled`
     });
 
@@ -438,5 +440,9 @@ describe('Basic Engine Tests.', () => {
     });
 
     engine.tick();
+  });
+
+  it('If an action is executed that does not exist, an error is thrown.', () => {
+    expect(() => engine.executeAction('I dont exist!', {})).to.throw();
   });
 });

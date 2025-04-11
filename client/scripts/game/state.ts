@@ -60,8 +60,6 @@ export const INITIALIZE_BEYOND_GAMESTATE = (
     }, 'lane', `Vertical Lane ${i + 1}`) as Simple<Lane>;
   });
 
-  type a = Simple<Lane>['cards'];
-
   // Slots
   range(4).forEach(x => range(5).forEach(y => {
     engine.registerComponent({

@@ -33,15 +33,16 @@ export type Action<
 };
 */
 
-export type Action<INPUT_PARAMETERS extends {}, USED_PARAMETERS extends {} = INPUT_PARAMETERS> = {
+export type Action<ENTRYPOINT extends {}, INPUT_PARAMETERS extends {} = ENTRYPOINT, USED_PARAMETERS extends {} = INPUT_PARAMETERS> = {
   name: string,
   execute: (engine: GameEngine, parameters: INPUT_PARAMETERS) => USED_PARAMETERS,
+  context: (entrypoint: ENTRYPOINT) => INPUT_PARAMETERS,
   log: (usedParameters: USED_PARAMETERS) => string
 };
 
 export type Rule<T extends {} | undefined = undefined> =
   | PositiveRule<T>
-  | NegativeRule<T>;
+  | NegativeRule<Action<any>, T>;
 
 export type RuleType = 'positive' | 'negative';
 
@@ -49,10 +50,10 @@ export type PositiveRule<T extends {} | undefined = undefined>  = {
   name: string,
   type: 'positive',
   properties?: T,
-  handler: (engine: GameEngine, properties: T) => ChoiceImplementation[]
+  handler: (engine: GameEngine, properties: T) => ChoiceImplementation<any>[]
 };
 
-export type NegativeRule<T extends {} | undefined = undefined> = {
+export type NegativeRule<ACTION extends Action<any>, T extends {} | undefined = undefined> = {
   name: string,
   type: 'negative',
   properties?: T,
@@ -62,7 +63,7 @@ export type NegativeRule<T extends {} | undefined = undefined> = {
    * @param properties Optional properties that make the state of this rule.
    * @returns "true" if the choice is valid, "false" if this rule prevents this choice from being viable.
    */
-  handler: (choice: ChoiceImplementation, properties: T) => boolean
+  handler: (choice: ChoiceImplementation<ACTION>, properties: T) => boolean
 };
 
 /*
@@ -113,11 +114,11 @@ export type PlayerChoice<T extends {} | unknown = unknown> = {
   context: T
 };
 
-export type ChoiceImplementation<T extends {} | unknown = unknown> = {
+export type ChoiceImplementation<ACTION extends Action<{}>> = {
   player: PlayerInterface,
-  actionType: string,
+  actionType: ACTION['name'],
   // The context of this choice - this has nothing to do with the choice itself (or its implementation), but gives the player context on with what components this choice interacts!
-  context: T,
+  context: ReturnType<ACTION['context']>,
   execute: () => void,
   callback?: () => void
 };

@@ -21,7 +21,7 @@ export class GameEngine {
 
   private readonly _rules: Map<string, Rule> = new Map();
   private readonly _positiveRules: Map<string, PositiveRule> = new Map();
-  private readonly _negativeRules: Map<string, NegativeRule> = new Map();
+  private readonly _negativeRules: Map<string, NegativeRule<any>> = new Map();
 
   public registerComponent = <P extends {}> (properties: P, type: Type, name?: string): Simple<Component<P>> => {
     // Something will change!
@@ -370,7 +370,7 @@ export class GameEngine {
   };
 
   // TEST: Can't have duplicate rules.
-  public registerRule =<T extends Rule> (rule: T): T => {
+  public registerRule = <T extends Rule> (rule: T): T => {
     this._rules.set(
       rule.name,
       rule
@@ -408,10 +408,12 @@ export class GameEngine {
 
   // TEST: Throw error if action does not exist.
   public executeAction = <T extends {} | unknown = unknown> (actionType: string, parameters: T, actor?: PlayerInterface): void => {
-
+    if(!this._actions.has(actionType)) {
+      throw new Error(`The Action "${actionType}" does not exist!`);
+    }
   };
 
   public players = (): ReadonlyArray<PlayerInterface> => {
     return this._playerInterfaces;
-  }
+  };
 }
