@@ -1,4 +1,4 @@
-import { ActionProxy, Component, Components, ID, PlayerInterface, Type, QueryFilter, Lazy, LazyFunction, CacheEntry, StaticQueryFilter, StaticCacheEntry, Simple, Changes, Action, Rule, PositiveRule, NegativeRule, RuleType } from './types-engine.js';
+import { ActionProxy, Component, Components, ID, PlayerInterface, Type, QueryFilter, Lazy, LazyFunction, CacheEntry, StaticQueryFilter, StaticCacheEntry, Simple, Changes, Action, PositiveRule, NegativeRule, RuleType, InternalChoice, ImplentationChoice, Identifiable } from './types-engine.js';
 import { jsonify } from '../game/utility.js';
 
 export class GameEngine {
@@ -19,9 +19,10 @@ export class GameEngine {
   private readonly _playerInterfaces: PlayerInterface[] = [];
   private readonly _actions: Map<string, Action<any, any>> = new Map();
 
-  private readonly _rules: Map<string, Rule> = new Map();
   private readonly _positiveRules: Map<string, PositiveRule<any>> = new Map();
   private readonly _negativeRules: Map<string, NegativeRule<any>> = new Map();
+
+  private readonly _choices: Map<string, InternalChoice> = new Map();
 
   public registerComponent = <P extends {}> (properties: P, type: Type, name?: string): Simple<Component<P>> => {
     // Something will change!
@@ -208,8 +209,11 @@ export class GameEngine {
   public tick = () => {
     console.debug('Tick triggered.');
 
-    // Calculate the complete choice space for the current game state.
+    // Reset choice space.
+    this._choices.clear();
+    let choiceCounter = 0;
 
+    // Calculate the complete choice space for the current game state.
     const positiveChoiceSpace = Array.from(this._positiveRules.values())
       .map(rule => rule.handler(this, rule.properties))
       .flat();
@@ -217,11 +221,31 @@ export class GameEngine {
     console.debug(`After applying all positive rules, a total of ${positiveChoiceSpace.length} choices were generated...`);
 
     const negativeRules = Array.from(this._negativeRules.values());
-    const choiceSpace = positiveChoiceSpace
+    const choiceSpace: Identifiable<ImplentationChoice<Action<any>>>[] = positiveChoiceSpace
       // Filter out all negative rules.
-      .filter(choice => negativeRules.find(rule => rule.handler(choice, rule.properties) === false) === undefined);
+      .filter(choice => negativeRules.find(rule => rule.handler(choice, rule.properties) === false) === undefined)
+      .map(choice => {
+        // Generate an ID for each choice.
+        return {
+          id: `choice-${choiceCounter++}`,
+          ...choice
+        }
+      });
 
     console.debug(`After applying all negative rules, a total of ${choiceSpace.length} choices remain...`);
+
+    // Build entire choice space.
+    choiceSpace.forEach(choice => {
+      this._choices.set(
+        choice.id,
+        {
+          id: choice.id,
+          player: choice.player,
+          callback: choice.callback,
+          execute: () => choice.action.execute(this, choice.action.context(choice.action))
+        }
+      );
+    });
 
     this._playerInterfaces.forEach(player => {
       // const choiceSpace = this.
@@ -231,10 +255,14 @@ export class GameEngine {
         choiceSpace
           .filter(choice => choice.player.actorId === player.actorId)
           .map(choice => {
+            const context = choice.action.context(choice.entrypoint);
+            const message = choice.action.message(context);
+
             return {
-              actionType: choice.actionType,
-              context: jsonify(choice.context),
-              id: 'abc123' // TODO: Generate a random ID here to reference this choice!
+              id: choice.id, // TODO: Generate a random ID here to reference this choice!
+              message: message,
+              actionType: choice.action.name,
+              components: Object.values(context).map(component => (component as Component<unknown>).id)
             };
           })
       );
@@ -391,7 +419,7 @@ export class GameEngine {
     this._playerInterfaces.push(player);
   };
 
-  public rules = (ruleType: RuleType): ReadonlyMap<string, Rule> => {
+  public rules = (ruleType: RuleType): ReadonlyMap<string, PositiveRule<any> | NegativeRule<any>> => {
     if(ruleType === 'positive') {
       return this._positiveRules;
     } else {
@@ -399,14 +427,11 @@ export class GameEngine {
     }
   };
 
-  // TEST: Throw error if action does not exist.
-  public executeAction = <T extends {} | unknown = unknown> (actionType: string, parameters: T, actor?: PlayerInterface): void => {
-    if(!this._actions.has(actionType)) {
-      throw new Error(`The Action "${actionType}" does not exist!`);
-    }
-  };
-
   public players = (): ReadonlyArray<PlayerInterface> => {
     return this._playerInterfaces;
   };
+
+  public choices = (): ReadonlyMap<string, InternalChoice> => {
+    return this._choices;
+  }
 }

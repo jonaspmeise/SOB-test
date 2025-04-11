@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { GameEngine } from "../client/scripts/engine/engine.js";
-import { Action, Changes, ChoiceImplementation, Component, Components, PlayerChoice, Query, QueryFilter, Rule, Simple } from "../client/scripts/engine/types-engine.js";
+import { Action, Changes, ImplentationChoice, CommunicatedChoice, Component, Query, Simple } from "../client/scripts/engine/types-engine.js";
 
 const removeStaticFunctions = <T> (obj: T): Partial<T> => {
   //@ts-ignore
@@ -321,7 +321,7 @@ describe('Basic Engine Tests.', () => {
   it('A user can register into the game with a User Interface.', (done) => {
     engine.registerInterface({
       // This function is called whenever a Tick happens and the Game State was updated.
-      tickHandler: (delta: Changes, choices: PlayerChoice<unknown>[]) => {
+      tickHandler: (delta: Changes, choices: CommunicatedChoice[]) => {
         done();
       },
       actorId: 'Player 1'
@@ -341,7 +341,7 @@ describe('Basic Engine Tests.', () => {
     }, 'test');
 
     engine.registerInterface({
-      tickHandler: (delta: Changes, choices: PlayerChoice<unknown>[]) => {
+      tickHandler: (delta: Changes, choices: CommunicatedChoice[]) => {
         if(ticked === 0) {
           expect(delta).to.have.length(1);
           expect(removeStaticFunctions(delta.get('0'))).to.deep.equal({
@@ -383,7 +383,8 @@ describe('Basic Engine Tests.', () => {
         return parameters;
       },
       context: (entrypoint) => entrypoint,
-      log: (parameters) => `Die ${parameters.target} was rolled`
+      message: (context) => `Roll ${context.target}`,
+      log: (parameters) => `${parameters.target} was rolled`
     });
 
     expect(engine.actions()).to.have.length(1);
@@ -407,7 +408,7 @@ describe('Basic Engine Tests.', () => {
     engine.registerRule({
       name: 'A rule that prevents anything from happening!.',
       type: 'negative',
-      handler: (choices: ChoiceImplementation<Action<any>>) => {
+      handler: (choices: ImplentationChoice<Action<any>>) => {
         // By returning false, each previously generated choices is filtered out. In this state, _no_ player can do anything!
         return false;
       }
@@ -428,11 +429,12 @@ describe('Basic Engine Tests.', () => {
         return parameters;
       },
       context: (entrypoint) => entrypoint,
+      message: (context) => `Roll ${context.target}`,
       log: (parameters) => `Die ${parameters.target} was rolled`
     });
 
     engine.registerInterface({
-      tickHandler: (delta: Changes, choices: PlayerChoice<unknown>[]) => {
+      tickHandler: (delta: Changes, choices: CommunicatedChoice[]) => {
         expect(choices).to.have.length(0);
         done();
       },
@@ -440,9 +442,5 @@ describe('Basic Engine Tests.', () => {
     });
 
     engine.tick();
-  });
-
-  it('If an action is executed that does not exist, an error is thrown.', () => {
-    expect(() => engine.executeAction('I dont exist!', {})).to.throw();
   });
 });

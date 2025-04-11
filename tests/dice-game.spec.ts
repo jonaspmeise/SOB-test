@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { GameEngine } from "../client/scripts/engine/engine.js";
-import { Action, Changes, Component, NegativeRule, PlayerChoice, Rule, Simple } from "../client/scripts/engine/types-engine.js";
+import { Action, Changes, CommunicatedChoice, Component, NegativeRule, PositiveRule, Simple } from "../client/scripts/engine/types-engine.js";
 
 type Die = Component<{
   sides: number,
@@ -17,12 +17,12 @@ describe('Simple Dice Game.', () => {
   it('If a Rule exists that enables an Action (it generates choices for it), the player is informed about choices.', (done) => {
     engine.registerComponent({
       sides: 6,
-      value: 1
-    }, 'die') as Simple<Die>;
+      value: 1,
+    }, 'die', 'D6') as Simple<Die>;
     engine.registerComponent({
       sides: 20,
       value: 1
-    }, 'die') as Simple<Die>;
+    }, 'die', 'D20') as Simple<Die>;
 
     const roll: Action<{die: Die}> = engine.registerAction({
       name: 'roll',
@@ -34,23 +34,20 @@ describe('Simple Dice Game.', () => {
         return parameters;
       },
       context: (entrypoint) => entrypoint,
-      log: (parameters) => `Dice ${parameters.die} was rolled`
+      message: (context) => `Roll ${context.die}`,
+      log: (parameters) => `${parameters.die} was rolled`
     });
 
-    const canRoll: Rule = engine.registerRule({
+    const canRoll: PositiveRule<typeof roll> = engine.registerRule({
       type: 'positive',
       name: 'Dice can be rolled.',
-      handler: (engine) => engine.query('die').map(die => {
+      handler: (engine) => engine.query<Die>('die').map(die => {
         return engine.players().map(player => {
           return {
             player: player,
-            actionType: 'roll',
-            context: {
+            action: roll,
+            entrypoint: {
               die: die
-            },
-            execute: () => {
-              // For now, this is irrelevant:
-              // engine.executeAction('roll', {die: die})
             }
           };
         });
@@ -58,14 +55,22 @@ describe('Simple Dice Game.', () => {
     });
 
     engine.registerInterface({
-      tickHandler: (_delta: Changes, choices: PlayerChoice<unknown>[]) => {
+      tickHandler: (_delta: Changes, choices: CommunicatedChoice[]) => {
+        // General specifications - this is usually not communicated to the Client.
+        expect(engine.choices()).to.have.length(2); // 1 Action, 2 Dice, 1 Players => 1x2x2 = 4 total choices in this gamestate!
+
         expect(choices).to.have.length(2);
 
         expect(choices[0].actionType).to.equal('roll');
-        expect(choices[0].context).to.deep.equal({die: '@0'});
+        expect(choices[0].message).to.equal(`Roll D6`);
+        expect(choices[0].components).to.deep.equal(['0']);
+
+        expect(engine.choices().get(choices[0].id)).to.not.be.undefined;
         
         expect(choices[1].actionType).to.equal('roll');
-        expect(choices[1].context).to.deep.equal({die: '@1'});
+        expect(choices[1].message).to.equal(`Roll D20`);
+        expect(choices[1].components).to.deep.equal(['1']);
+        expect(engine.choices().get(choices[1].id)).to.not.be.undefined;
 
         done();
       },
@@ -81,49 +86,47 @@ describe('Simple Dice Game.', () => {
       value: 3 // IMPORTANT: This Die has a current value of 3!
     }, 'die') as Simple<Die>;
 
-    const rollAction = engine.registerAction({
+    const spinupAction = engine.registerAction({
       name: 'spin-up',
       execute: (engine, parameters: {die: Die}) => {
         parameters.die.value++;
       },
       context: (entrypoint) => entrypoint,
+      message: (context) => `Spin ${context.die} up`,
       log: (parameters) => `${parameters.die} was spun up.`
     }) as Action<{die: Die}>;
 
     // TODO: Too many redundant values!
-    const rollRule: Rule<typeof rollAction> = engine.registerRule({
+    const rollRule: PositiveRule<typeof spinupAction> = engine.registerRule({
       name: 'Dice can be spun up.',
       type: 'positive',
       handler: (engine) => {
-        return engine.players().map(player => engine.query('die').map(die => {
+        return engine.players().map(player => (engine.query<Die>('die')).map(die => {
           return {
-            actionType: 'spin-up',
-            context: {die: die},
-            player: player,
-            execute: () => {
-              engine.executeAction('spin-up', {die: die}, player);
-            }
+            action: spinupAction,
+            entrypoint: {die: die},
+            player: player
           };
         })).flat()
       }
-    }) as Rule<typeof rollAction>;
+    }) as PositiveRule<typeof spinupAction>;
     
     // TODO: Types.
     engine.registerRule({
       name: 'Dice cant be spun up if their value is bigger than 1.',
       type: 'negative',
       handler: (choice) => {
-        if(choice.actionType !== 'spin-up') {
+        if(choice.action.name !== 'spin-up') {
           return true;
         }
 
-        return (choice.context.die as Die).value <= 1;
+        return (choice.entrypoint.die as Die).value <= 1;
       }
-    }) as NegativeRule<typeof rollAction>;
+    }) as NegativeRule<typeof spinupAction>;
 
     engine.registerInterface({
       actorId: 'player-01',
-      tickHandler: (delta: Changes, choices: PlayerChoice<unknown>[]) => {
+      tickHandler: (delta: Changes, choices: CommunicatedChoice[]) => {
         expect(choices).to.have.length(0); // The negative rule overwrites the positive rule here!
         done();
       }
@@ -131,4 +134,6 @@ describe('Simple Dice Game.', () => {
 
     engine.tick();
   });
+
+  // TODO: FIX as Simple<Component<...>>[] to query<...>
 });

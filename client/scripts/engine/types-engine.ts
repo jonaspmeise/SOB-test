@@ -33,24 +33,27 @@ export type Action<
 };
 */
 
-export type Action<ENTRYPOINT extends {}, INPUT_PARAMETERS extends {} = ENTRYPOINT, USED_PARAMETERS extends {} = INPUT_PARAMETERS> = {
+export type Action<
+  ENTRYPOINT extends {[key: string]: Simple<Component<unknown>>},
+  INPUT_CONTEXT extends {[key: string]: Simple<Component<unknown>>} = ENTRYPOINT,
+  USED_PARAMETERS extends {} = INPUT_CONTEXT
+> = {
   name: string,
-  execute: (engine: GameEngine, parameters: INPUT_PARAMETERS) => USED_PARAMETERS,
-  context: (entrypoint: ENTRYPOINT) => INPUT_PARAMETERS,
-  log: (usedParameters: USED_PARAMETERS) => string
+  execute: (engine: GameEngine, context: INPUT_CONTEXT) => USED_PARAMETERS,
+  context: (entrypoint: ENTRYPOINT) => INPUT_CONTEXT,
+  // The text that is generated _before_ executing this action (descriptor of this action).
+  message: (context: INPUT_CONTEXT) => string,
+  // The text that is generated _after_ executing this action.
+  log: (parameters: USED_PARAMETERS) => string
 };
-
-export type Rule<T extends {} | undefined = undefined> =
-  | PositiveRule<Action<any>, T>
-  | NegativeRule<Action<any>, T>;
 
 export type RuleType = 'positive' | 'negative';
 
-export type PositiveRule<ACTION extends Action<any>, T extends {} | undefined = undefined>  = {
+export type PositiveRule<ACTION extends Action<any>, PROPERTIES extends {} | undefined = undefined>  = {
   name: string,
   type: 'positive',
-  properties?: T,
-  handler: (engine: GameEngine, properties: T) => ChoiceImplementation<ACTION>[]
+  properties?: PROPERTIES,
+  handler: (engine: GameEngine, properties: PROPERTIES) => ImplentationChoice<ACTION>[]
 };
 
 export type NegativeRule<ACTION extends Action<any>, PROPERTIES extends {} | undefined = undefined> = {
@@ -63,7 +66,7 @@ export type NegativeRule<ACTION extends Action<any>, PROPERTIES extends {} | und
    * @param properties Optional properties that make the state of this rule.
    * @returns "true" if the choice is valid, "false" if this rule prevents this choice from being viable.
    */
-  handler: (choice: ChoiceImplementation<ACTION>, properties: PROPERTIES) => boolean
+  handler: (choice: ImplentationChoice<ACTION>, properties: PROPERTIES) => boolean
 };
 
 /*
@@ -96,6 +99,7 @@ export type Component<T> = T & {
 export type Components = Map<ID, Simple<Component<unknown>>>;
 
 export type ID = string;
+export type Identifiable<T> = T & {id: ID};
 export type ActorID = string;
 export type Type = string;
 
@@ -108,24 +112,36 @@ export type PlayerInterface<T extends Simple<Component<unknown>> | undefined = u
 
 export type ActionProxy<ACTION extends string> = {[key in ACTION]: (...parameters: any[]) => void};
 
-export type PlayerChoice<T extends {} | unknown = unknown> = {
-  id: string,
-  actionType: string,
-  context: T
-};
-
-export type ChoiceImplementation<ACTION extends Action<{}>> = {
+// What the rules generate.
+export type ImplentationChoice<ACTION extends Action<any>> = {
   player: PlayerInterface,
-  actionType: ACTION['name'],
-  // The context of this choice - this has nothing to do with the choice itself (or its implementation), but gives the player context on with what components this choice interacts!
-  context: ReturnType<ACTION['context']>,
-  execute: () => void,
+  action: ACTION,
+  // The entrypoint of this choice - the quintessential information needed to execute this action.
+  entrypoint: ACTION extends Action<infer A> ? A : any,
   callback?: () => void
 };
 
+// What is persisted within the Game Engine. The details of the reason behind this Action are no longer relevant - only the core execution details are important.
+export type InternalChoice = {
+  id: string,
+  player: PlayerInterface,
+  execute: () => void,
+  callback?: () => void
+}
+
+// What is communicated to the player.
+export type CommunicatedChoice = {
+  // The Player communicates back to the Engine using this ID that they want to execute this action.
+  id: string,
+  actionType: string,
+  message: string,
+  // A simple list of components involved with this Action. This Array is derived from the Context of the Action and can be used by the client to navigate the player in selecting a choice.
+  components: ID[]
+}
+
 export type TickHandler = (
   stateDelta: Changes,
-  choices: PlayerChoice<unknown>[]
+  choices: CommunicatedChoice[]
 ) => void;
 
 export interface PlayerClient {
