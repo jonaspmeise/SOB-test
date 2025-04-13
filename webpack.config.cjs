@@ -6,7 +6,7 @@ module.exports = {
   entry: './dist/client/scripts/script.js',
   mode: 'development',
   output: {
-    filename: 'script.js'
+    filename: './dist/script.js'
   },
   resolve: {
     extensions: ['.js']

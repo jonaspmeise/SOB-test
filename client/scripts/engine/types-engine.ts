@@ -69,6 +69,11 @@ export type NegativeRule<ACTION extends Action<any>, PROPERTIES extends {} | und
   handler: (choice: ImplentationChoice<ACTION>, properties: PROPERTIES) => boolean
 };
 
+export type Trigger = {
+  name: string,
+  effect: (engine: GameEngine, actionType: string, parameter: {}) => void
+};
+
 /*
 
 export type TriggerTiming = 'before' | 'after';

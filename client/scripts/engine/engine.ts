@@ -1,4 +1,4 @@
-import { ActionProxy, Component, Components, ID, PlayerInterface, Type, CacheEntry, StaticQueryFilter, StaticCacheEntry, Simple, Changes, Action, PositiveRule, NegativeRule, RuleType, InternalChoice, ImplentationChoice, Identifiable } from './types-engine.js';
+import { ActionProxy, Component, Components, ID, PlayerInterface, Type, CacheEntry, StaticQueryFilter, StaticCacheEntry, Simple, Changes, Action, PositiveRule, NegativeRule, RuleType, InternalChoice, ImplentationChoice, Identifiable, Trigger, CommunicatedChoice } from './types-engine.js';
 import { jsonify } from '../game/utility.js';
 
 export class GameEngine {
@@ -18,6 +18,7 @@ export class GameEngine {
   private readonly _changes: Changes = new Map();
   private readonly _playerInterfaces: PlayerInterface[] = [];
   private readonly _actions: Map<string, Action<any, any>> = new Map();
+  private readonly _triggers: Map<string, Trigger> = new Map();
 
   private readonly _positiveRules: Map<string, PositiveRule<any>> = new Map();
   private readonly _negativeRules: Map<string, NegativeRule<any>> = new Map();
@@ -435,4 +436,37 @@ export class GameEngine {
   public choices = (): ReadonlyMap<string, InternalChoice> => {
     return this._choices;
   }
+
+  // TEST: No trigger can be overwritten.
+  public registerTrigger = (trigger: Trigger): Trigger => {
+    this._triggers.set(
+      trigger.name,
+      trigger
+    );
+
+    return trigger;
+  };
+
+  public triggers = (): ReadonlyMap<string, Trigger> => {
+    return this._triggers;
+  };
+
+  public execute = (id: string): void => {
+    const choice = this._choices.get(id);
+
+    if(choice === undefined) {
+      throw new Error(`The choice with the ID "${id}" does not exist!`);
+    }
+
+    console.debug(`Executing choice #${id}...`);
+    choice.execute();
+    
+    if(choice.callback !== undefined) {
+      console.debug(`Callback found! Calling...`);
+      choice.callback()
+    };
+
+    console.debug(`Triggering new tick...`);
+    this.tick();
+  };
 }

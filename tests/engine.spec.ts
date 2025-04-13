@@ -439,4 +439,19 @@ describe('Basic Engine Tests.', () => {
 
     engine.tick();
   });
+
+  it('Triggers can be registered.', () => {
+    engine.registerTrigger({
+      name: 'my-trigger',
+      effect: (engine, type, parameters) => {
+        // This is empty for now...
+      }
+    });
+
+    expect(engine.triggers()).to.have.length(1);
+  });
+
+  it('If a choice is executed that does not exist, an error is thrown.', () => {
+    expect(() => engine.execute('I dont exist!')).to.throw(/choice/i);
+  });
 });

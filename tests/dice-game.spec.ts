@@ -117,8 +117,7 @@ describe('Simple Dice Game.', () => {
       log: (parameters) => `${parameters.die} was spun up.`
     }) as Action<{die: Die}>;
 
-    // TODO: Too many redundant values!
-    const rollRule: PositiveRule<typeof spinupAction> = engine.registerRule({
+    engine.registerRule({
       name: 'Dice can be spun up.',
       type: 'positive',
       handler: (engine) => {
@@ -132,7 +131,6 @@ describe('Simple Dice Game.', () => {
       }
     }) as PositiveRule<typeof spinupAction>;
     
-    // TODO: Types.
     engine.registerRule({
       name: 'Dice cant be spun up if their value is bigger than 1.',
       type: 'negative',
@@ -150,6 +148,56 @@ describe('Simple Dice Game.', () => {
       tickHandler: (delta: Changes, choices: CommunicatedChoice[]) => {
         expect(choices).to.have.length(0); // The negative rule overwrites the positive rule here!
         done();
+      }
+    });
+
+    engine.tick();
+  });
+
+  it('Actions can be executed.', (done) => {
+    
+    engine.registerComponent({
+      sides: 6,
+      value: 1
+    }, 'die') as Simple<Die>;
+
+    const spinupAction = engine.registerAction({
+      name: 'spin-up',
+      execute: (engine, context) => {
+        context.die.value++;
+
+        return context;
+      },
+      context: (engine, entrypoint) => entrypoint,
+      message: (context) => `Spin ${context.die} up`,
+      log: (parameters) => `${parameters.die} was spun up.`
+    }) as Action<{die: Die}>;
+    
+    engine.registerRule({
+      name: 'Dice can be spun up.',
+      type: 'positive',
+      handler: (engine) => {
+        return engine.players().map(player => (engine.query<Die>('die')).map(die => {
+          return {
+            action: spinupAction,
+            entrypoint: {die: die},
+            player: player
+          };
+        })).flat()
+      }
+    }) as PositiveRule<typeof spinupAction>;
+
+    engine.registerInterface({
+      actorId: 'player-01',
+      tickHandler: (delta: Changes, choices: CommunicatedChoice[]) => {
+        expect(choices).to.have.length(1); // 1 Dice can be spun up!
+
+        // We already spun the dice up once?
+        if((delta.get('0') as Die)?.value === 2) {
+          done();
+        }
+
+        engine.execute(choices[0].id);
       }
     });
 
