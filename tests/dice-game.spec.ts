@@ -203,4 +203,68 @@ describe('Simple Dice Game.', () => {
 
     engine.tick();
   });
+
+  it('Triggers are called (not necessarily executed!) whenever a choice is executed.', (done) => {
+    const myDie = engine.registerComponent({
+      sides: 6,
+      value: 1
+    }, 'die') as Simple<Die>;
+
+    const spinupAction = engine.registerAction({
+      name: 'spin-up',
+      execute: (engine, context) => {
+        context.die.value++;
+
+        return context;
+      },
+      context: (engine, entrypoint) => entrypoint,
+      message: (context) => `Spin ${context.die} up`,
+      log: (parameters) => `${parameters.die} was spun up.`
+    }) as Action<{die: Die}>;
+    
+    engine.registerRule({
+      name: 'Dice can be spun up.',
+      type: 'positive',
+      handler: (engine) => {
+        return engine.players().map(player => (engine.query<Die>('die'))
+          .filter(die => die.value < die.sides) // Only dice that are not yet on their maximum can be spun up!
+          .map(die => {
+            return {
+              action: spinupAction,
+              entrypoint: {die: die},
+              player: player
+            };
+          })).flat()
+      }
+    }) as PositiveRule<typeof spinupAction>;
+
+    let counter = 0;
+    engine.registerTrigger({
+      name: 'Whenever a Die is spun, this Test succeeds.',
+      execute: (engine, actionType, context) => {
+        expect(actionType).to.equal('spin-up');
+        expect(context).to.deep.equal({
+          die: myDie
+        });
+
+        // We only need to check the first execution - if we check _all_ calls for this Trigger, it considers the test to be erroreous!
+        if(counter++ === 0) {
+          done();
+        }
+
+        return [];
+      }
+    })
+
+    engine.registerInterface({
+      actorId: 'player-01',
+      tickHandler: (delta: Changes, choices: CommunicatedChoice[]) => {
+        if(choices.length > 0) {
+          engine.execute(choices[0].id);
+        }
+      }
+    });
+
+    engine.tick();
+  });
 });

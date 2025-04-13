@@ -71,7 +71,8 @@ export type NegativeRule<ACTION extends Action<any>, PROPERTIES extends {} | und
 
 export type Trigger = {
   name: string,
-  effect: (engine: GameEngine, actionType: string, parameter: {}) => void
+  actionTypes?: string[],
+  execute: (engine: GameEngine, actionType: string, context: {}) => (() => void)[]
 };
 
 /*
@@ -129,8 +130,10 @@ export type ImplentationChoice<ACTION extends Action<any>> = {
 };
 
 // What is persisted within the Game Engine. The details of the reason behind this Action are no longer relevant - only the core execution details are important.
-export type InternalChoice = {
+export type InternalChoice<T extends Action<any, any>> = {
   id: string,
+  actionType: T['name'],
+  context: T['context'],
   player: PlayerInterface,
   execute: () => void,
   callback?: () => void

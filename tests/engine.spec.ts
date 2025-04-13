@@ -441,14 +441,32 @@ describe('Basic Engine Tests.', () => {
   });
 
   it('Triggers can be registered.', () => {
+    // This Trigger is implicitely registered for _all_ actions!
     engine.registerTrigger({
       name: 'my-trigger',
-      effect: (engine, type, parameters) => {
-        // This is empty for now...
+      execute: (engine, type, context) => {
+        // This is empty for now - no additional executions are triggered in here!
+        return [];
       }
     });
 
     expect(engine.triggers()).to.have.length(1);
+  });
+  
+  it('Trigger for a specific Action can be registered.', () => {
+    // TODO: Types!
+    engine.registerTrigger({
+      name: 'my-trigger',
+      actionTypes: ['draw', 'leave'],
+      execute: (engine, type, context) => {
+        // This is empty for now - no additional executions are triggered in here!
+        return [];
+      }
+    });
+
+    expect(engine.triggers()).to.have.length(1);
+    expect(engine.triggers('draw')).to.have.length(1);
+    expect(engine.triggers('leave')).to.have.length(1);
   });
 
   it('If a choice is executed that does not exist, an error is thrown.', () => {

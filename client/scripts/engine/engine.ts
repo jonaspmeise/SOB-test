@@ -18,12 +18,15 @@ export class GameEngine {
   private readonly _changes: Changes = new Map();
   private readonly _playerInterfaces: PlayerInterface[] = [];
   private readonly _actions: Map<string, Action<any, any>> = new Map();
-  private readonly _triggers: Map<string, Trigger> = new Map();
+
+  // TRIGGERS
+  private readonly _genericTriggers: Trigger[] = [];
+  private readonly _specificTriggers: Map<string, Trigger[]> = new Map();
 
   private readonly _positiveRules: Map<string, PositiveRule<any>> = new Map();
   private readonly _negativeRules: Map<string, NegativeRule<any>> = new Map();
 
-  private readonly _choices: Map<string, InternalChoice> = new Map();
+  private readonly _choices: Map<string, InternalChoice<any>> = new Map();
 
   public registerComponent = <P extends {}> (properties: P, type: Type, name?: string): Simple<Component<P>> => {
     // Something will change!
@@ -237,13 +240,17 @@ export class GameEngine {
 
     // Build entire choice space.
     choiceSpace.forEach(choice => {
+      const context = choice.action.context(this, choice.entrypoint); 
+
       this._choices.set(
         choice.id,
         {
           id: choice.id,
+          actionType: choice.action.name,
+          context: context,
           player: choice.player,
           callback: choice.callback,
-          execute: () => choice.action.execute(this, choice.action.context(this, choice.entrypoint)) // TEST:
+          execute: () => choice.action.execute(this, context) // TEST:
         }
       );
     });
@@ -433,22 +440,41 @@ export class GameEngine {
     return this._playerInterfaces;
   };
 
-  public choices = (): ReadonlyMap<string, InternalChoice> => {
+  public choices = (): ReadonlyMap<string, InternalChoice<any>> => {
     return this._choices;
   }
 
   // TEST: No trigger can be overwritten.
+  // TEST: Trigger with empty Action Types throws exception.
   public registerTrigger = (trigger: Trigger): Trigger => {
-    this._triggers.set(
-      trigger.name,
-      trigger
-    );
+    // TODO: Register for all action types.
+    if(trigger.actionTypes === undefined) {
+      console.debug(`Registering generic trigger "${trigger.name}".`);
+      this._genericTriggers.push(trigger);
+    } else {
+      trigger.actionTypes.forEach(type => {
+        console.debug(`Registering trigger "${trigger.name}" for Action Type ${type}...`);
+        
+        this._specificTriggers.set(
+          type,
+          (this._specificTriggers.get(type) ?? []).concat(trigger)
+        );
+      });
+    }
 
     return trigger;
   };
 
-  public triggers = (): ReadonlyMap<string, Trigger> => {
-    return this._triggers;
+  public triggers = (actionType?: string): ReadonlyArray<Trigger> => {
+    if(actionType === undefined) {
+      // Return all generic triggers and each unique specific Trigger!
+      return this._genericTriggers.concat(Array.from(new Set(...this._specificTriggers.values())));
+    }
+
+    const triggers = this._specificTriggers.get(actionType);
+    console.debug(`Found ${triggers?.length ?? 0} triggers for action type "${actionType}"...`);
+
+    return this._genericTriggers.concat(triggers ?? []);
   };
 
   public execute = (id: string): void => {
@@ -460,11 +486,21 @@ export class GameEngine {
 
     console.debug(`Executing choice #${id}...`);
     choice.execute();
-    
+
     if(choice.callback !== undefined) {
-      console.debug(`Callback found! Calling...`);
-      choice.callback()
+      console.debug(`Callback found! Calling back the Rule that generated this Choice...`);
+      choice.callback();
     };
+
+    // Iterating over all triggers that might be triggered by executing this choice...
+    const triggers = this._genericTriggers.concat(this._specificTriggers.get(choice.actionType) ?? []);
+    console.debug(`Evaluating a total of ${triggers.length} Triggers, whether they trigger or not for this choice...`);
+
+    const triggerCalls = triggers
+      .filter(trigger => trigger.execute(this, choice.actionType, choice.context))
+      .flat();
+
+    console.debug(`Will execute ${triggerCalls.length} trigger callbacks!`);
 
     console.debug(`Triggering new tick...`);
     this.tick();
