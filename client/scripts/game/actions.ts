@@ -108,28 +108,3 @@ export const CrystallizeAction = {
   log: (parameters) => `${parameters.player} crystallized ${parameters.card}.`,
 } as Action<'crystallize', {player: BeyondPlayer, card: Card}, Card>;
 */
-
-export const REGISTER_BEYOND_ACTIONS = (engine: GameEngine): void => {
-  engine.registerAction({
-    name: 'Pass',
-    context: (engine, entrypoint) => {
-      const turn = engine.query<Turn>('turn')[0];
-
-      return {
-        player: turn.currentPlayer,
-        turn: turn
-      };
-    },
-    message: () => 'Pass your Turn.',
-    execute: (engine, context) => {
-      const otherPlayer = engine.query<Player>('player').filter(player => player.id !== context.player.id)[0];
-      context.turn.currentPlayer = otherPlayer;
-
-      return {
-        previous: context.player,
-        next: otherPlayer
-      };
-    },
-    log: (context) => `${context.previous} passed their Turn to ${context.next}.`
-  }) as Action<{}, {player: Simple<Player>, turn: Simple<Turn>}, {previous: Simple<Player>, next: Simple<Player>}>;
-};

@@ -4,8 +4,7 @@
 import { range } from './engine/utility.js';
 import { Card, CardType, Lane, Rarity, RawCard, Realm, REALM_MAPPING, ShardsOfBeyondActionType, Slot, Subtype } from './game/types-game.js';
 import { GameEngine } from './engine/engine.js';
-import { INITIALIZE_BEYOND_GAMESTATE } from './game/state.js';
-import { REGISTER_BEYOND_ACTIONS } from './game/actions.js';
+import { INITIALIZE_BEYOND } from './game/state.js';
 
 // CONSTANTS
 const cardFile = 'https://cdn.shardsofbeyond.com/client/cards.json';
@@ -17,9 +16,9 @@ const request = await fetch(cardFile);
 const cards = (await request.json() as RawCard[]);
 
 const startTime = new Date().getTime();
-INITIALIZE_BEYOND_GAMESTATE(engine, cards);
-REGISTER_BEYOND_ACTIONS(engine);
-// REGISTER_BEYOND_RULES(engine);
+
+INITIALIZE_BEYOND(engine, cards);
+
 const endTime = new Date().getTime();
 
 console.info(`Loaded game in ${(endTime - startTime) / 1000} seconds.`);

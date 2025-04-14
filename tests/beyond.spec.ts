@@ -1,8 +1,7 @@
 // Import Chai and assertion styles
 import { expect } from 'chai';
 import { GameEngine } from '../client/scripts/engine/engine.js';
-import { ShardsOfBeyondActionType } from '../client/scripts/game/types-game.js';
-import { INITIALIZE_BEYOND_GAMESTATE } from '../client/scripts/game/state.js';
+import { INITIALIZE_BEYOND } from '../client/scripts/game/state.js';
 
 console.debug = () => {};
 
@@ -12,7 +11,7 @@ describe('Component Initialization', () => {
 
   beforeEach(() => {
     engine = new GameEngine();
-    INITIALIZE_BEYOND_GAMESTATE(engine, []);
+    INITIALIZE_BEYOND(engine, []);
 
     engine.start();
   });

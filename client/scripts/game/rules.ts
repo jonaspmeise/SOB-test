@@ -1,8 +1,8 @@
-dimport { GameEngine } from "../engine/engine";
-import { Rule } from "../engine/types-engine";
-import { BeyondPlayer, Card, ShardsOfBeyondActionType, Slot, Turn } from "./types-game";
+import { GameEngine } from "../engine/engine.js";
+import { Action, PlayerInterface, PositiveRule, Simple } from "../engine/types-engine.js";
+import { Card, Player, Slot, Turn } from "./types-game.js";
 
-export const OnlyOneCrystallizePerTurnRule: Rule<{alreadyCrystallized: number[]}> = {
+/*
   name: 'Players may crystallize one card during their Turn from their Hand.',
   properties: {
     // Track per Player how many cards they crystallized already.
@@ -107,3 +107,4 @@ export const SHARDS_OF_BEYOND_RULES: Rule<any>[] = [
     }
   } as Rule<undefined>
 ];
+*/

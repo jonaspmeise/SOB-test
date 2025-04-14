@@ -1,14 +1,15 @@
 import { ShardsOfBeyondActionType, Owned, Lane, Slot, Card, Player, Container, Turn, Hand, Deck, CrystalZone, RawCard, Rarity, CardType, Subtype, Realm, REALM_MAPPING } from './types-game.js';
 import { GameEngine } from '../engine/engine.js';
-import { Component,  QueryFilter,  Simple,  Type } from '../engine/types-engine.js';
+import { Action, Component,  PlayerInterface,  PositiveRule,  QueryFilter,  Simple,  Type } from '../engine/types-engine.js';
 import { range, shuffle } from '../engine/utility.js';
 
 // TODO: Optionally accept game config parameters, which are handed from outside (player names, starting deck...?).
-export const INITIALIZE_BEYOND_GAMESTATE = (
+export const INITIALIZE_BEYOND = (
   engine: GameEngine,
   cards: RawCard[]
 ): void => {
 
+  // COMPONENTS.
   // Players
   const players = ['Görzy', 'Rashid'].map((name, i) => {
     const player = engine.registerComponent({
@@ -120,8 +121,70 @@ export const INITIALIZE_BEYOND_GAMESTATE = (
       lanes: (self, engine) => engine.query<Lane>('lane').filter(lane => lane.slots.includes(self))
     }, 'slot', `Slot ${x}/${y}`) as Simple<Slot>;
   }));
-};
 
-export const REGISTER_BEYOND_LINGO = (engine: GameEngine): void => {
+  // ACTIONS
   
+  const ACTION_PASS = engine.registerAction({
+    name: 'Pass',
+    context: (engine, entrypoint) => {
+      const turn = engine.query<Turn>('turn')[0];
+
+      return {
+        player: turn.currentPlayer,
+        turn: turn
+      };
+    },
+    message: () => 'Pass your Turn.',
+    execute: (engine, context) => {
+      const otherPlayer = engine.query<Player>('player').filter(player => player.id !== context.player.id)[0];
+      // @ts-ignore FIXME
+      context.turn.currentPlayer = otherPlayer;
+
+      return {
+        previous: context.player,
+        next: otherPlayer
+      };
+    },
+    log: (context) => `${context.previous} passed their Turn to ${context.next}.`
+  }) as Action<{}, {player: Simple<Player>, turn: Simple<Turn>}, {previous: Simple<Player>, next: Simple<Player>}>;
+
+  // RULES
+  const RULE_PASS_TURN = engine.registerRule({
+    id: 'crystallize-one-card-per-turn',
+    name: 'Players may crystallize one card during their Turn from their Hand.',
+    type: 'positive',
+    properties: {
+      alreadyCrystallized: [0, 0]
+    },
+    handler: (engine, properties) =>
+      engine.players<Player>().map(int => {
+        const player = int.avatar! as Simple<Player>;
+
+        // Only allow Players that have _not_ crystallized with this yet!
+        if(properties.alreadyCrystallized[player.index] > 0) {
+          return;
+        }
+
+        return player.hand.cards.map(card => {
+          return {
+            player: int,
+            action: ACTION_PASS,
+            entrypoint: {card: card}
+          };
+        });
+      })
+      .filter(r => r !== undefined)
+      .flat()
+    }) as PositiveRule<typeof ACTION_PASS, {alreadyCrystallized: number[]}>;
+
+  // TRIGGERS
+  const TRIGGER_RESET_LIMIT = engine.registerTrigger({
+    name: 'Default Actions for Crystallize / Play reset after each Turn.',
+    actionTypes: ['pass'],
+    execute: (engine, actionType, context) => {
+      engine.getRule('pass-turn-reset-limits');
+  
+      return [];
+    }
+  });
 };

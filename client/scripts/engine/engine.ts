@@ -1,4 +1,4 @@
-import { ActionProxy, Component, Components, ID, PlayerInterface, Type, CacheEntry, StaticQueryFilter, StaticCacheEntry, Simple, Changes, Action, PositiveRule, NegativeRule, RuleType, InternalChoice, ImplentationChoice, Identifiable, Trigger, CommunicatedChoice } from './types-engine.js';
+import { Component, Components, ID, PlayerInterface, Type, CacheEntry, StaticQueryFilter, StaticCacheEntry, Simple, Changes, Action, PositiveRule, NegativeRule, RuleType, InternalChoice, ImplentationChoice, Identifiable, Trigger, CommunicatedChoice, Callbackable } from './types-engine.js';
 import { jsonify } from '../game/utility.js';
 
 export class GameEngine {
@@ -23,6 +23,7 @@ export class GameEngine {
   private readonly _genericTriggers: Trigger[] = [];
   private readonly _specificTriggers: Map<string, Trigger[]> = new Map();
 
+  private readonly _rules: Map<string, PositiveRule<any> | NegativeRule<any>> = new Map();
   private readonly _positiveRules: Map<string, PositiveRule<any>> = new Map();
   private readonly _negativeRules: Map<string, NegativeRule<any>> = new Map();
 
@@ -218,14 +219,21 @@ export class GameEngine {
     let choiceCounter = 0;
 
     // Calculate the complete choice space for the current game state.
-    const positiveChoiceSpace = Array.from(this._positiveRules.values())
-      .map(rule => rule.handler(this, rule.properties))
+    const positiveChoiceSpace: Callbackable<ImplentationChoice<Action<any>>>[] = Array.from(this._positiveRules.values())
+      .map(rule => rule.handler(this, rule.properties)
+        .map(choice => {
+          return {
+            ...choice,
+            callback: rule.callback
+          }
+        })
+      )
       .flat();
 
     console.debug(`After applying all positive rules, a total of ${positiveChoiceSpace.length} choices were generated...`);
 
     const negativeRules = Array.from(this._negativeRules.values());
-    const choiceSpace: Identifiable<ImplentationChoice<Action<any>>>[] = positiveChoiceSpace
+    const choiceSpace: Callbackable<Identifiable<ImplentationChoice<Action<any>>>>[] = positiveChoiceSpace
       // Filter out all negative rules.
       .filter(choice => negativeRules.find(rule => rule.handler(choice, rule.properties) === false) === undefined)
       .map(choice => {
@@ -249,7 +257,7 @@ export class GameEngine {
           actionType: choice.action.name,
           context: context,
           player: choice.player,
-          callback: choice.callback,
+          callback: () => choice.callback,
           execute: () => choice.action.execute(this, context) // TEST:
         }
       );
@@ -406,15 +414,20 @@ export class GameEngine {
   };
 
   // TEST: Can't have duplicate rules.
-  public registerRule = <T extends PositiveRule<ACTION> | NegativeRule<ACTION>, ACTION extends Action<any>> (rule: T): T => {
+  public registerRule = <T extends PositiveRule<Action<any>, any> | NegativeRule<Action<any>, any>> (rule: T): T => {
+    this._rules.set(
+      rule.id,
+      rule
+    );
+
     if(rule.type === 'negative') {
       this._negativeRules.set(
-        rule.name,
+        rule.id,
         rule
       );
     } else {
       this._positiveRules.set(
-        rule.name,
+        rule.id,
         rule
       );
     }
@@ -436,7 +449,7 @@ export class GameEngine {
     }
   };
 
-  public players = (): ReadonlyArray<PlayerInterface> => {
+  public players = <T extends (Component<any> | undefined) = undefined> (): ReadonlyArray<PlayerInterface<T>> => {
     return this._playerInterfaces;
   };
 
@@ -446,6 +459,7 @@ export class GameEngine {
 
   // TEST: No trigger can be overwritten.
   // TEST: Trigger with empty Action Types throws exception.
+  // TEST: Throw an error if the ActionType has not been registered yet!
   public registerTrigger = (trigger: Trigger): Trigger => {
     // TODO: Register for all action types.
     if(trigger.actionTypes === undefined) {
@@ -489,7 +503,7 @@ export class GameEngine {
 
     if(choice.callback !== undefined) {
       console.debug(`Callback found! Calling back the Rule that generated this Choice...`);
-      choice.callback();
+      choice.callback(this, choice.context);
     };
 
     // Iterating over all triggers that might be triggered by executing this choice...
@@ -504,5 +518,16 @@ export class GameEngine {
 
     console.debug(`Triggering new tick...`);
     this.tick();
+  };
+
+  // TEST: Throw an error if the rule does not exist!
+  public getRule = <T extends (PositiveRule<any> | NegativeRule<any>)> (id: string): T => {
+    const rule = this._rules.get(id);
+
+    if(rule === undefined) {
+      throw new Error(`The Rule "${rule}" does not exist!`);
+    }
+
+    return rule as T;
   };
 }

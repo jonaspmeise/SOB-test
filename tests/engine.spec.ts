@@ -390,7 +390,8 @@ describe('Basic Engine Tests.', () => {
 
   it('A positive rule can be registered.', () => {
     engine.registerRule({
-      name: 'A rule that doesnt add any choices!.',
+      id: 'my-rule-id',
+      name: 'A rule that doesnt add any choices!',
       type: 'positive',
       handler: (engine) => {
         // This rule returns no new choices...
@@ -400,11 +401,13 @@ describe('Basic Engine Tests.', () => {
 
     expect(engine.rules('positive')).to.have.length(1);
     expect(engine.rules('negative')).to.have.length(0);
+    expect(engine.getRule('my-rule-id').name).to.equal('A rule that doesnt add any choices!');
   });
   
   it('A negative rule can be registered.', () => {
     engine.registerRule({
-      name: 'A rule that prevents anything from happening!.',
+      id: 'my-rule-id',
+      name: 'A rule that prevents anything from happening!',
       type: 'negative',
       handler: (choices: ImplentationChoice<Action<any>>) => {
         // By returning false, each previously generated choices is filtered out. In this state, _no_ player can do anything!
@@ -414,6 +417,7 @@ describe('Basic Engine Tests.', () => {
 
     expect(engine.rules('negative')).to.have.length(1);
     expect(engine.rules('positive')).to.have.length(0);
+    expect(engine.getRule('my-rule-id').name).to.equal('A rule that prevents anything from happening!');
   });
 
   it('If only an Action is registered (without a rule that enables it), a choice doesnt exist.', (done) => {
@@ -471,5 +475,9 @@ describe('Basic Engine Tests.', () => {
 
   it('If a choice is executed that does not exist, an error is thrown.', () => {
     expect(() => engine.execute('I dont exist!')).to.throw(/choice/i);
+  });
+
+  it('If a Rule is searched for that doesnt exist, an error is thrown.', () => {
+    expect(() => engine.getRule('I dont exist!')).to.throw(/rule/i);
   });
 });

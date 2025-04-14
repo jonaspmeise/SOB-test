@@ -37,6 +37,7 @@ describe('Simple Dice Game.', () => {
     });
 
     const canRoll: PositiveRule<typeof roll> = engine.registerRule({
+      id: 'dice-can-be-rolled',
       type: 'positive',
       name: 'Dice can be rolled.',
       handler: (engine) => engine.query<Die>('die').map(die => {
@@ -118,6 +119,7 @@ describe('Simple Dice Game.', () => {
     }) as Action<{die: Die}>;
 
     engine.registerRule({
+      id: 'dice-can-be-spun',
       name: 'Dice can be spun up.',
       type: 'positive',
       handler: (engine) => {
@@ -132,6 +134,7 @@ describe('Simple Dice Game.', () => {
     }) as PositiveRule<typeof spinupAction>;
     
     engine.registerRule({
+      id: 'dice-cant-be-spun-beyond-maximum',
       name: 'Dice cant be spun up if their value is bigger than 1.',
       type: 'negative',
       handler: (choice) => {
@@ -174,6 +177,7 @@ describe('Simple Dice Game.', () => {
     }) as Action<{die: Die}>;
     
     engine.registerRule({
+      id: 'dice-can-be-spun',
       name: 'Dice can be spun up.',
       type: 'positive',
       handler: (engine) => {
@@ -223,6 +227,7 @@ describe('Simple Dice Game.', () => {
     }) as Action<{die: Die}>;
     
     engine.registerRule({
+      id: 'dice-can-be-rolled',
       name: 'Dice can be spun up.',
       type: 'positive',
       handler: (engine) => {
