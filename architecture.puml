@@ -1,5 +1,31 @@
 @startuml
 
-[Server] as SERVER;
+package Server as SERVER {
+  package Engine as ENGINE
+  component Communicator as COMMUNICATOR
+}
+
+package Client as CLIENT {
+  component Connector as CONNECTOR
+  component Integrator as INTEGRATOR
+  component UI as UI
+  
+  actor Player as PLAYER
+}
+
+COMMUNICATOR --> CONNECTOR : State Delta, Log and Choices
+CONNECTOR --> INTEGRATOR : sends State Delta
+INTEGRATOR --> INTEGRATOR : applies State Delta to itself
+INTEGRATOR --> UI : renders State Delta
+
+PLAYER --> UI : interacts
+UI --> INTEGRATOR : filters choices
+INTEGRATOR --> CONNECTOR : chosen choice
+CONNECTOR --> COMMUNICATOR : sends choice
+COMMUNICATOR --> ENGINE : executes choice
+
+ENGINE --> COMMUNICATOR : informs
+
+
 
 @enduml
