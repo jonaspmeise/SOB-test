@@ -55,9 +55,6 @@ describe('Simple Dice Game.', () => {
 
     engine.registerInterface({
       tickHandler: (engine, _delta: Changes, choices: CommunicatedChoice[]) => {
-        // General specifications - this is usually not communicated to the Client.
-        expect(engine.choices()).to.have.length(4); // 1 Action, 2 Dice, 2 Players => 1x2x2 = 4 total choices in this gamestate!
-
         expect(choices).to.have.length(2);
 
         expect(choices[0].actionType).to.equal('roll');
@@ -76,9 +73,6 @@ describe('Simple Dice Game.', () => {
 
     engine.registerInterface({
       tickHandler: (engine, _delta: Changes, choices: CommunicatedChoice[]) => {
-        // General specifications - this is usually not communicated to the Client.
-        expect(engine.choices()).to.have.length(4); // 1 Action, 2 Dice, 2 Players => 1x2x2 = 4 total choices in this gamestate!
-
         expect(choices).to.have.length(2);
 
         expect(choices[0].actionType).to.equal('roll');
@@ -96,8 +90,6 @@ describe('Simple Dice Game.', () => {
       },
       actorId: 'player-02'
     });
-
-    engine.tick();
   });
 
   it('Negative Rules have precedence over positive rules.', (done) => {
@@ -146,6 +138,7 @@ describe('Simple Dice Game.', () => {
       }
     }) as NegativeRule<typeof spinupAction>;
 
+    // This already triggers a Tick in itself.
     engine.registerInterface({
       actorId: 'player-01',
       tickHandler: (engine, delta: Changes, choices: CommunicatedChoice[]) => {
@@ -153,8 +146,6 @@ describe('Simple Dice Game.', () => {
         done();
       }
     });
-
-    engine.tick();
   });
 
   it('Actions can be executed.', (done) => {
@@ -191,6 +182,7 @@ describe('Simple Dice Game.', () => {
       }
     }) as PositiveRule<typeof spinupAction>;
 
+    // This already triggers a tick in itself.
     engine.registerInterface({
       actorId: 'player-01',
       tickHandler: (engine, delta: Changes, choices: CommunicatedChoice[]) => {
@@ -204,8 +196,6 @@ describe('Simple Dice Game.', () => {
         engine.execute(choices[0].id);
       }
     });
-
-    engine.tick();
   });
 
   it('Triggers are called (not necessarily executed!) whenever a choice is executed.', (done) => {

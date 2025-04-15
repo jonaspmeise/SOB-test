@@ -213,6 +213,15 @@ export const INITIALIZE_BEYOND = (
     log: (context) => `${context.card} was crystallized into ${context.card.owner.crystalzone}.`
   }) as Action<{card: Card}>;
 
+  // This doesnt have any logic, because it's purely symbolic.
+  const ACTION_START_TURN = engine.registerAction({
+    name: 'start-turn',
+    context: (engine, entrypoint) => entrypoint,
+    message: () => 'Start your Turn.',
+    execute: (engine, context) => context,
+    log: (context) => `${context.player}'s Turn starts.`
+  }) as Action<{player: Player}>
+
   // RULES
   const RULE_CRYSTALLIZE_DEFAULT = engine.registerRule({
     id: 'crystallize-one-card-per-turn',
@@ -287,6 +296,7 @@ export const INITIALIZE_BEYOND = (
   }) as PositiveRule<typeof ACTION_PASS>  
 
   // TRIGGERS
+  // TODO: Types that link Triggers to actions!
   const TRIGGER_RESET_LIMIT = engine.registerTrigger({
     name: 'Default Actions for Crystallize / Play reset after each Turn.',
     actionTypes: ['pass'],
@@ -299,4 +309,16 @@ export const INITIALIZE_BEYOND = (
       ];
     }
   });
+
+  engine.registerTrigger({
+    name: 'Whenever your Turn starts, draw a Card.',
+    actionTypes: ['start-turn'],
+    // TODO: Prior Triggers should consume Context, After Triggers used Parameters!
+    execute: (engine, actionType, context: any) => {
+      // TODO: How to execute an Action here?
+      (context.player as unknown as Simple<Player>)
+
+      return [];
+    }
+  })
 };

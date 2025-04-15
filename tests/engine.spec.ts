@@ -319,6 +319,8 @@ describe('Basic Engine Tests.', () => {
   });
 
   it('A user can register into the game with a User Interface.', (done) => {
+    
+    // When this Player is registered, an initial tick is issued.
     engine.registerInterface({
       // This function is called whenever a Tick happens and the Game State was updated.
       tickHandler: (engine, delta: Changes, choices: CommunicatedChoice[]) => {
@@ -328,9 +330,6 @@ describe('Basic Engine Tests.', () => {
     });
 
     expect(engine.players()).to.have.length(1);
-
-    // When the game starts, an initial tick is issued.
-    engine.tick();
   });
 
   it('All users are informed about any changes to the game state. On more changes after one tick, only the delta changes since the last tick are transmitted.', (done) => {
@@ -342,6 +341,8 @@ describe('Basic Engine Tests.', () => {
 
     engine.registerInterface({
       tickHandler: (engine, delta: Changes, choices: CommunicatedChoice[]) => {
+        console.error(ticked, delta);
+        // TODO: ticked === 0 is the initial tick triggered by registering this interface - the full state should be transmitted there!
         if(ticked === 0) {
           expect(delta).to.have.length(1);
           expect(removeStaticFunctions(delta.get('0'))).to.deep.equal({
@@ -367,7 +368,6 @@ describe('Basic Engine Tests.', () => {
       actorId: 'player-1'
     });
 
-    engine.tick();
     obj.value = 'another test';
     engine.tick();
   });
@@ -440,8 +440,6 @@ describe('Basic Engine Tests.', () => {
       },
       actorId: 'player-1'
     });
-
-    engine.tick();
   });
 
   it('Triggers can be registered.', () => {
