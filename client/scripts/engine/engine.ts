@@ -20,6 +20,7 @@ export class GameEngine {
   private readonly _actions: Map<string, Action<any, any>> = new Map();
 
   // TRIGGERS
+  private readonly _triggers: Map<string, Trigger> = new Map();
   private readonly _genericTriggers: Trigger[] = [];
   private readonly _specificTriggers: Map<string, Trigger[]> = new Map();
 
@@ -267,6 +268,7 @@ export class GameEngine {
       // const choiceSpace = this.
 
       player.tickHandler(
+        this,
         this._changes,
         choiceSpace
           .filter(choice => choice.player.actorId === player.actorId)
@@ -404,7 +406,8 @@ export class GameEngine {
 
   // TEST: Can't have duplicate names.
   public registerAction =<T extends Action<any, any>> (action: T): T => {
-    this.changeCounter++;
+    console.debug(`Registering Action "${action.name}"...`);
+
     this._actions.set(
       action.name,
       action
@@ -415,6 +418,8 @@ export class GameEngine {
 
   // TEST: Can't have duplicate rules.
   public registerRule = <T extends PositiveRule<Action<any>, any> | NegativeRule<Action<any>, any>> (rule: T): T => {
+    console.debug(`Registering Rule "${rule.id}"...`);
+
     this._rules.set(
       rule.id,
       rule
@@ -436,9 +441,13 @@ export class GameEngine {
   };
 
   // TEST: Can't register the same ActorID twice!
-  public registerInterface = (player: PlayerInterface): void => {
+  public registerInterface = (player: PlayerInterface<any>): void => {
+    console.debug(`Registering Player Interface "${player.actorId}"...`);
+    
     this.changeCounter++;
     this._playerInterfaces.push(player);
+
+    this.tick();
   };
 
   public rules = (ruleType: RuleType): ReadonlyMap<string, PositiveRule<any> | NegativeRule<any>> => {
@@ -458,10 +467,23 @@ export class GameEngine {
   }
 
   // TEST: No trigger can be overwritten.
-  // TEST: Trigger with empty Action Types throws exception.
   // TEST: Throw an error if the ActionType has not been registered yet!
   public registerTrigger = (trigger: Trigger): Trigger => {
-    // TODO: Register for all action types.
+    console.debug(`Registering Trigger "${trigger.name}"...`);
+
+    if(this._triggers.has(trigger.name)) {
+      throw new Error(`A Trigger with the name "${trigger.name}" already exists! It would be duplicated. Please choose a new name.`);
+    }
+
+    const notExistingActions = (trigger.actionTypes ?? [])
+      .filter(action => !this._actions.has(action));
+
+    if(notExistingActions.length > 0) {
+      throw new Error(`The Trigger "${trigger.name}" can't be created, because the Actions ${notExistingActions.map(a => `"${a}"`).join(', ')} have not been registered yet! Please register them first...`);
+    }
+
+    this._triggers.set(trigger.name, trigger);
+
     if(trigger.actionTypes === undefined) {
       console.debug(`Registering generic trigger "${trigger.name}".`);
       this._genericTriggers.push(trigger);
@@ -521,7 +543,7 @@ export class GameEngine {
   };
 
   // TEST: Throw an error if the rule does not exist!
-  public getRule = <T extends (PositiveRule<any> | NegativeRule<any>)> (id: string): T => {
+  public getRule = <T extends (PositiveRule<any, any> | NegativeRule<any, any>)> (id: string): T => {
     const rule = this._rules.get(id);
 
     if(rule === undefined) {

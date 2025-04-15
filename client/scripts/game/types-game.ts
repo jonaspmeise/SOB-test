@@ -40,7 +40,7 @@ export type Costs = {
 export type Rarity = 'Common' | 'Uncommon' | 'Rare';
 
 // TODO: Technically not right to just name everything Simple<...> here...
-export type Card = Component<{
+export type Card = Component<Owned & {
   cardtype: CardType,
   subtypes: Subtype[],
   costs: Costs,
@@ -51,7 +51,7 @@ export type Card = Component<{
   power: number,
   name: string,
   artwork: URL,
-  location: Container | Slot 
+  location: Container | Slot,
 }>;
 
 export type Slot = Component<{

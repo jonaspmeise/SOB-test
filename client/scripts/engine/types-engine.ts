@@ -73,7 +73,7 @@ export type ImplentationChoice<ACTION extends Action<any>> = {
   player: PlayerInterface<any>,
   action: ACTION,
   // The entrypoint of this choice - the quintessential information needed to execute this action.
-  entrypoint: ACTION extends Action<infer A> ? A : any
+  entrypoint: ACTION extends Action<infer A> ? Simple<A> : any
 };
 
 // What is persisted within the Game Engine. The details of the reason behind this Action are no longer relevant - only the core execution details are important.
@@ -94,14 +94,15 @@ export type CommunicatedChoice = {
   message: string,
   // A simple list of components involved with this Action. This Array is derived from the Context of the Action and can be used by the client to navigate the player in selecting a choice.
   components: ID[]
-}
+};
 
 export type TickHandler = (
+  engine: GameEngine,
   stateDelta: Changes,
   choices: CommunicatedChoice[]
 ) => void;
 
-export interface PlayerClient {
+export interface InMemoryPlayerClient {
   tickHandler: TickHandler
 };
 

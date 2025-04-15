@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { GameEngine } from "../client/scripts/engine/engine.js";
-import { Action, Changes, ImplentationChoice, CommunicatedChoice, Component, Query, Simple } from "../client/scripts/engine/types-engine.js";
+import { Action, Changes, ImplentationChoice, CommunicatedChoice, Component, Query, Simple, Trigger } from "../client/scripts/engine/types-engine.js";
 
 const removeStaticFunctions = <T> (obj: T): Partial<T> => {
   //@ts-ignore
@@ -321,7 +321,7 @@ describe('Basic Engine Tests.', () => {
   it('A user can register into the game with a User Interface.', (done) => {
     engine.registerInterface({
       // This function is called whenever a Tick happens and the Game State was updated.
-      tickHandler: (delta: Changes, choices: CommunicatedChoice[]) => {
+      tickHandler: (engine, delta: Changes, choices: CommunicatedChoice[]) => {
         done();
       },
       actorId: 'Player 1'
@@ -341,7 +341,7 @@ describe('Basic Engine Tests.', () => {
     }, 'test');
 
     engine.registerInterface({
-      tickHandler: (delta: Changes, choices: CommunicatedChoice[]) => {
+      tickHandler: (engine, delta: Changes, choices: CommunicatedChoice[]) => {
         if(ticked === 0) {
           expect(delta).to.have.length(1);
           expect(removeStaticFunctions(delta.get('0'))).to.deep.equal({
@@ -434,7 +434,7 @@ describe('Basic Engine Tests.', () => {
     });
 
     engine.registerInterface({
-      tickHandler: (delta: Changes, choices: CommunicatedChoice[]) => {
+      tickHandler: (engine, delta: Changes, choices: CommunicatedChoice[]) => {
         expect(choices).to.have.length(0);
         done();
       },
@@ -458,7 +458,30 @@ describe('Basic Engine Tests.', () => {
   });
   
   it('Trigger for a specific Action can be registered.', () => {
-    // TODO: Types!
+    
+    // The Actions have to first exist.
+    engine.registerAction({
+      name: 'draw',
+      execute: (engine, context) => {
+        // DUMMY IMPLEMENTATION
+        return context;
+      },
+      context: (engine, entrypoint) => entrypoint,
+      message: (context) => `DUMMY`,
+      log: (parameters) => `DUMMY`
+    });
+    
+    engine.registerAction({
+      name: 'leave',
+      execute: (engine, context) => {
+        // DUMMY IMPLEMENTATION
+        return context;
+      },
+      context: (engine, entrypoint) => entrypoint,
+      message: (context) => `DUMMY`,
+      log: (parameters) => `DUMMY`
+    });
+
     engine.registerTrigger({
       name: 'my-trigger',
       actionTypes: ['draw', 'leave'],
@@ -479,5 +502,27 @@ describe('Basic Engine Tests.', () => {
 
   it('If a Rule is searched for that doesnt exist, an error is thrown.', () => {
     expect(() => engine.getRule('I dont exist!')).to.throw(/rule/i);
+  });
+
+  it('If a trigger is registered with the same name as an already existing trigger, an error is thronw.', () => {
+    engine.registerTrigger({
+      name: 'something',
+      actionTypes: [],
+      execute: () => []
+    });
+
+    expect(() => engine.registerTrigger({
+      name: 'something',
+      actionTypes: [],
+      execute: () => []
+    })).to.throw(/duplicate/i);
+  });
+
+  it('If a trigger is registered for an action that doesnt exist, an error is thronw.', () => {
+    expect(() => engine.registerTrigger({
+      name: 'something',
+      actionTypes: ['I dont exist!'],
+      execute: () => []
+    })).to.throw(/I dont exist!/i);
   });
 });

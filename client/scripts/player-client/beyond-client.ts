@@ -1,7 +1,5 @@
-import { Choice, Components, ID, PlayerClient } from "../engine/types-engine";
-import { log } from "../engine/utility";
-import { ACTION_COLORS } from "../game/actions.ts_";
-import { BeyondPlayer, Card, Lane, Slot, Turn } from '../game/types-game';
+import { Changes, CommunicatedChoice, Components, ID, InMemoryPlayerClient } from "../engine/types-engine.js";
+import { Card, Lane, Player, Slot, Turn } from '../game/types-game.js';
 
 type IdentifiableNode = Node & {id: ID};
 type IdentifiableChildNode = ChildNode & {id: ID};
@@ -10,13 +8,13 @@ const previewElement = document.getElementById('card-preview')!;
 
 // This class lives very closely and is connected with our BOM.
 // It in itself is stateless (except the interaction handler...)!
-export class BeyondClient implements PlayerClient {
+export class BeyondClient implements InMemoryPlayerClient {
   private components: Components = new Map();
-  private choices: Choice[] = [];
+  private choices: CommunicatedChoice[] = [];
 
   private handleContextArguments: {
     context: Set<ID>,
-    choices: Choice[]
+    choices: CommunicatedChoice[]
   } = {
     context: new Set(),
     choices: []
@@ -29,11 +27,11 @@ export class BeyondClient implements PlayerClient {
     });
   }
 
-  public tickHandler = (stateDelta: Components, choices: Readonly<Choice>[]) => {
+  public tickHandler = (engine, stateDelta: Changes, choices: Readonly<CommunicatedChoice>[]) => {
     // TODO: We might auto-accept any single choice. Or leave user time to think...?
     this.choices = choices;
     console.debug('Player has choices:', choices);
-    this.render(stateDelta);
+    // this.render(stateDelta);
   };
   
   private static showCardPreview = (card: Card) => {
@@ -60,7 +58,7 @@ export class BeyondClient implements PlayerClient {
       choices: []
     };
     console.debug('Resetting all highlights');
-    this.highlight(this.choices, new Set(), true);
+    // this.highlight(this.choices, new Set(), true);
   };
     
   private static removeDanglingNodes = (parent: IdentifiableNode, nodeFilterFunction: (id: ID) => boolean, name: string) => {
@@ -77,6 +75,7 @@ export class BeyondClient implements PlayerClient {
   };
 
   private handleInteraction: (id: ID) => void = (id: ID) => {
+    /*
     const component = this.components.get(id)!
     log(`You interacted with ${component} (#${id})`, undefined, true);
     console.log('Context handler', this.handleContextArguments);
@@ -167,17 +166,21 @@ export class BeyondClient implements PlayerClient {
     });
 
     return element;
+    */
   };
 
   // Renders a given list of components with their values.
-  // TODO: For now, always all components. But in the future, only a partial (with context from FULL components!)!
-  public render = (components: Components, delta?: Components) => {
+  /*
+  public render = (components: Changes) => {
     // For easier access.
-    this.components = components; // TODO: ???
+    this.components = {
+      ...this.components
+      // TODO
+    }; // TODO: ???
     const arrayComponents = Array.from(components.values());
 
     // These Elements are all given in the template!
-    const players: BeyondPlayer[] = (arrayComponents.filter(component => component.types.includes('player')) as BeyondPlayer[]);
+    const players: Player[] = (arrayComponents.filter(component => component.types.includes('player')) as BeyondPlayer[]);
     const gameStatElement = document.getElementById('game-stats')!;
     const turn: Turn = arrayComponents.filter(component => component.types.includes('turn'))[0] as Turn;
 
@@ -459,5 +462,5 @@ export class BeyondClient implements PlayerClient {
           }
         });
     });
+    */
 };
-}

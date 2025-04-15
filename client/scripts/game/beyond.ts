@@ -44,6 +44,7 @@ export const INITIALIZE_BEYOND = (
         console.debug(`Loading ${card.Name}...`);
 
         engine.registerComponent({
+          owner: player,
           name: card.Name,
           artwork: new URL(`https://cdn.shardsofbeyond.com/artworks/${card.Artworks.default}`),
           rarity: card.Rarity as Rarity,
@@ -123,9 +124,8 @@ export const INITIALIZE_BEYOND = (
   }));
 
   // ACTIONS
-  
   const ACTION_PASS = engine.registerAction({
-    name: 'Pass',
+    name: 'pass',
     context: (engine, entrypoint) => {
       const turn = engine.query<Turn>('turn')[0];
 
@@ -148,8 +148,73 @@ export const INITIALIZE_BEYOND = (
     log: (context) => `${context.previous} passed their Turn to ${context.next}.`
   }) as Action<{}, {player: Simple<Player>, turn: Simple<Turn>}, {previous: Simple<Player>, next: Simple<Player>}>;
 
+  const ACTION_DRAW = engine.registerAction({
+    name: 'draw',
+    context: (engine, entrypoint) => {
+      return {
+        player: entrypoint.card.owner,
+        card: entrypoint.card
+      };
+    },
+    message: () => 'Draw a Card.',
+    execute: (engine, context) => {      
+      context.card.location = context.player.hand;
+
+      return {
+        card: context.card,
+        player: context.player
+      };
+    },
+    log: (context) => `${context.player} drew ${context.card}.`
+  }) as Action<{card: Card}, {player: Simple<Player>, card: Simple<Card>}, {card: Simple<Card>, player: Simple<Player>}>;
+
+  const ACTION_CONQUER = engine.registerAction({
+    name: 'conquer',
+    context: (engine, entrypoint) => entrypoint,
+    message: () => 'Conquer this Lane.',
+    execute: (engine, context) => {
+      context.lane.wonBy = context.player;
+
+      return {
+        lane: context.lane,
+        player: context.player
+      };
+    },
+    log: (context) => `${context.player} conquered ${context.lane}.`
+  }) as Action<{lane: Lane, player: Player}, {player: Simple<Player>, lane: Simple<Lane>}>;
+
+  const ACTION_SUMMON = engine.registerAction({
+    name: 'summon',
+    context: (engine, entrypoint) => {
+      return {
+        ...entrypoint,
+        player: entrypoint.card.owner
+      }
+    },
+    message: () => 'Summon.',
+    execute: (engine, context) => {
+      context.card.location = context.slot;
+
+      return context;
+    },
+    log: (context) => `${context.card} was summoned into ${context.slot}.`
+  }) as Action<{card: Card, slot: Slot}>;
+  
+  const ACTION_CRYSTALLIZE = engine.registerAction({
+    name: 'crystallize',
+    context: (engine, entrypoint) => entrypoint,
+    message: () => 'Crystallize.',
+    execute: (engine, context) => {
+      // @ts-ignore FIXME
+      context.card.location = context.card.owner.crystalzone;
+
+      return context;
+    },
+    log: (context) => `${context.card} was crystallized into ${context.card.owner.crystalzone}.`
+  }) as Action<{card: Card}>;
+
   // RULES
-  const RULE_PASS_TURN = engine.registerRule({
+  const RULE_CRYSTALLIZE_DEFAULT = engine.registerRule({
     id: 'crystallize-one-card-per-turn',
     name: 'Players may crystallize one card during their Turn from their Hand.',
     type: 'positive',
@@ -177,14 +242,61 @@ export const INITIALIZE_BEYOND = (
       .flat()
     }) as PositiveRule<typeof ACTION_PASS, {alreadyCrystallized: number[]}>;
 
+  const RULE_PLAY_DEFAULT = engine.registerRule({
+    id: 'play-one-card-per-turn',
+    name: 'Players may play one card during their Turn into a free Slot from their Hand.',
+    type: 'positive',
+    properties: {
+      alreadyPlayed: [0, 0]
+    },
+    handler: (engine, properties) =>
+      engine.players<Player>().map(int => {
+        const player = int.avatar! as Simple<Player>;
+        const freeSlots: Simple<Slot>[] = engine.query<Slot>('slot').filter(slot => slot.card === undefined);
+
+        // Only allow Players that have _not_ played with this yet!
+        if(properties.alreadyPlayed[player.index] > 0) {
+          return;
+        }
+
+        return player.hand.cards.map(card => freeSlots.map(slot => {
+          return {
+            player: int,
+            action: ACTION_SUMMON,
+            entrypoint: {card: card, slot: slot}
+          };
+        })).flat();
+      })
+      .filter(r => r !== undefined)
+      .flat()
+    }) as PositiveRule<typeof ACTION_SUMMON, {alreadyPlayed: number[]}>;
+
+  const RULE_PASS_TURN = engine.registerRule({
+    id: 'turn-may-be-passed',
+    name: 'Players may pass their Turn during their Turn.',
+    type: 'positive',
+    handler: (engine) => {
+      return engine.players().map(player => {
+        return {
+          player: player,
+          action: ACTION_PASS,
+          entrypoint: {}
+        };
+      });
+    }
+  }) as PositiveRule<typeof ACTION_PASS>  
+
   // TRIGGERS
   const TRIGGER_RESET_LIMIT = engine.registerTrigger({
     name: 'Default Actions for Crystallize / Play reset after each Turn.',
     actionTypes: ['pass'],
-    execute: (engine, actionType, context) => {
-      engine.getRule('pass-turn-reset-limits');
-  
-      return [];
+    execute: (engine, actionType, context) => {  
+      return [
+        () => {
+          engine.getRule<typeof RULE_CRYSTALLIZE_DEFAULT>('crystallize-one-card-per-turn').properties!.alreadyCrystallized = [0, 0];
+          engine.getRule<typeof RULE_PLAY_DEFAULT>('play-one-card-per-turn').properties!.alreadyPlayed = [0, 0];
+        }
+      ];
     }
   });
 };

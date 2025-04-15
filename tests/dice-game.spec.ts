@@ -54,7 +54,7 @@ describe('Simple Dice Game.', () => {
     });
 
     engine.registerInterface({
-      tickHandler: (_delta: Changes, choices: CommunicatedChoice[]) => {
+      tickHandler: (engine, _delta: Changes, choices: CommunicatedChoice[]) => {
         // General specifications - this is usually not communicated to the Client.
         expect(engine.choices()).to.have.length(4); // 1 Action, 2 Dice, 2 Players => 1x2x2 = 4 total choices in this gamestate!
 
@@ -75,7 +75,7 @@ describe('Simple Dice Game.', () => {
     });
 
     engine.registerInterface({
-      tickHandler: (_delta: Changes, choices: CommunicatedChoice[]) => {
+      tickHandler: (engine, _delta: Changes, choices: CommunicatedChoice[]) => {
         // General specifications - this is usually not communicated to the Client.
         expect(engine.choices()).to.have.length(4); // 1 Action, 2 Dice, 2 Players => 1x2x2 = 4 total choices in this gamestate!
 
@@ -142,13 +142,13 @@ describe('Simple Dice Game.', () => {
           return true;
         }
 
-        return (choice.entrypoint.die as Die).value <= 1;
+        return (choice.entrypoint.die as Simple<Die>).value <= 1;
       }
     }) as NegativeRule<typeof spinupAction>;
 
     engine.registerInterface({
       actorId: 'player-01',
-      tickHandler: (delta: Changes, choices: CommunicatedChoice[]) => {
+      tickHandler: (engine, delta: Changes, choices: CommunicatedChoice[]) => {
         expect(choices).to.have.length(0); // The negative rule overwrites the positive rule here!
         done();
       }
@@ -193,7 +193,7 @@ describe('Simple Dice Game.', () => {
 
     engine.registerInterface({
       actorId: 'player-01',
-      tickHandler: (delta: Changes, choices: CommunicatedChoice[]) => {
+      tickHandler: (engine, delta: Changes, choices: CommunicatedChoice[]) => {
         expect(choices).to.have.length(1); // 1 Dice can be spun up!
 
         // We already spun the dice up once?
@@ -263,7 +263,7 @@ describe('Simple Dice Game.', () => {
 
     engine.registerInterface({
       actorId: 'player-01',
-      tickHandler: (delta: Changes, choices: CommunicatedChoice[]) => {
+      tickHandler: (engine, delta: Changes, choices: CommunicatedChoice[]) => {
         if(choices.length > 0) {
           engine.execute(choices[0].id);
         }
