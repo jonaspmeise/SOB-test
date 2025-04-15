@@ -1,0 +1,5 @@
+@startuml
+
+[Server] as SERVER;
+
+@enduml

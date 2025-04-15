@@ -330,6 +330,7 @@ describe('Basic Engine Tests.', () => {
     });
 
     expect(engine.players()).to.have.length(1);
+    engine.start();
   });
 
   it('All users are informed about any changes to the game state. On more changes after one tick, only the delta changes since the last tick are transmitted.', (done) => {
@@ -367,6 +368,8 @@ describe('Basic Engine Tests.', () => {
       },
       actorId: 'player-1'
     });
+
+    engine.start();
 
     obj.value = 'another test';
     engine.tick();
@@ -440,6 +443,8 @@ describe('Basic Engine Tests.', () => {
       },
       actorId: 'player-1'
     });
+
+    engine.start();
   });
 
   it('Triggers can be registered.', () => {
@@ -522,5 +527,9 @@ describe('Basic Engine Tests.', () => {
       actionTypes: ['I dont exist!'],
       execute: () => []
     })).to.throw(/I dont exist!/i);
+  });
+
+  it('If an Action is tried to be executed that doesnt exist, an error is thrown.', () => {
+    expect(() => engine.executeAction('I dont exist!', {})).to.throw(/I dont exist!/i);
   });
 });

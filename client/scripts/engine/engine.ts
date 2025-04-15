@@ -29,6 +29,8 @@ export class GameEngine {
   private readonly _negativeRules: Map<string, NegativeRule<any>> = new Map();
 
   private readonly _choices: Map<string, InternalChoice<any>> = new Map();
+  
+  private _started = false;
 
   public registerComponent = <P extends {}> (properties: P, type: Type, name?: string): Simple<Component<P>> => {
     // Something will change!
@@ -148,72 +150,13 @@ export class GameEngine {
     return proxy as Simple<Component<P>>;
   };
 
-  /*
-  // TEST: Can't register same Action multiple times.
-  public registerAction = <T extends ACTION> (action: Action<T, any, any>): void => {
-    this._actions[action.name] = action;
-  };
-
-  // TEST: Can't register same Player multiple times.
-  public registerPlayerInterface = (player: PlayerInterface): PlayerInterface => {
-    this._playerInterfaces.push(player);
-
-    return player;
-  };
-
-  public registerRule = (rule: Rule<ACTION>): void => {
-    this._rules.push(rule);
-  };
-
-  public registerTrigger = (trigger: Trigger<any>): void => {
-    this._triggers.push(trigger);
-  };
-
-  public get actions(): ActionProxy<ACTION> {
-    return new Proxy(this._actions, {
-      get: (target, prop: string, _receiver) => {
-        const response = target[prop];
-
-        // Automatically execute logging on action execution.
-        return new Proxy(response.execute, {
-          apply: (target, thisArg, argArray) => {
-
-            console.debug(`Called action ${prop} with raw components`, argArray);
-
-            // References inside the arguments need to be translated to real components!
-            const mappedArray = [
-              this,
-              // TODO: What about explicit, non-typed parameters...? like "amount", "value", ...
-              ...argArray.map(arg => this.components.get(arg))
-            ];
-            console.debug(`Executing action "${prop}" with parameters`, mappedArray);
-
-            const usedParameters = target.apply(thisArg, mappedArray as [engine: this]);
-            log(response.log(usedParameters));
-
-            // Add trigger for this action to trigger 
-            const createdTriggers = this._triggers
-              .filter(trigger => trigger.actions.length == 0 || trigger.actions.includes(prop))
-              .map(
-                trigger => trigger.effect(this, prop, usedParameters)
-              ).flat();
-
-            console.debug(`Creating ${createdTriggers.length} triggers.`);
-
-            // Make the trigger an executable
-            this.triggerQueue.push(...createdTriggers);
-
-            this.tick();
-          }
-        });
-      }
-    }) as unknown as ActionProxy<ACTION>;
-  }
-
-  */
-
   public tick = () => {
     console.debug('Tick triggered.');
+
+    if(this._started === false) {
+      console.debug(`Will skip handling this Tick because the Game has not started yet...`);
+      return;
+    }
 
     // Reset choice space.
     this._choices.clear();
@@ -259,10 +202,20 @@ export class GameEngine {
           context: context,
           player: choice.player,
           callback: () => choice.callback,
-          execute: () => choice.action.execute(this, context) // TEST:
+          execute: () => this.executeAction(choice.action.name, context) // TEST:
         }
       );
     });
+
+    // There shouldnt be a State in which more than one Player can do choices - this leads to race conditions!
+    const possibleActors = choiceSpace.reduce((prev, curr) => {
+      prev.add(curr.player.actorId);
+      return prev;
+    }, new Set<string>());
+
+    if(possibleActors.size > 1) {
+      console.error(`CRITICAL: More than 1 Player (${possibleActors.size}) can do Actions in this Game State! Choice Space is `, choiceSpace);
+    }
 
     this._playerInterfaces.forEach(player => {
       // const choiceSpace = this.
@@ -288,66 +241,12 @@ export class GameEngine {
 
     // Clean up change state (so far)!
     this._changes.clear();
-
-    // Calculate action space for both playerInterfaces.
-    // TODO: Right now, the action space is re-calculated greedily.
-    /*
-    this.choiceSpace = this._rules
-      .map(rule => rule.handler(this, rule.properties))
-      .flat()
-      .map(choice => {
-        return {
-          ...choice,
-          execute: () => {
-            // We overwrite the existing choice with a potential callback proxy!
-            if(choice.callback !== undefined) {
-              choice.callback();
-            }
-            choice.execute();
-          }
-        };
-      });
-
-    // Work off triggers.
-    const trigger = this.triggerQueue.pop();
-    if(trigger !== undefined) {
-      console.log('Resolving trigger', trigger, 'Remaining Triggers:', this.triggerQueue);
-
-      trigger();
-
-      // TODO: Trigger a re-evaluation...?
-      this.tick(depth + 1);
-    }
-
-    // Only all triggers "returned", do some UI QoL.
-    // Only update Views for playerInterfaces once the game is started - aka, is launched!
-    if(depth == 0 && this.started) {
-      console.info('Current choice space:', this.choiceSpace);
-      // Register this game with the view of each player.
-      this._playerInterfaces.forEach(player => {
-        player.client.tickHandler(
-          // TODO: Only visible components to each player!
-          this.components,
-          this.choices(player)
-        );
-      });
-    }
-      */
   };
   
-  /*
-  private choices = (player: PlayerInterface | undefined): typeof this.choiceSpace => {
-    if(player === undefined) {
-      return this.choiceSpace;
-    }
-
-    return this.choiceSpace.filter(choice => choice.actor === player.actorId);
-  }
-  */
-
   // Main Game Loop.
   public start = () => {
     console.debug('Game is starting!');
+    this._started = true;
 
     (() => this.tick())();
   };
@@ -521,28 +420,15 @@ export class GameEngine {
     }
 
     console.debug(`Executing choice #${id}...`);
-    choice.execute();
 
     if(choice.callback !== undefined) {
       console.debug(`Callback found! Calling back the Rule that generated this Choice...`);
       choice.callback(this, choice.context);
     };
-
-    // Iterating over all triggers that might be triggered by executing this choice...
-    const triggers = this._genericTriggers.concat(this._specificTriggers.get(choice.actionType) ?? []);
-    console.debug(`Evaluating a total of ${triggers.length} Triggers, whether they trigger or not for this choice...`);
-
-    const triggerCalls = triggers
-      .filter(trigger => trigger.execute(this, choice.actionType, choice.context))
-      .flat();
-
-    console.debug(`Will execute ${triggerCalls.length} trigger callbacks!`);
-
-    console.debug(`Triggering new tick...`);
-    this.tick();
+    
+    choice.execute();
   };
 
-  // TEST: Throw an error if the rule does not exist!
   public getRule = <T extends (PositiveRule<any, any> | NegativeRule<any, any>)> (id: string): T => {
     const rule = this._rules.get(id);
 
@@ -551,5 +437,31 @@ export class GameEngine {
     }
 
     return rule as T;
+  };
+
+  // TEST: Throw error if actionType does not exist.
+  public executeAction = <T extends Action<ENTRYPOINT>, ENTRYPOINT extends {}> (actionType: T['name'], entrypoint: ENTRYPOINT): void => {
+    const action = this._actions.get(actionType);
+
+    if(action === undefined) {
+      throw new Error(`The Action "${actionType}" does not exist! Please register it first before calling it!`);
+    }
+
+    const context = action.context(this, entrypoint);
+
+    action.execute(this, context);
+
+    // Iterating over all triggers that might be triggered by executing this choice...
+    const triggers = this._genericTriggers.concat(this._specificTriggers.get(actionType) ?? []);
+    console.debug(`Evaluating a total of ${triggers.length} Triggers, whether they trigger or not for this choice...`);
+
+    const triggerCalls = triggers
+      .filter(trigger => trigger.execute(this, actionType, context))
+      .flat();
+
+    console.debug(`Will execute ${triggerCalls.length} trigger callbacks!`);
+
+    console.debug(`Triggering new tick...`);
+    this.tick();
   };
 }

@@ -90,6 +90,8 @@ describe('Simple Dice Game.', () => {
       },
       actorId: 'player-02'
     });
+
+    engine.start();
   });
 
   it('Negative Rules have precedence over positive rules.', (done) => {
@@ -146,6 +148,8 @@ describe('Simple Dice Game.', () => {
         done();
       }
     });
+    
+    engine.start();
   });
 
   it('Actions can be executed.', (done) => {
@@ -196,6 +200,8 @@ describe('Simple Dice Game.', () => {
         engine.execute(choices[0].id);
       }
     });
+    
+    engine.start();
   });
 
   it('Triggers are called (not necessarily executed!) whenever a choice is executed.', (done) => {
@@ -260,6 +266,31 @@ describe('Simple Dice Game.', () => {
       }
     });
 
-    engine.tick();
+    engine.start();
   });
+
+  it('An Action can straight be executed with the Engine.', () => {
+    const die = engine.registerComponent({
+      sides: 6,
+      value: 1
+    }, 'die') as Simple<Die>;
+
+    const ACTION_SPINUP = engine.registerAction({
+      name: 'spin-up',
+      execute: (engine, context) => {
+        context.die.value++;
+
+        return context;
+      },
+      context: (engine, entrypoint) => entrypoint,
+      message: (context) => `Spin ${context.die} up`,
+      log: (parameters) => `${parameters.die} was spun up.`
+    }) as Action<{die: Die}>;
+
+    engine.executeAction<typeof ACTION_SPINUP, {die: Die}>('spin-up', {die: die});
+
+    expect(die.value).to.equal(2);
+  });
+
+  // TODO: Logs, full state transfer...
 });

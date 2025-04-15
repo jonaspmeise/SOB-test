@@ -30,6 +30,7 @@ export class BeyondClient implements InMemoryPlayerClient {
   public tickHandler = (engine, stateDelta: Changes, choices: Readonly<CommunicatedChoice>[]) => {
     // TODO: We might auto-accept any single choice. Or leave user time to think...?
     this.choices = choices;
+    console.debug('Player sees changes:', stateDelta);
     console.debug('Player has choices:', choices);
     // this.render(stateDelta);
   };

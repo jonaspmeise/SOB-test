@@ -5,6 +5,7 @@ export type Action<
   INPUT_CONTEXT extends {[key: string]: Component<unknown>} = ENTRYPOINT,
   USED_PARAMETERS extends {} = INPUT_CONTEXT
 > = {
+  // TODO: This should be named ID!
   name: string,
   execute: (engine: GameEngine, context: Simple<INPUT_CONTEXT>) => Simple<USED_PARAMETERS>,
   context: (engine: GameEngine, entrypoint: Simple<ENTRYPOINT>) => Simple<INPUT_CONTEXT>,

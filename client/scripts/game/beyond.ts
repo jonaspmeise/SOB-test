@@ -286,12 +286,17 @@ export const INITIALIZE_BEYOND = (
     type: 'positive',
     handler: (engine) => {
       return engine.players().map(player => {
+        if(engine.query<Turn>('turn')[0].currentPlayer !== player.avatar!) {
+          return;
+        }
+
         return {
           player: player,
           action: ACTION_PASS,
           entrypoint: {}
         };
-      });
+      })
+      .filter(a => a !== undefined);
     }
   }) as PositiveRule<typeof ACTION_PASS>  
 
