@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { GameEngine } from "../client/scripts/engine/engine.js";
-import { Action, Changes, CommunicatedChoice, Component, NegativeRule, PositiveRule, Simple } from "../client/scripts/engine/types-engine.js";
+import { GameEngine } from "./engine.js";
+import { Component, Simple, Action, PositiveRule, Changes, CommunicatedChoice, NegativeRule } from "./types-engine.js";
 
 type Die = Component<{
   sides: number,

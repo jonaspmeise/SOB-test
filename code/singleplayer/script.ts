@@ -1,9 +1,8 @@
-import { range } from './engine/utility.js';
-import { Card, CardType, Lane, Player, Rarity, RawCard, Realm, REALM_MAPPING, ShardsOfBeyondActionType, Slot, Subtype } from './game/types-game.js';
-import { GameEngine } from './engine/engine.js';
-import { INITIALIZE_BEYOND } from './game/beyond.js';
-import { AIClient } from './player-client/ai-client.js';
-import { BeyondClient } from './player-client/beyond-client.js';
+import { AIClient } from './ai-client.js';
+import { BeyondClient } from '../client/beyond-client.js';
+import { GameEngine } from '../engine/engine.js';
+import { INITIALIZE_BEYOND } from '../game/beyond.js';
+import { Player, RawCard } from '../game/types-game.js';
 
 // CONSTANTS
 const cardFile = 'https://cdn.shardsofbeyond.com/client/cards.json';

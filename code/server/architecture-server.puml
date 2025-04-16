@@ -1,7 +1,7 @@
-@startuml
+@startuml Client-Server Architecture
 
 package Server as SERVER {
-  package Engine as ENGINE
+  component Engine as ENGINE
   component Communicator as COMMUNICATOR
 }
 

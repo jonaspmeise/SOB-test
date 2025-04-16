@@ -2,6 +2,7 @@
 /node_modules
 # All build artefacts can be ignored.
 /dist
+/ts-temp
 # This is a typescript project!
 *.js
 # No binaries or big data files.

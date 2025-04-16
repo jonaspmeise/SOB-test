@@ -3,10 +3,10 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = {
   devtool: 'inline-source-map',
-  entry: './dist/client/scripts/script.js',
+  entry: './ts-temp/singleplayer/script.js',
   mode: 'development',
   output: {
-    filename: './dist/script.js'
+    filename: './dist/singleplayer/script.js'
   },
   resolve: {
     extensions: ['.js']
@@ -14,8 +14,8 @@ module.exports = {
   plugins: [
     new CopyWebpackPlugin({
       patterns: [
-        { from: './client/css/*.css', to: './dist/[name][ext]' },
-        { from: './client/*.html', to: './dist/[name][ext]' }
+        { from: './code/client/css/*.css', to: './dist/singleplayer/[name][ext]' },
+        { from: './code/client/*.html', to: './dist/singleplayer/[name][ext]' }
       ]
     })
   ]

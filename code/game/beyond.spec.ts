@@ -1,8 +1,7 @@
 // Import Chai and assertion styles
 import { expect } from 'chai';
-import { GameEngine } from '../client/scripts/engine/engine.js';
-import { INITIALIZE_BEYOND } from '../client/scripts/game/beyond.js';
-
+import { GameEngine } from '../engine/engine.js';
+import { INITIALIZE_BEYOND } from './beyond.js';
 console.debug = () => {};
 
 // Example test suite

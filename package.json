@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "main": "script.js",
   "scripts": {
-    "build": "npx tsc & webpack",
-    "test": "mocha --require ts-node/register --reporter list ./tests/*.spec.ts"
+    "webpack:singleplayer": "npx tsc & webpack --config webpack.singleplayer.config.cjs",
+    "test": "mocha --require ts-node/register --reporter list ./**/*.spec.ts"
   },
   "type": "module",
   "keywords": [],

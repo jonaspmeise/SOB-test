@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { GameEngine } from "../client/scripts/engine/engine.js";
-import { Action, Changes, ImplentationChoice, CommunicatedChoice, Component, Query, Simple, Trigger } from "../client/scripts/engine/types-engine.js";
+import { GameEngine } from "./engine.js";
+import { Component, Simple, Query, Changes, CommunicatedChoice, Action, ImplentationChoice } from "./types-engine.js";
 
 const removeStaticFunctions = <T> (obj: T): Partial<T> => {
   //@ts-ignore
