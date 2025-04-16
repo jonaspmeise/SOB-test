@@ -1,10 +1,9 @@
 {
   "name": "shardsofbeyond-singleplayer",
   "version": "1.0.0",
-  "main": "script.js",
   "scripts": {
-    "webpack:singleplayer": "npx tsc & webpack --config webpack.singleplayer.config.cjs",
-    "test": "mocha --require ts-node/register --reporter list ./**/*.spec.ts"
+    "webpack:singleplayer": "npx tsc && webpack --config webpack.singleplayer.config.cjs",
+    "test": "mocha --reporter list ./**/*.spec.ts"
   },
   "type": "module",
   "keywords": [],
@@ -17,8 +16,6 @@
     "chai": "^5.2.0",
     "copy-webpack-plugin": "^13.0.0",
     "mocha": "^11.1.0",
-    "ts-loader": "^9.5.2",
-    "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.8.2",
     "webpack": "^5.98.0",
