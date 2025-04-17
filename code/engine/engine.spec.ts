@@ -500,7 +500,12 @@ describe('Basic Engine Tests.', () => {
   });
 
   it('If a choice is executed that does not exist, an error is thrown.', () => {
-    expect(() => engine.execute('I dont exist!')).to.throw(/choice/i);
+    const player = engine.registerInterface({
+      actorId: 'my-actor',
+      tickHandler: () => {}
+    });
+
+    expect(() => engine.execute(player, 'I dont exist!')).to.throw(/choice/i);
   });
 
   it('If a Rule is searched for that doesnt exist, an error is thrown.', () => {

@@ -1,4 +1,4 @@
-import { Changes, CommunicatedChoice, Components, ID, InMemoryPlayerClient } from "../engine/types-engine.js";
+import { Changes, CommunicatedChoice, Component, Components, ID, InMemoryPlayerClient, Simple } from "../engine/types-engine.js";
 import { Card, Lane, Player, Slot, Turn } from '../game/types-game.js';
 
 type IdentifiableNode = Node & {id: ID};
@@ -9,7 +9,7 @@ const previewElement = document.getElementById('card-preview')!;
 // This class lives very closely and is connected with our BOM.
 // It in itself is stateless (except the interaction handler...)!
 export class BeyondClient implements InMemoryPlayerClient {
-  private components: Components = new Map();
+  private components: Map<ID, Simple<Component<any>>> = new Map();
   private choices: CommunicatedChoice[] = [];
 
   private handleContextArguments: {
@@ -27,7 +27,18 @@ export class BeyondClient implements InMemoryPlayerClient {
     });
   }
 
-  public tickHandler = (engine, stateDelta: Changes, choices: Readonly<CommunicatedChoice>[]) => {
+  public tickHandler = (callbacks, stateDelta: Changes, choices: Readonly<CommunicatedChoice>[]) => {
+    // Integrate the incoming delta into our current view.
+    Array.from(stateDelta.entries()).forEach(([id, change]) => {
+      this.components.set(
+        id,
+        {
+          ...(this.components.get(id) ?? {}),
+          ...(change)
+        }
+      );
+    });
+
     // TODO: We might auto-accept any single choice. Or leave user time to think...?
     this.choices = choices;
     console.debug('Player sees changes:', stateDelta);

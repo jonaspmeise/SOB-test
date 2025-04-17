@@ -54,37 +54,31 @@ describe('Simple Dice Game.', () => {
     });
 
     engine.registerInterface({
-      tickHandler: (engine, _delta: Changes, choices: CommunicatedChoice[]) => {
+      tickHandler: (callbacks, _delta: Changes, choices: CommunicatedChoice[]) => {
         expect(choices).to.have.length(2);
 
         expect(choices[0].actionType).to.equal('roll');
         expect(choices[0].message).to.equal(`Roll D6`);
         expect(choices[0].components).to.deep.equal(['0']);
-
-        expect(engine.choices().get(choices[0].id)).to.not.be.undefined;
         
         expect(choices[1].actionType).to.equal('roll');
         expect(choices[1].message).to.equal(`Roll D20`);
         expect(choices[1].components).to.deep.equal(['1']);
-        expect(engine.choices().get(choices[1].id)).to.not.be.undefined;
       },
       actorId: 'player-01'
     });
 
     engine.registerInterface({
-      tickHandler: (engine, _delta: Changes, choices: CommunicatedChoice[]) => {
+      tickHandler: (callbacks, _delta: Changes, choices: CommunicatedChoice[]) => {
         expect(choices).to.have.length(2);
 
         expect(choices[0].actionType).to.equal('roll');
         expect(choices[0].message).to.equal(`Roll D6`);
         expect(choices[0].components).to.deep.equal(['0']);
-
-        expect(engine.choices().get(choices[0].id)).to.not.be.undefined;
         
         expect(choices[1].actionType).to.equal('roll');
         expect(choices[1].message).to.equal(`Roll D20`);
         expect(choices[1].components).to.deep.equal(['1']);
-        expect(engine.choices().get(choices[1].id)).to.not.be.undefined;
 
         done();
       },
@@ -143,7 +137,7 @@ describe('Simple Dice Game.', () => {
     // This already triggers a Tick in itself.
     engine.registerInterface({
       actorId: 'player-01',
-      tickHandler: (engine, delta: Changes, choices: CommunicatedChoice[]) => {
+      tickHandler: (callbacks, delta: Changes, choices: CommunicatedChoice[]) => {
         expect(choices).to.have.length(0); // The negative rule overwrites the positive rule here!
         done();
       }
@@ -153,7 +147,6 @@ describe('Simple Dice Game.', () => {
   });
 
   it('Actions can be executed.', (done) => {
-    
     engine.registerComponent({
       sides: 6,
       value: 1
@@ -189,7 +182,7 @@ describe('Simple Dice Game.', () => {
     // This already triggers a tick in itself.
     engine.registerInterface({
       actorId: 'player-01',
-      tickHandler: (engine, delta: Changes, choices: CommunicatedChoice[]) => {
+      tickHandler: (callbacks, delta: Changes, choices: CommunicatedChoice[]) => {
         expect(choices).to.have.length(1); // 1 Dice can be spun up!
 
         // We already spun the dice up once?
@@ -197,7 +190,7 @@ describe('Simple Dice Game.', () => {
           done();
         }
 
-        engine.execute(choices[0].id);
+        callbacks.pickChoice(choices[0].id);
       }
     });
     
@@ -223,7 +216,7 @@ describe('Simple Dice Game.', () => {
     }) as Action<{die: Die}>;
     
     engine.registerRule({
-      id: 'dice-can-be-rolled',
+      id: 'dice-can-be-spun',
       name: 'Dice can be spun up.',
       type: 'positive',
       handler: (engine) => {
@@ -259,9 +252,9 @@ describe('Simple Dice Game.', () => {
 
     engine.registerInterface({
       actorId: 'player-01',
-      tickHandler: (engine, delta: Changes, choices: CommunicatedChoice[]) => {
+      tickHandler: (callbacks, delta: Changes, choices: CommunicatedChoice[]) => {
         if(choices.length > 0) {
-          engine.execute(choices[0].id);
+          callbacks.pickChoice(choices[0].id);
         }
       }
     });
@@ -290,6 +283,63 @@ describe('Simple Dice Game.', () => {
     engine.executeAction<typeof ACTION_SPINUP, {die: Die}>('spin-up', {die: die});
 
     expect(die.value).to.equal(2);
+  });
+
+  it('A player cant execute a Choice that doesnt belong to them.', (done) => {
+    const myDie = engine.registerComponent({
+      sides: 6,
+      value: 1
+    }, 'die') as Simple<Die>;
+
+    const spinupAction = engine.registerAction({
+      name: 'spin-up',
+      execute: (engine, context) => {
+        context.die.value++;
+
+        return context;
+      },
+      context: (engine, entrypoint) => entrypoint,
+      message: (context) => `Spin ${context.die} up`,
+      log: (parameters) => `${parameters.die} was spun up.`
+    }) as Action<{die: Die}>;
+    
+    engine.registerRule({
+      id: 'dice-can-be-spun',
+      name: 'Dice can be spun up.',
+      type: 'positive',
+      handler: (engine) => {
+        return engine.players().map(player => (engine.query<Die>('die'))
+          .filter(die => die.value < die.sides) // Only dice that are not yet on their maximum can be spun up!
+          .map(die => {
+            return {
+              action: spinupAction,
+              entrypoint: {die: die},
+              player: player
+            };
+          })).flat()
+      }
+    }) as PositiveRule<typeof spinupAction>;
+    
+    engine.registerInterface({
+      actorId: 'player-01',
+      tickHandler: (callbacks, delta: Changes, choices: CommunicatedChoice[]) => {
+        console.error(1, choices);
+      }
+    });
+
+    let counter = 0;
+    engine.registerInterface({
+      actorId: 'player-02',
+      tickHandler: (callbacks, delta: Changes, choices: CommunicatedChoice[]) => {
+        if(counter++ === 0) {
+          console.error(2, choices);
+          expect(() => callbacks.pickChoice('choice-0')).to.throw();
+          done();
+        }
+      }
+    });
+
+    engine.start();
   });
 
   // TODO: Logs, full state transfer...

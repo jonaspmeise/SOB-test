@@ -97,8 +97,13 @@ export type CommunicatedChoice = {
   components: ID[]
 };
 
+export type ClientCallbacks = {
+  fetchFullState: () => void,
+  pickChoice: (id: string) => void
+};
+
 export type TickHandler = (
-  engine: GameEngine,
+  callbacks: ClientCallbacks,
   stateDelta: Changes,
   choices: CommunicatedChoice[]
 ) => void;

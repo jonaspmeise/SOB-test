@@ -9,6 +9,8 @@ export const INITIALIZE_BEYOND = (
   cards: RawCard[]
 ): void => {
 
+  const startTime = new Date().getTime();
+  
   // COMPONENTS.
   // Players
   const players = ['Görzy', 'Rashid'].map((name, i) => {
@@ -325,5 +327,8 @@ export const INITIALIZE_BEYOND = (
 
       return [];
     }
-  })
+  });
+
+  const endTime = new Date().getTime();
+  console.info(`Loaded game in ${(endTime - startTime) / 1000} seconds.`);
 };

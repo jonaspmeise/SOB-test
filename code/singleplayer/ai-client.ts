@@ -2,7 +2,7 @@ import { Changes, CommunicatedChoice, Components, InMemoryPlayerClient, TickHand
 import { shuffle } from "../engine/utility.js";
 
 export class AIClient implements InMemoryPlayerClient {
-  public tickHandler: TickHandler = (engine, stateDelta: Changes, choices: CommunicatedChoice[]) => {
+  public tickHandler: TickHandler = (callbacks, stateDelta: Changes, choices: CommunicatedChoice[]) => {
     console.log('AI: I have choices!', choices);
 
     if(choices.length == 0) {
@@ -13,6 +13,6 @@ export class AIClient implements InMemoryPlayerClient {
     const choice = shuffle(choices)[Math.floor(Math.random() * choices.length)];
     console.log(`AI: I execute choice`, choice);
 
-    // engine.execute(choice.id);
+    callbacks.pickChoice(choice.id);
   };
 }

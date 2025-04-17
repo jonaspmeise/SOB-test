@@ -221,7 +221,10 @@ export class GameEngine {
       // const choiceSpace = this.
 
       player.tickHandler(
-        this,
+        {
+          fetchFullState: () => console.log('FULL STATE FETCHED'),
+          pickChoice: (id) => this.execute(player, id)
+        },
         this._changes,
         choiceSpace
           .filter(choice => choice.player.actorId === player.actorId)
@@ -340,13 +343,15 @@ export class GameEngine {
   };
 
   // TEST: Can't register the same ActorID twice!
-  public registerInterface = (player: PlayerInterface<any>): void => {
+  public registerInterface = <T extends PlayerInterface<any>> (player: T): T => {
     console.debug(`Registering Player Interface "${player.actorId}"...`);
     
-    this.changeCounter++;
     this._playerInterfaces.push(player);
 
+    this.changeCounter++;
     this.tick();
+
+    return player;
   };
 
   public rules = (ruleType: RuleType): ReadonlyMap<string, PositiveRule<any> | NegativeRule<any>> => {
@@ -412,11 +417,16 @@ export class GameEngine {
     return this._genericTriggers.concat(triggers ?? []);
   };
 
-  public execute = (id: string): void => {
+  public execute = (player: PlayerInterface, id: string): void => {
+    console.debug(`Player "${player.actorId}" executes choice "${id}"...`);
     const choice = this._choices.get(id);
 
     if(choice === undefined) {
       throw new Error(`The choice with the ID "${id}" does not exist!`);
+    }
+
+    if(choice.player !== player) {
+      throw new Error(`Player "${player.actorId}" is not allowed to execute Choice #${choice.id}, because it belongs to Player "${choice.player}"!`);
     }
 
     console.debug(`Executing choice #${id}...`);
