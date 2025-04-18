@@ -54,7 +54,7 @@ describe('Simple Dice Game.', () => {
     });
 
     engine.registerInterface({
-      tickHandler: (callbacks, _delta: Changes, choices: CommunicatedChoice[]) => {
+      tickHandler: (_delta: Changes, choices: CommunicatedChoice[]) => {
         expect(choices).to.have.length(2);
 
         expect(choices[0].actionType).to.equal('roll');
@@ -69,7 +69,7 @@ describe('Simple Dice Game.', () => {
     });
 
     engine.registerInterface({
-      tickHandler: (callbacks, _delta: Changes, choices: CommunicatedChoice[]) => {
+      tickHandler: (_delta: Changes, choices: CommunicatedChoice[]) => {
         expect(choices).to.have.length(2);
 
         expect(choices[0].actionType).to.equal('roll');
@@ -137,7 +137,7 @@ describe('Simple Dice Game.', () => {
     // This already triggers a Tick in itself.
     engine.registerInterface({
       actorId: 'player-01',
-      tickHandler: (callbacks, delta: Changes, choices: CommunicatedChoice[]) => {
+      tickHandler: (delta: Changes, choices: CommunicatedChoice[]) => {
         expect(choices).to.have.length(0); // The negative rule overwrites the positive rule here!
         done();
       }
@@ -182,7 +182,7 @@ describe('Simple Dice Game.', () => {
     // This already triggers a tick in itself.
     engine.registerInterface({
       actorId: 'player-01',
-      tickHandler: (callbacks, delta: Changes, choices: CommunicatedChoice[]) => {
+      tickHandler: (delta: Changes, choices: CommunicatedChoice[]) => {
         expect(choices).to.have.length(1); // 1 Dice can be spun up!
 
         // We already spun the dice up once?
@@ -190,7 +190,7 @@ describe('Simple Dice Game.', () => {
           done();
         }
 
-        callbacks.pickChoice(choices[0].id);
+        engine.execute('player-01', 'choice-0');
       }
     });
     
@@ -252,9 +252,9 @@ describe('Simple Dice Game.', () => {
 
     engine.registerInterface({
       actorId: 'player-01',
-      tickHandler: (callbacks, delta: Changes, choices: CommunicatedChoice[]) => {
+      tickHandler: (delta: Changes, choices: CommunicatedChoice[]) => {
         if(choices.length > 0) {
-          callbacks.pickChoice(choices[0].id);
+          engine.execute('player-01', 'choice-0');
         }
       }
     });
@@ -322,18 +322,16 @@ describe('Simple Dice Game.', () => {
     
     engine.registerInterface({
       actorId: 'player-01',
-      tickHandler: (callbacks, delta: Changes, choices: CommunicatedChoice[]) => {
-        console.error(1, choices);
-      }
+      tickHandler: (delta: Changes, choices: CommunicatedChoice[]) => {}
     });
 
     let counter = 0;
     engine.registerInterface({
       actorId: 'player-02',
-      tickHandler: (callbacks, delta: Changes, choices: CommunicatedChoice[]) => {
+      tickHandler: (delta: Changes, choices: CommunicatedChoice[]) => {
         if(counter++ === 0) {
           console.error(2, choices);
-          expect(() => callbacks.pickChoice('choice-0')).to.throw();
+          expect(() => engine.execute('player-02', 'choice-0')).to.throw();
           done();
         }
       }

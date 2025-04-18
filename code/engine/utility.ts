@@ -1,4 +1,4 @@
-import { PlayerInterface } from "./types-engine.js";
+import { PlayerInterface, Simple } from "./types-engine.js";
 
 /*
 const logElement = document.getElementById('log')!;
@@ -40,4 +40,52 @@ export const shuffle = <T> (array: T[], seed?: number): T[] => {
   
 export const range = (number: number): number[] => {
     return [...Array(number).keys()];
+};
+
+export const prepareForExport = <T extends {toJSON: () => unknown}> (object: T | Map<string, T>): Simple<T> => {
+    return (object as T).toJSON() as Simple<T>;
+};
+
+export const prepareMapForExport = <T extends {toJSON: () => unknown}> (map: Map<string, T>, jsonFunc: (value: T) => Simple<T>): Map<string, Simple<T>> => {
+    const newMap: Map<string, Simple<T>> = new Map();
+    
+    Array.from(map.entries()).forEach(([key, value]) => {
+        newMap.set(key, jsonFunc(value) as Simple<T>);
+    });
+
+    return newMap;
+};
+
+export const jsonify = (obj: any): any => {
+    console.debug('jsonifying... ');
+  
+    const json = {};
+    for(let key in obj) {
+      const target = obj[key];
+      // Default case.
+      if(typeof target === 'function') {
+        // Ignore if its a built-in-function.
+        if(key === 'toJSON' || key === 'toString') {
+            continue;
+        }
+
+        // This might be a Query - so we simply access this once.
+
+        json[key] = target();
+        continue;
+      }
+  
+      if(typeof target !== 'object') {
+        json[key] = target;
+        continue;
+      }
+      
+      console.debug(Object.keys(obj));
+      console.debug(target);
+      console.debug(`Masking reference to other component in property "${key}" (${typeof target})...`);
+      // Exclude references to other Entities!
+      json[key] = `@${target.id}`;
+    }
+  
+    return json;
 };

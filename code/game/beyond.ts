@@ -120,7 +120,7 @@ export const INITIALIZE_BEYOND = (
     engine.registerComponent({
       x: x,
       y: y,
-      card: (self, engine) => engine.query<Card>('card').filter(card => card.location === self),
+      card: (self, engine) => engine.query<Card>('card').filter(card => card.location === self)[0],
       lanes: (self, engine) => engine.query<Lane>('lane').filter(lane => lane.slots.includes(self))
     }, 'slot', `Slot ${x}/${y}`) as Simple<Slot>;
   }));

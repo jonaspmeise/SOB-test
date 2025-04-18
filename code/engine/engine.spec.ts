@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { GameEngine } from "./engine.js";
 import { Component, Simple, Query, Changes, CommunicatedChoice, Action, ImplentationChoice } from "./types-engine.js";
+import { jsonify, prepareForExport, prepareMapForExport } from "./utility.js";
 
 const removeStaticFunctions = <T> (obj: T): Partial<T> => {
   //@ts-ignore
@@ -203,16 +204,16 @@ describe('Basic Engine Tests.', () => {
   });
 
   it('If a component is directly related to another component, it can be accessed as usual.', () => {
-    type MyType = {value: number, reference?: MyType};
+    type MyType = Component<{value: number, reference?: MyType}>;
 
-    const obj1: MyType = engine.registerComponent({
+    const obj1 = engine.registerComponent({
       reference: undefined,
       value: 1
-    }, 'test-1');
-    const obj2: MyType = engine.registerComponent({
-      reference: undefined,
+    }, 'test-1') as Simple<MyType>;
+    const obj2 = engine.registerComponent({
+      reference: obj1,
       value: 2
-    }, 'test-2');
+    }, 'test-2') as Simple<MyType>;
 
     // We don't care about the syntax, just the semantic here - types are secondary for now.
     obj1.reference = obj2;
@@ -323,7 +324,7 @@ describe('Basic Engine Tests.', () => {
     // When this Player is registered, an initial tick is issued.
     engine.registerInterface({
       // This function is called whenever a Tick happens and the Game State was updated.
-      tickHandler: (engine, delta: Changes, choices: CommunicatedChoice[]) => {
+      tickHandler: (delta: Changes, choices: CommunicatedChoice[]) => {
         done();
       },
       actorId: 'Player 1'
@@ -341,7 +342,7 @@ describe('Basic Engine Tests.', () => {
     }, 'test');
 
     engine.registerInterface({
-      tickHandler: (engine, delta: Changes, choices: CommunicatedChoice[]) => {
+      tickHandler: (delta: Changes, choices: CommunicatedChoice[]) => {
         console.error(ticked, delta);
         // TODO: ticked === 0 is the initial tick triggered by registering this interface - the full state should be transmitted there!
         if(ticked === 0) {
@@ -437,7 +438,7 @@ describe('Basic Engine Tests.', () => {
     });
 
     engine.registerInterface({
-      tickHandler: (engine, delta: Changes, choices: CommunicatedChoice[]) => {
+      tickHandler: (delta: Changes, choices: CommunicatedChoice[]) => {
         expect(choices).to.have.length(0);
         done();
       },
@@ -505,7 +506,7 @@ describe('Basic Engine Tests.', () => {
       tickHandler: () => {}
     });
 
-    expect(() => engine.execute(player, 'I dont exist!')).to.throw(/choice/i);
+    expect(() => engine.execute('my-actor', 'I dont exist!')).to.throw(/choice/i);
   });
 
   it('If a Rule is searched for that doesnt exist, an error is thrown.', () => {
@@ -536,5 +537,165 @@ describe('Basic Engine Tests.', () => {
 
   it('If an Action is tried to be executed that doesnt exist, an error is thrown.', () => {
     expect(() => engine.executeAction('I dont exist!', {})).to.throw(/I dont exist!/i);
+  });
+
+  it('When the Game starts, _ALL_ registered Components are sent to each Player Interface.', (done) => {
+    engine.registerInterface({
+      actorId: 'player-01',
+      tickHandler: (delta, choices) => {
+        expect(delta).to.have.length(3); // Because 3 Components were registered!
+        done();
+      }
+    });
+
+    engine.registerComponent({
+      test: '123'
+    }, 'test');
+
+    // Random ticks inbetween!
+    engine.tick();
+    
+    engine.registerComponent({
+      test: '234'
+    }, 'test');
+    
+    engine.registerComponent({
+      test: '345'
+    }, 'test');
+
+    // Random ticks inbetween!
+    engine.tick();
+
+    engine.start();
+  });
+
+  it('A Query is correctly transferred to the Client via a Component Reference.', (done) => {
+    type MyType = Component<{value: Query<MyType, MyType>}>;
+
+    engine.registerComponent({
+      value: (self, engine) => engine.query<MyType>('my-type').filter(c => c.id !== self.id)[0]
+    }, 'my-type') as Simple<MyType>;
+    
+    engine.registerComponent({
+      value: (self, engine) => engine.query<MyType>('my-type').filter(c => c.id !== self.id)[0]
+    }, 'my-type') as Simple<MyType>;
+
+    engine.registerInterface({
+      actorId: 'player-1',
+      tickHandler: (delta) => {
+        expect(delta).to.have.length(2);
+        console.error(delta);
+        expect(delta.get('0')).to.deep.equal({
+          type: 'my-type',
+          id: '0',
+          value: '@1'
+        });
+        
+        expect(delta.get('1')).to.deep.equal({
+          type: 'my-type',
+          id: '1',
+          value: '@0'
+        });
+
+        done();
+      }
+    });
+
+    engine.start();
+  });
+
+  // TODO: Domain Wording here is very inprecise...?
+  it('An Object can be prepared for export by rendering all of its dependent Components into Relations. Functions are dismissed.', () => {
+    const obj = engine.registerComponent({
+      test: 123,
+      otherObject: engine.registerComponent({
+        nested: 'hello'
+      }, 'nested')
+    }, 'test');
+
+    expect(prepareForExport(obj)).to.deep.equal({
+      id: '1',
+      type: 'test',
+      test: 123,
+      otherObject: '@0'
+    });
+  });
+
+  it('A Map of Objects can be prepared for export.', () => {
+    const obj1 = engine.registerComponent({
+      nested: 'hello'
+    }, 'nested');
+
+    const obj2 = engine.registerComponent({
+      test: 123,
+      otherObject: obj1
+    }, 'test');
+
+    const map = new Map();
+    map.set('obj1', obj1);
+    map.set('obj2', obj2);
+
+    const transformed = prepareMapForExport(map, jsonify);
+
+    expect(transformed).to.have.length(2);
+    console.error(transformed);
+    expect(transformed.get('obj1')).to.deep.equal({
+      id: '0',
+      type: 'nested',
+      nested: 'hello'
+    });
+    expect(transformed.get('obj2')).to.deep.equal({
+      id: '1',
+      type: 'test',
+      test: 123,
+      otherObject: '@0' // Reference is translated here!
+    });
+  });
+
+  it('If a Component is registered, a Tick is triggered.', (done) => {
+    engine.registerInterface({
+      actorId: 'my-player',
+      tickHandler: (delta) => {
+        expect(delta).to.have.length(1);
+
+        expect(delta.get('0')).to.deep.equal({
+          test: 123,
+          id: '0',
+          type: 'test'
+        });
+      }
+    });
+
+    // We need this, so that the player is even notified about this change!
+    engine.start();
+
+    engine.registerComponent({
+      test: 123
+    }, 'test');
+  });
+
+  it('Queries are updated on every tick and transferred on the Tick.', () => {
+    type MyType = Component<{value: Query<MyType, MyType>}>;
+
+    engine.registerComponent({
+      value: (self, engine) => engine.query<MyType>('my-type').filter(c => c.id !== self.id)[0]
+    }, 'my-type') as Simple<MyType>;
+    
+    engine.registerComponent({
+      value: (self, engine) => engine.query<MyType>('my-type').filter(c => c.id !== self.id)[0]
+    }, 'my-type') as Simple<MyType>;
+
+    engine.registerInterface({
+      actorId: 'player-1',
+      tickHandler: (delta) => {
+        expect(delta.get('0')).to.deep.equal({
+          type: 'my-type',
+          id: '0',
+          value: '@1' // Important: This Component was found retroactively!
+        });
+      }
+    });
+
+    engine.start();
   });
 });

@@ -27,30 +27,3 @@ export const getCombinations = (arrays: string[][]): RealmCount => {
   return result;
 }
   */
-
-
-export const jsonify = (obj: any): any => {
-  console.debug('jsonifying... ');
-
-  const json = {};
-  for(let key in obj) {
-    const target = obj[key];
-    // Default case.
-    // Functions are ignored.
-    if(typeof target === 'function') {
-      continue;
-    }
-
-    if(typeof target !== 'object') {
-      json[key] = target;
-      continue;
-    }
-    
-    console.debug(Object.keys(obj));
-    console.debug(`Masking reference to other component in property "${key}" (${typeof target})...`);
-    // Exclude references to other Entities!
-    json[key] = `@${target.id}`;
-  }
-
-  return json;
-};

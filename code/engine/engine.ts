@@ -1,5 +1,6 @@
+import { isThisTypeNode } from 'typescript';
 import { Component, Components, ID, PlayerInterface, Type, CacheEntry, StaticQueryFilter, StaticCacheEntry, Simple, Changes, Action, PositiveRule, NegativeRule, RuleType, InternalChoice, ImplentationChoice, Identifiable, Trigger, CommunicatedChoice, Callbackable } from './types-engine.js';
-import { jsonify } from '../game/utility.js';
+import { jsonify, prepareMapForExport } from './utility.js';
 
 export class GameEngine {
   private componentCounter: number = 0;
@@ -33,9 +34,6 @@ export class GameEngine {
   private _started = false;
 
   public registerComponent = <P extends {}> (properties: P, type: Type, name?: string): Simple<Component<P>> => {
-    // Something will change!
-    this.changeCounter++;
-
     const id: ID = '' + this.componentCounter++;
     console.debug(`Registering component of type "${type}" with ID ${id}...`);
 
@@ -73,15 +71,19 @@ export class GameEngine {
           ...this._changes.get(id) ?? {},
           [prop]: newValue
         });
-        this.changeCounter++;
 
         target[p] = newValue;
 
+        // Trigger another tick, since state was changed!
+        this.tick();
+        
         return true;
       },
       get: (t: P, p: string | symbol) => {
         const prop: string = p.toString();
         const target = t[p];
+
+        console.debug(`Accessing ${prop} of Component #${id}`);
 
         if(typeof target === 'function') {
           // Some in-built Array-functions aside, we can assume that it's a query.
@@ -147,11 +149,14 @@ export class GameEngine {
       (engine) => engine.components().filter(component => component.type === type)
     );
 
+    this.tick();
+
     return proxy as Simple<Component<P>>;
   };
 
   public tick = () => {
     console.debug('Tick triggered.');
+    this.changeCounter++;
 
     if(this._started === false) {
       console.debug(`Will skip handling this Tick because the Game has not started yet...`);
@@ -218,14 +223,9 @@ export class GameEngine {
     }
 
     this._playerInterfaces.forEach(player => {
-      // const choiceSpace = this.
-
       player.tickHandler(
-        {
-          fetchFullState: () => console.log('FULL STATE FETCHED'),
-          pickChoice: (id) => this.execute(player, id)
-        },
-        this._changes,
+        // TODO: Make these player-specific!
+        prepareMapForExport(this._changes, jsonify),
         choiceSpace
           .filter(choice => choice.player.actorId === player.actorId)
           .map(choice => {
@@ -282,12 +282,13 @@ export class GameEngine {
 
   // TEST: No queries can be overwritten.
   public registerQuery = (name: string, func: StaticQueryFilter<Simple<Component<unknown>>[]>): void => {
-    this.changeCounter++;
     this._queries.set(name, {
       result: func(this),
       timestamp: this.changeCounter,
       func: func
     });
+
+    this.tick();
   };
 
   public changes = (): ReadonlyMap<ID, Partial<Simple<Component<unknown>>>> => {
@@ -348,7 +349,6 @@ export class GameEngine {
     
     this._playerInterfaces.push(player);
 
-    this.changeCounter++;
     this.tick();
 
     return player;
@@ -417,16 +417,16 @@ export class GameEngine {
     return this._genericTriggers.concat(triggers ?? []);
   };
 
-  public execute = (player: PlayerInterface, id: string): void => {
-    console.debug(`Player "${player.actorId}" executes choice "${id}"...`);
+  public execute = (actorId: string, id: string): void => {
+    console.debug(`Player "${actorId}" executes choice "${id}"...`);
     const choice = this._choices.get(id);
 
     if(choice === undefined) {
       throw new Error(`The choice with the ID "${id}" does not exist!`);
     }
 
-    if(choice.player !== player) {
-      throw new Error(`Player "${player.actorId}" is not allowed to execute Choice #${choice.id}, because it belongs to Player "${choice.player}"!`);
+    if(choice.player.actorId !== actorId) {
+      throw new Error(`Player "${actorId}" is not allowed to execute Choice #${choice.id}, because it belongs to Player "${choice.player}"!`);
     }
 
     console.debug(`Executing choice #${id}...`);

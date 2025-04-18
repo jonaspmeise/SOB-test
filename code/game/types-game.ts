@@ -85,9 +85,9 @@ export type Owned = {
   owner: Simple<Player>
 };
 
-export type Container = {
+export type Container = Component<{
   cards: Query<Container, Card[]>
-};
+}>;
 
 export type Hand = Container & Owned;
 export type Deck = Container & Owned;

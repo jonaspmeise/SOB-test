@@ -1,4 +1,4 @@
-import { Changes, CommunicatedChoice, Component, Components, ID, InMemoryPlayerClient, Simple } from "../engine/types-engine.js";
+import { Changes, CommunicatedChoice, Component, Components, ID, Query, Simple } from "../engine/types-engine.js";
 import { Card, Lane, Player, Slot, Turn } from '../game/types-game.js';
 
 type IdentifiableNode = Node & {id: ID};
@@ -8,9 +8,7 @@ const previewElement = document.getElementById('card-preview')!;
 
 // This class lives very closely and is connected with our BOM.
 // It in itself is stateless (except the interaction handler...)!
-export class BeyondClient implements InMemoryPlayerClient {
-  private components: Map<ID, Simple<Component<any>>> = new Map();
-  private choices: CommunicatedChoice[] = [];
+export class BeyondClient {
 
   private handleContextArguments: {
     context: Set<ID>,
@@ -26,27 +24,8 @@ export class BeyondClient implements InMemoryPlayerClient {
       this.resetHandleContext();
     });
   }
-
-  public tickHandler = (callbacks, stateDelta: Changes, choices: Readonly<CommunicatedChoice>[]) => {
-    // Integrate the incoming delta into our current view.
-    Array.from(stateDelta.entries()).forEach(([id, change]) => {
-      this.components.set(
-        id,
-        {
-          ...(this.components.get(id) ?? {}),
-          ...(change)
-        }
-      );
-    });
-
-    // TODO: We might auto-accept any single choice. Or leave user time to think...?
-    this.choices = choices;
-    console.debug('Player sees changes:', stateDelta);
-    console.debug('Player has choices:', choices);
-    // this.render(stateDelta);
-  };
   
-  private static showCardPreview = (card: Card) => {
+  private static showCardPreview = (card: Simple<Card>) => {
     const url = BeyondClient.getCardArtUrl(card);
 
     if(url == null) {
@@ -59,8 +38,8 @@ export class BeyondClient implements InMemoryPlayerClient {
   };
   
   private static resolveCardArt = (name: string) => `https://cdn.shardsofbeyond.com/client/cards/${name.toLowerCase().replace(/\W/g, '')}.png`;
-  private static getCardArtUrl = (card?: Card) => card === undefined ? null : `url('${this.resolveCardArt(card.name)}')`;
-  private static getRawCardArtUrl = (card?: Card) => card === undefined ? null : `url('https://cdn.shardsofbeyond.com/artworks/${card.artwork}')`;
+  private static getCardArtUrl = (card?: Simple<Card>) => card === undefined ? null : `url('${this.resolveCardArt(card.name)}')`;
+  private static getRawCardArtUrl = (card?: Simple<Card>) => card === undefined ? null : `url('https://cdn.shardsofbeyond.com/artworks/${card.artwork}')`;
 
   // Utility for this human client.
   private resetHandleContext = () => {
@@ -73,7 +52,7 @@ export class BeyondClient implements InMemoryPlayerClient {
     // this.highlight(this.choices, new Set(), true);
   };
     
-  private static removeDanglingNodes = (parent: IdentifiableNode, nodeFilterFunction: (id: ID) => boolean, name: string) => {
+  private removeDanglingNodes = (parent: IdentifiableNode, nodeFilterFunction: (id: ID) => boolean, name: string) => {
     ([
       ...parent
       .childNodes
@@ -151,9 +130,10 @@ export class BeyondClient implements InMemoryPlayerClient {
         this.handleContextArguments.context
       );
     }
-  };
+  };*/
+  }
 
-  private createCardElement = (card: Card, playerIndex: number, rawArt = false) => {
+  private createCardElement = (card: Simple<Card>, playerIndex: number, rawArt = false) => {
     let element = document.createElement('div');
     element.id = '' + card.id;
     element.classList.add('card', `player${playerIndex + 1}`);
@@ -178,33 +158,21 @@ export class BeyondClient implements InMemoryPlayerClient {
     });
 
     return element;
-    */
   };
 
   // Renders a given list of components with their values.
-  /*
   public render = (components: Changes) => {
     // For easier access.
-    this.components = {
-      ...this.components
-      // TODO
-    }; // TODO: ???
     const arrayComponents = Array.from(components.values());
 
     // These Elements are all given in the template!
-    const players: Player[] = (arrayComponents.filter(component => component.types.includes('player')) as BeyondPlayer[]);
+    // TODO: Queries should be transmitted from the game engine, too!
+    const players = (arrayComponents.filter(component => component.type === 'player') as Simple<Player>[]);
     const gameStatElement = document.getElementById('game-stats')!;
-    const turn: Turn = arrayComponents.filter(component => component.types.includes('turn'))[0] as Turn;
-
-    const playerPowers = players.map(player => {
-      return {
-        index: player.index,
-        power: player.powerPerLane()
-      };
-    });
+    const turn = arrayComponents.filter(component => component.type === 'turn')[0] as Simple<Turn>;
 
     (arrayComponents
-      .filter(component => component.types.includes('slot')) as Slot[])
+      .filter(component => component.type === 'slot') as Simple<Slot>[])
       .forEach(slot => {
         let slotElement = document.getElementById(slot.id);
 
@@ -219,47 +187,42 @@ export class BeyondClient implements InMemoryPlayerClient {
           });
 
           gameBoardElement.appendChild(slotElement);
-        }
+        };
 
-        // Cards in Slots.
-        const cardId = slot.card;
-        if(cardId !== undefined) {
-          let cardElement = slotElement.querySelector(`[id="${cardId}"]`);
-
-          const card = components.get(cardId) as Card;
-          const player = components.get(card.owner) as BeyondPlayer;
+        const card = slot.card;
+        if(card !== undefined) {
+          let cardElement = slotElement.querySelector(`[id="${card.id}"]`);
 
           if(cardElement == null) {
-            slotElement.appendChild(this.createCardElement(card, player.index));
+            slotElement.appendChild(this.createCardElement(card, card.owner.index));
           }
 
-          BeyondClient.removeDanglingNodes(slotElement, (node) => cardId != node, 'Slot');
+          this.removeDanglingNodes(slotElement, (node) => card.id != node, 'Slot');
         }
       });
     
     
-    // Deck.
+    // Deck Area.
     (arrayComponents
-      .filter(component => component.types.includes('player')) as BeyondPlayer[])
+      .filter(component => component.type === 'player') as Simple<Player>[])
       .forEach(player => {
-        const deckId = player.deck.id;
-
-        if(document.getElementById(deckId) != null) {
+        // If Deck is not yet rendered...
+        if(document.getElementById(player.deck.id) != null) {
           return;
         }
 
         const deckElement = document.createElement('div');
-        deckElement.id = deckId;
+        deckElement.id = player.deck.id;
 
         deckElement.addEventListener('click', e => {
-          this.handleInteraction(deckId);
+          this.handleInteraction(player.deck.id);
           e.stopPropagation();
         });
       });
 
     // Lanes.
     (arrayComponents
-      .filter(component => component.types.includes('lane')) as Lane[])
+      .filter(component => component.type === 'lane') as Simple<Lane>[])
       .forEach((lane, i) => {
         // Render single Lane.
         let laneElement = document.getElementById(lane.id);
@@ -290,8 +253,8 @@ export class BeyondClient implements InMemoryPlayerClient {
         }
 
         // Always update Power per Player per Lane!
-        const player1Power = playerPowers.filter(p => p.index === 0)[0].power[lane.id];
-        const player2Power = playerPowers.filter(p => p.index === 1)[0].power[lane.id];
+        const player1Power = lane.cards.filter(card => card.owner.index === 0).map(card => card.power).reduce((prev, curr) => prev + curr ,0);
+        const player2Power = lane.cards.filter(card => card.owner.index === 0).map(card => card.power).reduce((prev, curr) => prev + curr ,0);
 
         const powerDisparity = player1Power - player2Power;
         powerIndicator.innerHTML = `<span class="${powerDisparity == 0 ? 'neutral' : powerDisparity > 0 ? `player1` : 'player2'}">${Math.abs(powerDisparity)}</span>`;
@@ -338,12 +301,11 @@ export class BeyondClient implements InMemoryPlayerClient {
       }
 
       // Clean up dangling DOM nodes of cards that are no longer in this zone.
-      BeyondClient.removeDanglingNodes(crystalzoneElement, (nodeId) => !player.crystalzone.includes(nodeId), 'Crystal Zone');
+      this.removeDanglingNodes(crystalzoneElement, (nodeId) => !player.crystalzone.cards.filter(card => card.id === nodeId) === undefined, 'Crystal Zone');
 
       // Render cards in crystal zone.
-      player.crystalzone.forEach(cardId => {
-        const card = components.get(cardId) as Card;            
-        let cardElement = crystalzoneElement.querySelector(`[id="${cardId}"]`);
+      player.crystalzone.cards.forEach(card => {            
+        let cardElement = crystalzoneElement.querySelector(`[id="${card.id}"]`);
 
         if(cardElement == null) {
           crystalzoneElement.appendChild(this.createCardElement(card, player.index, true));
@@ -362,12 +324,11 @@ export class BeyondClient implements InMemoryPlayerClient {
       }
 
       // Remove no longer referenced nodes in the DOM, if the model doesn't hold the card anymore.
-      BeyondClient.removeDanglingNodes(handElement, (nodeId) => !player.hand.includes(nodeId), 'Hand');
+      this.removeDanglingNodes(handElement, (nodeId) => !player.hand.cards.filter(card => card.id === nodeId) === undefined, 'Hand');
 
       // Cards in Hand.
-      player.hand.forEach(cardId => {
-        const card = components.get(cardId) as Card;
-        let cardElement = document.getElementById(cardId);
+      player.hand.cards.forEach(card => {
+        let cardElement = document.getElementById(card.id);
         
         if(cardElement == null) {
           handElement.appendChild(this.createCardElement(card, player.index));
@@ -399,7 +360,7 @@ export class BeyondClient implements InMemoryPlayerClient {
           deckArea.appendChild(deckCounterElement);
       }
       // Always update this value!
-      deckCounterElement.textContent = '' + player.deck.length;
+      deckCounterElement.textContent = '' + player.deck.cards.length;
 
       // Stats per Player
       const statElementId = `player${player.index + 1}-stats`;
@@ -417,6 +378,7 @@ export class BeyondClient implements InMemoryPlayerClient {
     });
   };
 
+  /*
   private highlight = (choices: Choice[], alreadySeenContext = new Set(), initialInteraction = false) => {
     // Remove highlights so far...
     (Array.from(document.querySelectorAll('.highlight').values()) as HTMLElement[]).forEach(element => {
@@ -474,5 +436,5 @@ export class BeyondClient implements InMemoryPlayerClient {
           }
         });
     });
-    */
+  } */
 };

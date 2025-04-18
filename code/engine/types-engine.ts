@@ -103,14 +103,9 @@ export type ClientCallbacks = {
 };
 
 export type TickHandler = (
-  callbacks: ClientCallbacks,
   stateDelta: Changes,
   choices: CommunicatedChoice[]
 ) => void;
-
-export interface InMemoryPlayerClient {
-  tickHandler: TickHandler
-};
 
 export type AtomicValue = string | number | boolean;
 export type AtomicArray = Array<AtomicValue>;
@@ -135,8 +130,8 @@ export type StaticCacheEntry<A, B extends Simple<A>> = {
 
 export type Simple<T> = {
   [key in keyof T]: undefined extends T[key]
-    ? T[key] extends Query<any, infer A>
-      ? Simple<Exclude<A, undefined>>[] | undefined
+    ? Exclude<T[key], undefined> extends Query<any, infer A>
+      ? Simple<Exclude<A, undefined>> | undefined
       : Simple<Exclude<T[key], undefined>> | undefined
     : T[key] extends Query<any, infer A>
       ? A extends Array<infer B>
@@ -144,7 +139,7 @@ export type Simple<T> = {
         : Simple<A>
       : key extends ('toJSON' | 'toString') // We ignore built-in functions.
         ? T[key] // direct references to objects can be held.
-        : Simple<T[key]>
+        : Simple<T[key]>;
 };
 
 export type Query<SELF, TARGET> = (self: Simple<SELF>, engine: GameEngine) => Simple<TARGET>;
