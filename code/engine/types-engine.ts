@@ -119,7 +119,8 @@ export type QueryFilter<TARGET, SELF = undefined> = {
 export type CacheEntry<T> = {
   timestamp: number,
   result: T,
-  func: QueryFilter<T>
+  func: QueryFilter<T>,
+  checkUpdate: (currentEntry: T) => void
 };
 
 export type StaticCacheEntry<A, B extends Simple<A>> = {

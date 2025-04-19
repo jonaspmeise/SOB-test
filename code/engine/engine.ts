@@ -30,6 +30,7 @@ export class GameEngine {
   private readonly _negativeRules: Map<string, NegativeRule<any>> = new Map();
 
   private readonly _choices: Map<string, InternalChoice<any>> = new Map();
+  private readonly cache: Map<string, CacheEntry<unknown>> = new Map();
   
   private _started = false;
 
@@ -56,7 +57,6 @@ export class GameEngine {
       }
     });
 
-    const cache: Map<string, CacheEntry<unknown>> = new Map();
     // Register basic values.
     const proxy: Component<P> = new Proxy(properties, {
       set: (target: P, p: string | symbol, newValue: any) => {
@@ -72,10 +72,12 @@ export class GameEngine {
           [prop]: newValue
         });
 
+
         target[p] = newValue;
 
-        // Trigger another tick, since state was changed!
-        this.tick();
+        // TODO: Trigger another tick, since state was changed...?
+        // this.tick();
+        this.changeCounter++;
         
         return true;
       },
@@ -94,17 +96,32 @@ export class GameEngine {
 
           // We try and access a query. 
           // We automatically execute it using our cache and then return the value.
-
-          const entry = cache.get(prop);
+          const cacheEntryId = id + '.' + prop;
+          const entry = this.cache.get(cacheEntryId);
 
           if(entry === undefined) {
             // Fill cache initially.
             console.debug(`Cache is empty for property "${prop}" on Component #${id}. Initializing...`);
             const result = target(proxy, this);
-            cache.set(prop, {
+            this.cache.set(cacheEntryId, {
               func: target,
               timestamp: this.changeCounter,
-              result: result
+              result: result,
+              // TODO: Refactor!
+              checkUpdate: (entry) => {
+                const result = target(proxy, this);
+
+                if(result !== entry) {
+                  const cacheEntry = this.cache.get(cacheEntryId)!;
+                  cacheEntry.timestamp = this.changeCounter;
+                  cacheEntry.result = result;
+                  
+                  this._changes.set(id, {
+                    ...this._changes.get(id)!,
+                    ...result
+                  });
+                }
+              }
             });
 
             return result;
@@ -117,10 +134,24 @@ export class GameEngine {
               console.debug(`Updating property cache for "${prop}" because timestamps differ: ${entry.timestamp} < ${this.changeCounter}`);
               
               const result = target(proxy, this);
-              cache.set(prop, {
+              this.cache.set(cacheEntryId, {
                 func: target,
                 timestamp: this.changeCounter,
-                result: result
+                result: result,
+                checkUpdate: (entry) => {
+                  const result = target(proxy, this);
+
+                  if(result !== entry) {
+                    const cacheEntry = this.cache.get(cacheEntryId)!;
+                    cacheEntry.timestamp = this.changeCounter;
+                    cacheEntry.result = result;
+                    
+                    this._changes.set(id, {
+                      ...this._changes.get(id)!,
+                      ...result
+                    });
+                  }
+                }
               });
 
               return result;
@@ -156,6 +187,14 @@ export class GameEngine {
 
   public tick = () => {
     console.debug('Tick triggered.');
+    // Update all Caches that have not yet been updated...
+    for(let entry of this.cache.values()) {
+      if(entry.timestamp < this.changeCounter) {
+        // TODO: This is WILDLY INEFFICIENT!!!
+        entry.checkUpdate(entry);
+      }
+    }
+
     this.changeCounter++;
 
     if(this._started === false) {
@@ -258,7 +297,7 @@ export class GameEngine {
     const entry = this._queries.get(queryName);
 
     if(entry === undefined) {
-      console.warn(`Query "${queryName}" does not exist!`);
+      console.debug(`Query "${queryName}" does not exist!`);
 
       return [];
     }

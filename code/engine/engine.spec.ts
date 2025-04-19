@@ -585,6 +585,7 @@ describe('Basic Engine Tests.', () => {
       tickHandler: (delta) => {
         expect(delta).to.have.length(2);
         console.error(delta);
+
         expect(delta.get('0')).to.deep.equal({
           type: 'my-type',
           id: '0',
@@ -656,13 +657,17 @@ describe('Basic Engine Tests.', () => {
     engine.registerInterface({
       actorId: 'my-player',
       tickHandler: (delta) => {
-        expect(delta).to.have.length(1);
+        if(delta.size != 1) {
+          return;
+        }
 
         expect(delta.get('0')).to.deep.equal({
           test: 123,
           id: '0',
           type: 'test'
         });
+        
+        done();
       }
     });
 
@@ -697,5 +702,34 @@ describe('Basic Engine Tests.', () => {
     });
 
     engine.start();
+  });
+
+  it('Components that rely on each other can be exported as a Map.', () => {
+    type MyType = Component<{otherObject: Query<MyType, MyType>}>;
+    const obj1: Simple<MyType> = engine.registerComponent({
+      otherObject: (self, engine) => engine.query<MyType>('my-type').filter(c => c.id !== self.id)[0]
+    }, 'my-type');
+    
+    const obj2: Simple<MyType> = engine.registerComponent({
+      otherObject: (self, engine) => engine.query<MyType>('my-type').filter(c => c.id !== self.id)[0]
+    }, 'my-type');
+
+    const map = new Map();
+    map.set('0', obj1);
+    map.set('1', obj2);
+
+    const transformed = prepareMapForExport(map, jsonify);
+
+    expect(transformed).to.have.length(2);
+    expect(transformed.get('0')).to.deep.equal({
+      id: '0',
+      type: 'my-type',
+      otherObject: '@1'
+    });
+    expect(transformed.get('1')).to.deep.equal({
+      id: '1',
+      type: 'my-type',
+      otherObject: '@0'
+    });
   });
 });

@@ -57,7 +57,7 @@ export const prepareMapForExport = <T extends {toJSON: () => unknown}> (map: Map
 };
 
 export const jsonify = (obj: any): any => {
-    console.debug('jsonifying... ');
+    console.debug('jsonifying...');
   
     const json = {};
     for(let key in obj) {
